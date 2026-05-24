@@ -1,0 +1,6 @@
+package ut.edu.be_quanlytro.Entity.Enum;
+
+public enum NotificationType {
+    INVOICE_CREATED, INVOICE_OVERDUE, ISSUE_CREATED,
+    ISSUE_UPDATED, CONTRACT_SIGNED, PAYMENT_APPROVED, PAYMENT_REJECTED
+}
