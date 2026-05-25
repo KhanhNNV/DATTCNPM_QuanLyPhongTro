@@ -2,8 +2,10 @@ package ut.edu.be_quanlytro;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 @SpringBootApplication
+@EnableJpaAuditing
 public class BeQuanLyTroApplication {
 
     public static void main(String[] args) {
