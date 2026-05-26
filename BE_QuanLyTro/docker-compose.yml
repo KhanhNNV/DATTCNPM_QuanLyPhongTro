@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+
+  mysql-db:
+    image: mysql:8.0
+    container_name: quanlyphongtro_mysql
+    restart: no
+    environment:
+      MYSQL_DATABASE: quanlyphongtro
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_USER: quanlyphongtro
+      MYSQL_PASSWORD: 123456
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  redis-cache:
+    image: redis:7-alpine
+    container_name: quanlyphongtro_redis
+    restart: no
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+volumes:
+  mysql_data:
+  redis_data:
