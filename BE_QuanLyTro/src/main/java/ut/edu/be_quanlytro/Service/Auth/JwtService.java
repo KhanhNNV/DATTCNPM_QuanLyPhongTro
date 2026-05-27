@@ -26,7 +26,7 @@ public class JwtService {
     private String secretKey;
 
     public String generateAccessToken(User user, String areaId, String roomId) {
-        JWSHeader jwsHeader = new JWSHeader(JWSAlgorithm.HS512);
+        JWSHeader jwsHeader = new JWSHeader(JWSAlgorithm.HS256);
         Date issueTime = new Date();
         Date expiredTime = Date.from(issueTime.toInstant().plus(30, ChronoUnit.MINUTES));
 
@@ -46,7 +46,7 @@ public class JwtService {
     }
 
     public String generateRefreshToken(User user) {
-        JWSHeader jwsHeader = new JWSHeader(JWSAlgorithm.HS512);
+        JWSHeader jwsHeader = new JWSHeader(JWSAlgorithm.HS256);
         Date issueTime = new Date();
         Date expiredTime = Date.from(issueTime.toInstant().plus(30, ChronoUnit.DAYS));
 
