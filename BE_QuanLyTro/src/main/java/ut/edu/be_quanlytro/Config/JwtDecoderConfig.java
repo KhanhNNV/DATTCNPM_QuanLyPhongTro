@@ -33,7 +33,7 @@ public class JwtDecoderConfig implements JwtDecoder {
             if (jwtDecoder == null) {
                 SecretKey secretKeySpec = new SecretKeySpec(secretKey.getBytes(), "HS512");
                 jwtDecoder = NimbusJwtDecoder.withSecretKey(secretKeySpec)
-                        .macAlgorithm(MacAlgorithm.HS512)
+                        .macAlgorithm(MacAlgorithm.HS256)
                         .build();
             }
             return jwtDecoder.decode(token);
