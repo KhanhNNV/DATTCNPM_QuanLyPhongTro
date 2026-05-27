@@ -15,7 +15,6 @@ public class UserDetailsServiceCustomizer implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String phone) throws UsernameNotFoundException {
-        // Đăng nhập hệ thống bằng Số điện thoại
         return userRepository.findByPhone(phone)
                 .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy người dùng với SĐT: " + phone));
     }
