@@ -29,8 +29,11 @@ public class Area {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String address;
 
+    @Column(name = "due_date")
+    private LocalDateTime dueDate;
+
     @Column(name = "invoice_day")
-    private Integer invoiceDay;
+    private LocalDateTime invoiceDay;
 
     @CreatedDate
     @Column(name = "created_at", updatable = false)

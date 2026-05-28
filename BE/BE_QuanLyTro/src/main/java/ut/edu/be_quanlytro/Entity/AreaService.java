@@ -3,6 +3,7 @@ package ut.edu.be_quanlytro.Entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 import ut.edu.be_quanlytro.Entity.Enum.ServiceCalculationType;
 
@@ -41,4 +42,8 @@ public class AreaService {
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 }
