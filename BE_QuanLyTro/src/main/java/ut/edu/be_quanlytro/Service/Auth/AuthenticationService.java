@@ -1,5 +1,6 @@
 package ut.edu.be_quanlytro.Service.Auth;
 
+import ut.edu.be_quanlytro.Dto.Request.ChangePasswordRequest;
 import ut.edu.be_quanlytro.Dto.Request.LoginRequest;
 import ut.edu.be_quanlytro.Dto.Request.RegisterRequest;
 import ut.edu.be_quanlytro.Dto.Response.LoginResponse;
@@ -25,8 +26,6 @@ public class AuthenticationService {
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final ContractRepository contractRepository;
-
-    // BỔ SUNG 2 DÒNG NÀY ĐỂ FIX LỖI CANNOT RESOLVE SYMBOL
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -36,13 +35,13 @@ public class AuthenticationService {
                 new UsernamePasswordAuthenticationToken(request.getPhone(), request.getPassword())
         );
 
-        // 2. Ép kiểu Principal về Entity User của mình (đã implements UserDetails)
+        // 2. Ép kiểu Principal về Entity User
         User user = (User) auth.getPrincipal();
 
         String areaId = null;
         String roomId = null;
 
-        // 3. Thực hiện kẹp ID trọ vào JWT theo yêu cầu của Nhóm trưởng
+        // 3. Thực hiện kẹp ID trọ vào JWT
         if (user.getRole() == RoleType.TENANT) {
             // Nếu là Khách thuê, tìm hợp đồng đã ký (SIGNED) của họ
             Optional<Contract> activeContract = contractRepository.findByTenantIdAndStatus(user.getId(), ContractStatus.SIGNED);
@@ -52,11 +51,11 @@ public class AuthenticationService {
                 areaId = contract.getRoom().getArea().getId().toString();
             }
         } else if (user.getRole() == RoleType.LANDLORD) {
-            // Lưu ý: Chủ trọ có thể có nhiều Khu trọ (Areas).
+            // Chủ trọ có thể có nhiều Khu trọ (Areas).
             areaId = "ROLE_LANDLORD_ALL_AREAS";
         }
 
-        // 4. Tạo token mang theo đầy đủ "vũ khí" ID dữ liệu
+        // 4. Tạo token mang theo đầy đủ  ID dữ liệu
         return LoginResponse.builder()
                 .accessToken(jwtService.generateAccessToken(user, areaId, roomId))
                 .refreshToken(jwtService.generateRefreshToken(user))
@@ -72,14 +71,22 @@ public class AuthenticationService {
         // 2. Build một Object User mới từ thông tin đăng ký
         User newTenant = User.builder()
                 .phone(request.getPhone())
-                // Bắt buộc phải mã hóa mật khẩu thô bằng BCrypt trước khi lưu xuống SQL Server
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(RoleType.TENANT) // ĐÃ SỬA: Đổi từ viết thường sang VIẾT HOA cho khớp với file Enum của bạn
+                .role(RoleType.TENANT)
                 .fullName(request.getFullName())
-                .isFirstLogin(true) // Bật cờ true để bắt buộc đổi pass lần đầu theo UC31
+                .isFirstLogin(true) // Bật cờ true để bắt buộc đổi pass lần đầu
                 .build();
 
-        // 3. Lưu vào cơ sở dữ liệu
         userRepository.save(newTenant);
+    }
+    public void changePassword(ChangePasswordRequest request, String phone) {
+        User user = userRepository.findByPhone(phone)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new RuntimeException("Mật khẩu hiện tại không chính xác!");
+        }
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+        user.setIsFirstLogin(false);
+        userRepository.save(user);
     }
 }

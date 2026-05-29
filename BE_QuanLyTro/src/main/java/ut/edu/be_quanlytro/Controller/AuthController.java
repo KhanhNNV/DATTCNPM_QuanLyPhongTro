@@ -1,5 +1,7 @@
 package ut.edu.be_quanlytro.Controller;
 
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import ut.edu.be_quanlytro.Dto.Request.ChangePasswordRequest;
 import ut.edu.be_quanlytro.Dto.Request.LoginRequest;
 import ut.edu.be_quanlytro.Dto.Request.RegisterRequest;
 import ut.edu.be_quanlytro.Dto.Response.LoginResponse;
@@ -14,8 +16,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.text.ParseException;
+import org.springframework.security.oauth2.jwt.Jwt;
 
 @RestController
 @RequestMapping("/auth")
@@ -29,19 +30,15 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
-        // Gọi service xử lý đăng nhập bằng SĐT và kẹp ID trọ vào Access Token
         LoginResponse response = authenticationService.login(request);
 
-        // Đóng gói Refresh Token vào HttpOnly Cookie để chống tấn công XSS lấy cắp token
         ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", response.getRefreshToken())
                 .httpOnly(true)
                 .secure(false) // Để false nếu test ở localhost (HTTP), đổi thành true khi deploy production (HTTPS)
                 .path("/")
-                .maxAge(30 * 24 * 60 * 60) // Hạn định 30 ngày giống thiết kế cũ
+                .maxAge(30 * 24 * 60 * 60)
                 .sameSite("Strict")
                 .build();
-
-        // Ẩn Refresh Token ở phần Body trả về, chỉ cho Frontend thấy Access Token nhằm tăng tính bảo mật
         response.setRefreshToken(null);
 
         return ResponseEntity.ok()
@@ -112,6 +109,21 @@ public class AuthController {
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
 
+        }
+    }
+    @PostMapping("/change-password")
+    public ResponseEntity<String> changePassword(
+            @RequestBody ChangePasswordRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        try {
+
+            String phone = jwt.getSubject();
+            authenticationService.changePassword(request, phone);
+
+            return ResponseEntity.ok("Đổi mật khẩu thành công! Tài khoản của bạn đã được kích hoạt.");
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 }
