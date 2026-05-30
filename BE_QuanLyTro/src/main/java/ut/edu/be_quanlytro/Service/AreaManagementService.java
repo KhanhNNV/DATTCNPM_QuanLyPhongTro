@@ -1,0 +1,172 @@
+package ut.edu.be_quanlytro.Service;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import ut.edu.be_quanlytro.Dto.Request.AreaRequest;
+import ut.edu.be_quanlytro.Dto.Request.OnboardingRequest;
+import ut.edu.be_quanlytro.Dto.Response.AreaResponse;
+import ut.edu.be_quanlytro.Entity.Area;
+import ut.edu.be_quanlytro.Entity.AreaService;
+import ut.edu.be_quanlytro.Entity.Enum.RoomStatus;
+import ut.edu.be_quanlytro.Entity.Room;
+import ut.edu.be_quanlytro.Entity.User;
+import ut.edu.be_quanlytro.Repository.AreaRepository;
+import ut.edu.be_quanlytro.Repository.AreaServiceRepository;
+import ut.edu.be_quanlytro.Repository.RoomRepository;
+import ut.edu.be_quanlytro.Repository.UserRepository;
+import ut.edu.be_quanlytro.Entity.Enum.RoleType;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class AreaManagementService {
+
+    private final AreaRepository areaRepository;
+    private final UserRepository userRepository;
+    private final ActivityLogService activityLog;
+    private final AreaServiceRepository areaServiceRepository;
+    private final RoomRepository roomRepository;
+
+
+    //==============TẠO KHU TRỌ, PHÒNG, DỊCH VỤ===========
+    @Transactional
+    public Area onboardNewLandlord(OnboardingRequest request, UUID landlordId) {
+
+        // 1. Kiểm tra chủ trọ
+        User landlord = userRepository.findById(landlordId)
+                .orElseThrow(() -> new RuntimeException("Chủ trọ không tồn tại"));
+
+        if(landlord.getRole() != RoleType.LANDLORD) {
+            throw new RuntimeException("Bạn không có quyền thực hiện chức năng này vì không phải là chủ trọ");
+        }
+
+        // ==========================================
+        // BƯỚC 1: KHỞI TẠO VÀ LƯU KHU TRỌ
+        // ==========================================
+        Area newArea = Area.builder()
+                .landlord(landlord)
+                .name(request.getName())
+                .address(request.getAddress())
+                .invoiceDay(request.getInvoiceDay())
+                .dueDate(request.getDueDate())
+                .build();
+        Area savedArea = areaRepository.save(newArea);
+
+        // ==========================================
+        // BƯỚC 2: KHỞI TẠO DỊCH VỤ (AREA SERVICES)
+        // ==========================================
+        if (request.getServices() != null && !request.getServices().isEmpty()) {
+            List<AreaService> areaServices = request.getServices().stream().map(svc ->
+                    AreaService.builder()
+                            .area(savedArea) // Trỏ về Khu trọ vừa tạo
+                            .name(svc.getName())
+                            .calcType(svc.getCalcType())
+                            .price(svc.getPrice())
+                            .isActive(true)
+                            .build()
+            ).toList();
+
+            areaServiceRepository.saveAll(areaServices); // Lưu toàn bộ dịch vụ 1 lần
+        }
+
+        // ==========================================
+        // BƯỚC 3: KHỞI TẠO DANH SÁCH PHÒNG
+        // ==========================================
+        List<Room> newRooms = new ArrayList<>();
+        List<Integer> floors = request.getRoomsPerFloor();
+
+        if (floors != null && !floors.isEmpty()) {
+            for (int i = 0; i < floors.size(); i++) {
+                int floorNumber = i + 1;
+                int numberOfRooms = floors.get(i);
+
+                for (int j = 1; j <= numberOfRooms; j++) {
+                    String roomNumber = floorNumber + String.format("%02d", j);
+                    Room room = Room.builder()
+                            .area(savedArea) // Trỏ về Khu trọ vừa tạo
+                            .floor(floorNumber)
+                            .roomNumber(roomNumber)
+                            .areaSize(request.getDefaultAreaSize())
+                            .rentPrice(request.getDefaultRentPrice())
+                            .depositAmount(request.getDefaultDepositAmount())
+                            .maxOccupants(request.getDefaultMaxOccupants())
+                            .status(RoomStatus.AVAILABLE)
+                            .build();
+                    newRooms.add(room);
+                }
+            }
+            roomRepository.saveAll(newRooms); // Lưu toàn bộ phòng 1 lần
+        }
+
+        // ==========================================
+        // BƯỚC 4: GHI LOG HOẠT ĐỘNG
+        // ==========================================
+        String description = String.format("Hoàn tất thiết lập ban đầu: Tạo khu %s, %d dịch vụ và %d phòng",
+                savedArea.getName(),
+                request.getServices() != null ? request.getServices().size() : 0,
+                newRooms.size());
+
+        activityLog.createLog(landlord, "ONBOARDING_COMPLETED", "areas, rooms, area_services", savedArea.getId(), description);
+
+        return savedArea;
+    }
+
+    // ================= READ =================
+    public List<AreaResponse> getAreasByLandlord(UUID landlordId) {
+        return areaRepository.findByLandlordId(landlordId).stream()
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    public AreaResponse getAreaById(UUID id) {
+        Area area = getAreaEntityById(id);
+        return mapToResponse(area);
+    }
+
+    public Area getAreaEntityById(UUID id) {
+        return areaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy khu trọ"));
+    }
+
+    // ================= UPDATE =================
+    @Transactional
+    public AreaResponse updateArea(UUID id, AreaRequest request, UUID landlordId) {
+        Area area = getAreaEntityById(id);
+
+        if (request.getName() != null) area.setName(request.getName());
+        if (request.getAddress() != null) area.setAddress(request.getAddress());
+        if (request.getInvoiceDay() != null) area.setInvoiceDay(request.getInvoiceDay());
+        if (request.getDueDate() != null) area.setDueDate(request.getDueDate());
+
+        Area updatedArea = areaRepository.save(area);
+
+        User landlord = userRepository.getReferenceById(landlordId);
+        activityLog.createLog(landlord, "UPDATE_AREA", "areas", updatedArea.getId(), "Cập nhật thông tin khu trọ: " + updatedArea.getName());
+
+        return mapToResponse(updatedArea);
+    }
+
+    // ================= DELETE =================
+    @Transactional
+    public void deleteArea(UUID id, UUID landlordId) {
+        Area area = getAreaEntityById(id);
+        areaRepository.delete(area);
+
+        User landlord = userRepository.getReferenceById(landlordId);
+        activityLog.createLog(landlord, "DELETE_AREA", "areas", id, "Xóa khu trọ: " + area.getName());
+    }
+
+    // MAPPER
+    private AreaResponse mapToResponse(Area area) {
+        return AreaResponse.builder()
+                .name(area.getName())
+                .address(area.getAddress())
+                .invoiceDay(area.getInvoiceDay())
+                .dueDate(area.getDueDate())
+                .createdAt(area.getCreatedAt())
+                .build();
+    }
+}
