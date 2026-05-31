@@ -68,16 +68,16 @@ public class AuthenticationService {
             throw new RuntimeException("Số điện thoại này đã được sử dụng hệ thống!");
         }
 
-        // 2. Build một Object User mới từ thông tin đăng ký
-        User newTenant = User.builder()
+        // 2. Build Object User: Đăng ký tự do trên app/web mặc định là CHỦ TRỌ
+        User newLandlord = User.builder()
                 .phone(request.getPhone())
                 .password(passwordEncoder.encode(request.getPassword()))
-                .role(RoleType.TENANT)
+                .role(RoleType.LANDLORD)
                 .fullName(request.getFullName())
-                .isFirstLogin(true) // Bật cờ true để bắt buộc đổi pass lần đầu
+                .isFirstLogin(false) 
                 .build();
 
-        userRepository.save(newTenant);
+        userRepository.save(newLandlord);
     }
     public void changePassword(ChangePasswordRequest request, String phone) {
         User user = userRepository.findByPhone(phone)
