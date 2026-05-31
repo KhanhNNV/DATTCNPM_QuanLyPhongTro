@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_quanlytro/features/landlord_app/auth/register_screen.dart';
 import '../../../core/constants/app_colors.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _RegisterScreenState extends State<RegisterScreen> {
   bool _isObscure = true;
 
+  final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
   @override
   void dispose() {
+    _nameController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -29,24 +30,22 @@ class _LoginScreenState extends State<LoginScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        // Nút quay lại màn hình Welcome
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: SafeArea(
-        // SingleChildScrollView giúp màn hình có thể cuộn khi bàn phím ảo hiện lên
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
 
-              // Phần tiêu đề
+              // --- Tiêu đề ---
               const Text(
-                'Đăng nhập',
+                'Đăng ký',
                 style: TextStyle(
                   fontSize: 32,
                   fontWeight: FontWeight.bold,
@@ -55,7 +54,7 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Vui lòng đăng nhập để tiếp tục.',
+                'Tạo tài khoản mới để bắt đầu quản lý.',
                 style: TextStyle(
                   fontSize: 16,
                   color: Colors.black54,
@@ -63,13 +62,28 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 40),
 
-              // nhập SDT
+              // --- Trường nhập Họ và tên ---
+              TextField(
+                controller: _nameController,
+                textCapitalization: TextCapitalization.words, // Tự động viết hoa chữ cái đầu
+                decoration: InputDecoration(
+                  labelText: 'Họ và tên',
+                  hintText: 'Nhập họ và tên của bạn',
+                  prefixIcon: const Icon(Icons.person_outline),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // --- Trường nhập Số điện thoại ---
               TextField(
                 controller: _phoneController,
                 keyboardType: TextInputType.phone,
                 decoration: InputDecoration(
                   labelText: 'Số điện thoại',
-                  hintText: 'Nhập số điện thoại của bạn',
+                  hintText: 'Nhập số điện thoại',
                   prefixIcon: const Icon(Icons.phone_outlined),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -78,13 +92,13 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 20),
 
-              // Nhập pass
+              // --- Trường nhập Mật khẩu ---
               TextField(
                 controller: _passwordController,
                 obscureText: _isObscure,
                 decoration: InputDecoration(
                   labelText: 'Mật khẩu',
-                  hintText: 'Nhập mật khẩu',
+                  hintText: 'Tạo mật khẩu',
                   prefixIcon: const Icon(Icons.lock_outline),
                   suffixIcon: IconButton(
                     icon: Icon(
@@ -101,36 +115,19 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 40),
 
-              // Quên mật khẩu
-              Align(
-                alignment: Alignment.centerRight,
-                child: TextButton(
-                  onPressed: () {
-                    // TODO: Chuyển hướng sang trang Quên mật khẩu
-                  },
-                  child: const Text(
-                    'Quên mật khẩu?',
-                    style: TextStyle(
-                      color: AppColors.primary,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              // Nút Đăng nhập
+              // --- Nút Đăng ký ---
               SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
                   onPressed: () {
-                    // TODO: Gọi API đăng nhập
+                    // TODO: Gọi API đăng ký
+                    final name = _nameController.text;
                     final phone = _phoneController.text;
                     final password = _passwordController.text;
-                    print('Phone: $phone, Password: $password');
+                    print('Name: $name, Phone: $phone, Password: $password');
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
@@ -141,44 +138,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     elevation: 0,
                   ),
                   child: const Text(
-                    'Đăng nhập',
+                    'Đăng ký',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 32),
-
-              // Chuyển sang Đăng ký
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text(
-                    'Chưa có tài khoản? ',
-                    style: TextStyle(
-                      color: Colors.black54,
-                      fontSize: 15,
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const RegisterScreen())
-                      );
-                    },
-                    child: const Text(
-                      'Đăng ký ngay',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ),
-                ],
               ),
             ],
           ),

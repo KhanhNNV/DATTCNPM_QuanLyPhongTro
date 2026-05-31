@@ -95,13 +95,6 @@ class WelcomeScreen extends StatelessWidget {
                       Icon(Icons.arrow_forward)
                     ],
                   ),
-                  // child: const Text(
-                  //   'Bắt đầu quản lý',
-                  //   style: TextStyle(
-                  //     fontSize: 18,
-                  //     fontWeight: FontWeight.w600,
-                  //   ),
-                  // ),
                 ),
               ),
             ],
