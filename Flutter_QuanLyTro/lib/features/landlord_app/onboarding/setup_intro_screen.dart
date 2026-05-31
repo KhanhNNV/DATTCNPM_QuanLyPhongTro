@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_quanlytro/features/landlord_app/onboarding/onboarding_screen.dart';
 import '../../../core/constants/app_colors.dart';
 
 class SetupIntroScreen extends StatelessWidget {
@@ -60,8 +61,10 @@ class SetupIntroScreen extends StatelessWidget {
                   height: 56,
                   child: ElevatedButton(
                     onPressed: () {
-                      // TODO: Chuyển sang form Nhập thông tin khu trọ (Tên, Địa chỉ...)
-                      print('Bắt đầu khởi tạo khu trọ');
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => const OnboardingScreen())
+                      );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primary,
