@@ -4,7 +4,7 @@ import '../utils/token_manager.dart';
 
 class ApiClient {
   // Cấu hình IP Backend dùng chung cho toàn bộ App
-  static const String baseUrl = 'http://localhost:8080';
+  static const String baseUrl = 'http://192.168.0.197:8080';
 
   // Hàm helper để tự động tạo Header chứa Token
   Map<String, String> _getHeaders() {
