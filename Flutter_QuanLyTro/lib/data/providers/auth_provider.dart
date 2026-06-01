@@ -18,7 +18,9 @@ class AuthProvider {
 
       if (token != null) {
         // LƯU VÀO ĐÂY: Kể từ giây phút này, ApiClient sẽ tự động có token để dùng
-        TokenManager.saveToken(token);
+        await TokenManager.saveAuthData(
+          accessToken: token
+        );
         return token;
       }
       throw Exception('Token không hợp lệ.');
