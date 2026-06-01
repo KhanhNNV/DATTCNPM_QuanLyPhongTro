@@ -4,7 +4,6 @@ import '../../../core/network/api_client.dart';
 import '../../../core/utils/token_manager.dart';
 
 class AuthProvider {
-  // API Đăng nhập (Lúc này chưa có token nên gọi thẳng http.post)
   Future<String> login(String phone, String password) async {
     final response = await http.post(
       Uri.parse('${ApiClient.baseUrl}/auth/login'),
@@ -16,8 +15,9 @@ class AuthProvider {
       final data = jsonDecode(response.body);
       final token = data['accessToken'];
 
+      print(data);
+
       if (token != null) {
-        // LƯU VÀO ĐÂY: Kể từ giây phút này, ApiClient sẽ tự động có token để dùng
         await TokenManager.saveAuthData(
           accessToken: token
         );
