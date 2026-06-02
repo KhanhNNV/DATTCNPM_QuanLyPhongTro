@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_quanlytro/features/landlord_app/onboarding/setup_intro_screen.dart';
 import '../../../core/constants/app_colors.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -128,6 +129,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     final phone = _phoneController.text;
                     final password = _passwordController.text;
                     print('Name: $name, Phone: $phone, Password: $password');
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (context) => const SetupIntroScreen())
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary,
