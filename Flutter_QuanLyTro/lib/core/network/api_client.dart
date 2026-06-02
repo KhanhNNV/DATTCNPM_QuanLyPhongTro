@@ -17,22 +17,82 @@ class ApiClient {
     };
   }
 
-  // Cập nhật lại các hàm get/post để đợi _getHeaders()
+  // xử lý refreshToken
+  Future<bool> _refreshToken() async {
+    try {
+      // Lấy Refresh Token đang lưu trong máy
+      final currentRefreshToken = await TokenManager.getRefreshToken();
+
+      if (currentRefreshToken == null) {
+        return false;
+      }
+
+      // Gọi API /refresh của Backend
+      final response = await http.post(
+        Uri.parse('$baseUrl/auth/refresh'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'refreshToken': currentRefreshToken}),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+
+        // Lưu Access Token mới và Refresh Token mới
+        await TokenManager.saveAuthData(
+          accessToken: data['accessToken'],
+          refreshToken: data['refreshToken'] ?? currentRefreshToken, // Nếu backend ko cấp refresh mới thì xài lại cái cũ
+        );
+        return true;
+      } else {
+        return false;
+      }
+    } catch (e) {
+      return false;
+    }
+  }
+
   Future<http.Response> get(String endpoint) async {
     final url = Uri.parse('$baseUrl$endpoint');
-    final headers = await _getHeaders(); // Thêm await
-    return await http.get(url, headers: headers);
+    var headers = await _getHeaders();
+
+    var response = await http.get(url, headers: headers);
+
+    if (response.statusCode == 401) {
+      bool isRefreshed = await _refreshToken();
+
+      if (isRefreshed) {
+        // Lấy header mới và gọi lại api lần 2
+        headers = await _getHeaders();
+        response = await http.get(url, headers: headers);
+      } else {
+        // Refresh thất bại -> Xóa dữ liệu để app văng ra Login
+        await TokenManager.clearAuthData();
+        throw Exception('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      }
+    }
+
+    return response;
   }
 
   Future<http.Response> post(String endpoint, Map<String, dynamic> body) async {
     final url = Uri.parse('$baseUrl$endpoint');
-    final headers = await _getHeaders(); // Thêm await
-    return await http.post(
-      url,
-      headers: headers,
-      body: jsonEncode(body),
-    );
+    var headers = await _getHeaders();
+    final jsonBody = jsonEncode(body);
+
+    var response = await http.post(url, headers: headers, body: jsonBody);
+
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      bool isRefreshed = await _refreshToken();
+      if (isRefreshed) {
+        headers = await _getHeaders(); // Lấy token mới
+        response = await http.post(url, headers: headers, body: jsonBody); // Gọi lại lần 2
+      } else {
+        await TokenManager.clearAuthData();
+        throw Exception('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      }
+    }
+
+    return response;
   }
 
-// Bạn có thể viết thêm hàm put(), delete() tương tự tại đây...
 }
