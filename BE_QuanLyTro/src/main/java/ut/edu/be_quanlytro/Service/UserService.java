@@ -63,8 +63,11 @@ public class UserService {
         return mapToResponse(user);
     }
 
-    public List<UserResponse> getAllUsers() {
-        return userRepository.findAll()
+    // ================= READ (LẤY DANH SÁCH THEO KHU TRỌ) =================
+    public List<UserResponse> getUsersByArea(UUID areaId) {
+        // Lưu ý: Nếu ở bước Repository bạn chọn Trường hợp 1, hãy đổi thành findByAreaId(areaId)
+        // Dưới đây mình dùng findTenantsByAreaId (Trường hợp 2 - Nối bảng thực tế)
+        return userRepository.findByAreaId(areaId)
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
