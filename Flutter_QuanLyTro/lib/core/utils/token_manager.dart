@@ -15,7 +15,7 @@ class TokenManager {
   // vì có thể lúc đăng nhập bạn chỉ có accessToken, chưa có refreshToken.
   static Future<void> saveAuthData({
     required String accessToken,
-    String? refreshToken,
+    required String refreshToken,
     String? userId,
     String? role,
   }) async {
@@ -33,7 +33,6 @@ class TokenManager {
   }
 
   // --- 2. LẤY DỮ LIỆU ---
-  // Lưu ý: Các hàm này giờ trả về Future<String?> nên khi gọi phải dùng từ khóa 'await'
   static Future<String?> getAccessToken() async {
     return await _storage.read(key: _keyAccessToken);
   }
