@@ -43,7 +43,6 @@ public class AuthenticationService {
 
         // 3. Thực hiện kẹp ID trọ vào JWT
         if (user.getRole() == RoleType.TENANT) {
-            // Nếu là Khách thuê, tìm hợp đồng đã ký (SIGNED) của họ
             Optional<Contract> activeContract = contractRepository.findByTenantIdAndStatus(user.getId(), ContractStatus.SIGNED);
             if (activeContract.isPresent()) {
                 Contract contract = activeContract.get();
@@ -51,8 +50,7 @@ public class AuthenticationService {
                 areaId = contract.getRoom().getArea().getId().toString();
             }
         } else if (user.getRole() == RoleType.LANDLORD) {
-            // Chủ trọ có thể có nhiều Khu trọ (Areas).
-            areaId = "ROLE_LANDLORD_ALL_AREAS";
+            areaId = null;
         }
 
         // 4. Tạo token mang theo đầy đủ  ID dữ liệu
@@ -74,7 +72,7 @@ public class AuthenticationService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(RoleType.LANDLORD)
                 .fullName(request.getFullName())
-                .isFirstLogin(false) 
+                .isFirstLogin(false)
                 .build();
 
         userRepository.save(newLandlord);
