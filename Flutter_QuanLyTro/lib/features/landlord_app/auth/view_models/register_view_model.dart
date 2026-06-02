@@ -37,6 +37,7 @@ class RegisterViewModel extends ChangeNotifier {
 
     try {
       await _authProvider.register(fullName.trim(), phone.trim(), password.trim());
+      await _authProvider.login(phone.trim(), password.trim());
       onSuccess();
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
