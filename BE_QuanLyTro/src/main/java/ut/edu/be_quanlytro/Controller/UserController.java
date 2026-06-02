@@ -24,84 +24,67 @@ public class UserController {
 
     /**
      * API Khởi tạo tài khoản người dùng mới.
-     * - Kiểm tra tính duy nhất của Số điện thoại.
-     * - Tự động mã hóa (Hash) mật khẩu trước khi lưu.
-     * - Lưu lại vết thao tác (Activity Log) của người tạo.
-     *
-     * @param request Payload chứa thông tin đăng ký (Phone, Password, Role, Info...)
-     * @param jwt Token xác thực chứa ID của người đang thực hiện tạo tài khoản
-     * @return UserResponse Thông tin tài khoản vừa tạo (đã ẩn mật khẩu)
+     * Chỉ Chủ trọ mới được phép tạo tài khoản cho khách.
      */
     @PostMapping
-    @PreAuthorize("hasAuthority('SCOPE_LANDLORD')")
+    @PreAuthorize("hasRole('LANDLORD')") // Đã chuyển sang hasRole
     public ResponseEntity<UserResponse> createUser(
             @RequestBody UserCreateRequest request,
             @AuthenticationPrincipal Jwt jwt) {
 
-        UUID currentUserId = UUID.fromString(jwt.getSubject());
+        // Lấy đúng trường "userId" từ Token
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
         UserResponse response = userService.createUser(request, currentUserId);
 
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     /**
-     * API Lấy danh sách toàn bộ người dùng trong hệ thống.
-     * Thường được sử dụng cho màn hình Quản lý danh sách khách thuê của Chủ trọ.
-     *
-     * @return Danh sách các UserResponse
+     * API Lấy danh sách Khách thuê theo Khu trọ (Area).
+     * Chỉ Chủ trọ mới cần xem danh sách khách thuê.
      */
-    @GetMapping
-    @PreAuthorize("hasAuthority('SCOPE_LANDLORD')")
-    public ResponseEntity<List<UserResponse>> getAllUsers() {
-        return ResponseEntity.ok(userService.getAllUsers());
+    @GetMapping("/area/{areaId}")
+    @PreAuthorize("hasRole('LANDLORD')") // Đã chuyển sang hasRole
+    public ResponseEntity<List<UserResponse>> getUsersByArea(@PathVariable UUID areaId) {
+        return ResponseEntity.ok(userService.getUsersByArea(areaId));
     }
 
     /**
      * API Lấy thông tin chi tiết của một người dùng dựa vào ID.
-     *
-     * @param id Mã định danh UUID của người dùng cần tra cứu
-     * @return UserResponse Thông tin chi tiết của người dùng tương ứng
+     * Thường Chủ trọ mới có quyền tra cứu thông tin của người khác.
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('SCOPE_LANDLORD')")
+    @PreAuthorize("hasRole('LANDLORD')") // Đã chuyển sang hasRole
     public ResponseEntity<UserResponse> getUserById(@PathVariable UUID id) {
         return ResponseEntity.ok(userService.getUserById(id));
     }
 
     /**
      * API Xem hồ sơ cá nhân của chính người đang đăng nhập (Current User).
-     * Bảo mật cao do định danh người dùng được lấy trực tiếp từ chữ ký Token của Server.
-     *
-     * @param jwt Token xác thực của phiên đăng nhập hiện tại
-     * @return UserResponse Thông tin hồ sơ của người đang đăng nhập
+     * Cả Chủ trọ và Khách thuê đều có quyền xem hồ sơ của mình.
      */
     @GetMapping("/current")
-    @PreAuthorize("hasAuthority('SCOPE_LANDLORD')")
+    @PreAuthorize("hasAnyRole('LANDLORD', 'TENANT')") // Khách và Chủ đều dùng được
     public ResponseEntity<UserResponse> getCurrentUser(@AuthenticationPrincipal Jwt jwt) {
-        UUID currentUserId = UUID.fromString(jwt.getSubject());
+
+        // Lấy đúng trường "userId" từ Token
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
         return ResponseEntity.ok(userService.getUserById(currentUserId));
     }
 
     /**
      * API Cập nhật thông tin người dùng (Hỗ trợ Partial Update).
-     * - Có thể đổi Số điện thoại (Có kiểm tra chống trùng lặp).
-     * - Có thể đổi hoặc cấp lại Mật khẩu mới (Tự động mã hóa).
-     * - Các trường để trống hoặc null sẽ được giữ nguyên giá trị cũ.
-     * - Lưu lại vết thao tác (Activity Log).
-     *
-     * @param id Mã định danh UUID của người dùng cần được cập nhật
-     * @param request Payload chứa các thông tin muốn thay đổi
-     * @param jwt Token xác thực chứa ID của người đang thực hiện lệnh sửa
-     * @return UserResponse Thông tin người dùng sau khi đã cập nhật thành công
+     * Cả Chủ trọ và Khách thuê đều có quyền cập nhật thông tin cá nhân.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('SCOPE_LANDLORD')")
+    @PreAuthorize("hasAnyRole('LANDLORD', 'TENANT')") // Khách và Chủ đều dùng được
     public ResponseEntity<UserResponse> updateUser(
             @PathVariable UUID id,
             @RequestBody UserUpdateRequest request,
             @AuthenticationPrincipal Jwt jwt) {
 
-        UUID currentUserId = UUID.fromString(jwt.getSubject());
+        // Lấy đúng trường "userId" từ Token để ghi Log
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
         UserResponse response = userService.updateUser(id, request, currentUserId);
 
         return ResponseEntity.ok(response);
@@ -109,19 +92,16 @@ public class UserController {
 
     /**
      * API Xóa tài khoản người dùng vĩnh viễn khỏi hệ thống.
-     * Sẽ trích xuất Số điện thoại và Vai trò của người bị xóa để ghi vào Activity Log.
-     *
-     * @param id Mã định danh UUID của tài khoản cần xóa
-     * @param jwt Token xác thực chứa ID của người đang thực hiện lệnh xóa
-     * @return Thông báo String xác nhận thao tác thành công
+     * Chỉ có Chủ trọ mới có quyền xóa.
      */
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('SCOPE_LANDLORD')")
+    @PreAuthorize("hasRole('LANDLORD')") // Đã chuyển sang hasRole
     public ResponseEntity<String> deleteUser(
             @PathVariable UUID id,
             @AuthenticationPrincipal Jwt jwt) {
 
-        UUID currentUserId = UUID.fromString(jwt.getSubject());
+        // Lấy đúng trường "userId" từ Token để ghi Log
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
         userService.deleteUser(id, currentUserId);
 
         return ResponseEntity.ok("Xóa tài khoản người dùng thành công");

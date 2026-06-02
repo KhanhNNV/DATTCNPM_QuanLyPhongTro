@@ -25,46 +25,56 @@ public class AreaController {
 
     // ================= ONBOARDING =================
     @PostMapping("/onboarding")
-    @PreAuthorize("hasAuthority('SCOPE_LANDLORD')") // Chỉ Chủ trọ
+    @PreAuthorize("hasRole('LANDLORD')") // Đã chuyển sang hasRole
     public ResponseEntity<Area> onboardNewLandlord(
             @RequestBody OnboardingRequest request,
             @AuthenticationPrincipal Jwt jwt) {
-        UUID landlordId = UUID.fromString(jwt.getSubject());
+
+        // Trích xuất ID chuẩn xác từ claim
+        UUID landlordId = UUID.fromString(jwt.getClaimAsString("userId"));
         Area createdArea = areaManagementService.onboardNewLandlord(request, landlordId);
+
         return new ResponseEntity<>(createdArea, HttpStatus.CREATED);
     }
 
     // ================= CRUD =================
     @GetMapping
-    @PreAuthorize("hasAuthority('SCOPE_LANDLORD')") // Chỉ chủ trọ mới xem danh sách khu trọ của chính họ
+    @PreAuthorize("hasRole('LANDLORD')") // Đã chuyển sang hasRole
     public ResponseEntity<List<AreaResponse>> getAreasByLandlord(@AuthenticationPrincipal Jwt jwt) {
-        UUID landlordId = UUID.fromString(jwt.getSubject());
+
+        // Trích xuất ID chuẩn xác từ claim
+        UUID landlordId = UUID.fromString(jwt.getClaimAsString("userId"));
         return ResponseEntity.ok(areaManagementService.getAreasByLandlord(landlordId));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('SCOPE_LANDLORD', 'SCOPE_TENANT')") // Khách xem chi tiết khu trọ
+    @PreAuthorize("hasAnyRole('LANDLORD', 'TENANT')") // Đã chuyển sang hasAnyRole
     public ResponseEntity<AreaResponse> getAreaById(@PathVariable UUID id) {
         return ResponseEntity.ok(areaManagementService.getAreaById(id));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('SCOPE_LANDLORD')") // Chỉ Chủ trọ
+    @PreAuthorize("hasRole('LANDLORD')") // Đã chuyển sang hasRole
     public ResponseEntity<AreaResponse> updateArea(
             @PathVariable UUID id,
             @RequestBody AreaRequest request,
             @AuthenticationPrincipal Jwt jwt) {
-        UUID landlordId = UUID.fromString(jwt.getSubject());
+
+        // Trích xuất ID chuẩn xác từ claim
+        UUID landlordId = UUID.fromString(jwt.getClaimAsString("userId"));
         return ResponseEntity.ok(areaManagementService.updateArea(id, request, landlordId));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('SCOPE_LANDLORD')") // Chỉ Chủ trọ
+    @PreAuthorize("hasRole('LANDLORD')") // Đã chuyển sang hasRole
     public ResponseEntity<String> deleteArea(
             @PathVariable UUID id,
             @AuthenticationPrincipal Jwt jwt) {
-        UUID landlordId = UUID.fromString(jwt.getSubject());
+
+        // Trích xuất ID chuẩn xác từ claim
+        UUID landlordId = UUID.fromString(jwt.getClaimAsString("userId"));
         areaManagementService.deleteArea(id, landlordId);
+
         return ResponseEntity.ok("Xóa khu trọ thành công");
     }
 }
