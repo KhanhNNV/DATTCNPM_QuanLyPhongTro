@@ -72,6 +72,7 @@ public class AuthenticationService {
                 .phone(request.getPhone())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(RoleType.LANDLORD)
+                .fullName(request.getFullName())
                 .isFirstLogin(false)
                 .build();
 
