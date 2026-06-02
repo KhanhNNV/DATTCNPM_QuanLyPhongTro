@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_quanlytro/features/landlord_app/onboarding/setup_intro_screen.dart';
 import '../../../core/constants/app_colors.dart';
+import 'view_models/register_view_model.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -15,6 +16,49 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
+
+  final RegisterViewModel _viewModel = RegisterViewModel();
+
+  @override
+  void initState() {
+    super.initState();
+    _viewModel.addListener(_onViewModelChanged);
+  }
+
+  void _onViewModelChanged() {
+    if (_viewModel.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_viewModel.errorMessage!),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      _viewModel.clearError();
+    }
+  }
+
+  void _handleRegister() {
+    _viewModel.register(
+      fullName: _nameController.text,
+      phone: _phoneController.text,
+      password: _passwordController.text,
+      onSuccess: () {
+        // Thông báo thành công
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đăng ký thành công!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Chuyển sang trang Setup
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const SetupIntroScreen()),
+        );
+      },
+    );
+  }
 
   @override
   void dispose() {
@@ -36,124 +80,101 @@ class _RegisterScreenState extends State<RegisterScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 10),
+      body: ListenableBuilder(
+        listenable: _viewModel,
+        builder: (context, child) {
+          return SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 10),
 
-              // --- Tiêu đề ---
-              const Text(
-                'Đăng ký',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Tạo tài khoản mới để bắt đầu quản lý.',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.black54,
-                ),
-              ),
-              const SizedBox(height: 40),
-
-              // --- Trường nhập Họ và tên ---
-              TextField(
-                controller: _nameController,
-                textCapitalization: TextCapitalization.words, // Tự động viết hoa chữ cái đầu
-                decoration: InputDecoration(
-                  labelText: 'Họ và tên',
-                  hintText: 'Nhập họ và tên của bạn',
-                  prefixIcon: const Icon(Icons.person_outline),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // --- Trường nhập Số điện thoại ---
-              TextField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: 'Số điện thoại',
-                  hintText: 'Nhập số điện thoại',
-                  prefixIcon: const Icon(Icons.phone_outlined),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // --- Trường nhập Mật khẩu ---
-              TextField(
-                controller: _passwordController,
-                obscureText: _isObscure,
-                decoration: InputDecoration(
-                  labelText: 'Mật khẩu',
-                  hintText: 'Tạo mật khẩu',
-                  prefixIcon: const Icon(Icons.lock_outline),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      _isObscure ? Icons.visibility_off : Icons.visibility,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _isObscure = !_isObscure;
-                      });
-                    },
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 40),
-
-              // --- Nút Đăng ký ---
-              SizedBox(
-                width: double.infinity,
-                height: 56,
-                child: ElevatedButton(
-                  onPressed: () {
-                    // TODO: Gọi API đăng ký
-                    final name = _nameController.text;
-                    final phone = _phoneController.text;
-                    final password = _passwordController.text;
-                    print('Name: $name, Phone: $phone, Password: $password');
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => const SetupIntroScreen())
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
+                  const Text(
                     'Đăng ký',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
+                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.primary),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Tạo tài khoản mới để bắt đầu quản lý.',
+                    style: TextStyle(fontSize: 16, color: Colors.black54),
+                  ),
+                  const SizedBox(height: 40),
+
+                  // Nhập Họ tên
+                  TextField(
+                    controller: _nameController,
+                    textCapitalization: TextCapitalization.words,
+                    enabled: !_viewModel.isLoading, // Khóa khi tải
+                    decoration: InputDecoration(
+                      labelText: 'Họ và tên',
+                      hintText: 'Nhập họ và tên của bạn',
+                      prefixIcon: const Icon(Icons.person_outline),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                   ),
-                ),
+                  const SizedBox(height: 20),
+
+                  // Nhập SĐT
+                  TextField(
+                    controller: _phoneController,
+                    keyboardType: TextInputType.phone,
+                    enabled: !_viewModel.isLoading,
+                    decoration: InputDecoration(
+                      labelText: 'Số điện thoại',
+                      hintText: 'Nhập số điện thoại',
+                      prefixIcon: const Icon(Icons.phone_outlined),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Nhập Mật khẩu
+                  TextField(
+                    controller: _passwordController,
+                    obscureText: _isObscure,
+                    enabled: !_viewModel.isLoading,
+                    decoration: InputDecoration(
+                      labelText: 'Mật khẩu',
+                      hintText: 'Tạo mật khẩu',
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(_isObscure ? Icons.visibility_off : Icons.visibility),
+                        onPressed: () => setState(() => _isObscure = !_isObscure),
+                      ),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+
+                  // Nút Đăng ký
+                  SizedBox(
+                    width: double.infinity,
+                    height: 56,
+                    child: ElevatedButton(
+                      // Khóa nút khi đang tải
+                      onPressed: _viewModel.isLoading ? null : _handleRegister,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        elevation: 0,
+                      ),
+                      child: _viewModel.isLoading
+                          ? const SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                          : const Text('Đăng ký', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
   }

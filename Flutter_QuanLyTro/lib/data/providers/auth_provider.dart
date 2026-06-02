@@ -16,7 +16,6 @@ class AuthProvider {
       final accessToken = data['accessToken'];
       final refreshToken = data['refreshToken'];
 
-      print(data);
 
       if (accessToken != null) {
         await TokenManager.saveAuthData(
@@ -28,6 +27,26 @@ class AuthProvider {
       throw Exception('Token không hợp lệ.');
     } else {
       throw Exception('Tài khoản hoặc mật khẩu không chính xác.');
+    }
+  }
+
+  Future<String> register(String fullName, String phone, String password) async {
+    final response = await http.post(
+      Uri.parse('${ApiClient.baseUrl}/auth/register'),
+      headers: {
+        'Content-Type': 'application/json; charset=UTF-8',
+      },
+      body: jsonEncode({
+        'fullName': fullName,
+        'phone': phone,
+        'password': password,
+      }),
+    );
+
+    if (response.statusCode == 200) {
+      return response.body;
+    } else {
+      throw Exception(response.body);
     }
   }
 }
