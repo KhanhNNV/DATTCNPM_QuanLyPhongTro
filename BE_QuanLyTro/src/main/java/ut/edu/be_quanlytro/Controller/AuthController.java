@@ -30,20 +30,9 @@ public class AuthController {
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
+        // Gọi Service để tạo ra object chứa cả Access Token và Refresh Token
         LoginResponse response = authenticationService.login(request);
-
-        ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", response.getRefreshToken())
-                .httpOnly(true)
-                .secure(false) // Để false nếu test ở localhost (HTTP), đổi thành true khi deploy production (HTTPS)
-                .path("/")
-                .maxAge(30 * 24 * 60 * 60)
-                .sameSite("Strict")
-                .build();
-        response.setRefreshToken(null);
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
-                .body(response);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping("/refresh")
