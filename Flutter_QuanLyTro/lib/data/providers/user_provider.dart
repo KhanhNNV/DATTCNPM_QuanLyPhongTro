@@ -7,8 +7,7 @@ class UserProvider {
   final ApiClient _apiClient = ApiClient();
 
   Future<UserModel> getCurrentUser() async {
-    // Token đã tự động được kẹp ngầm bên trong hàm get() rồi
-    final response = await _apiClient.get('/users/me');
+    final response = await _apiClient.get('/api/users/current');
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
