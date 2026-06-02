@@ -13,15 +13,17 @@ class AuthProvider {
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      final token = data['accessToken'];
+      final accessToken = data['accessToken'];
+      final refreshToken = data['refreshToken'];
 
       print(data);
 
-      if (token != null) {
+      if (accessToken != null) {
         await TokenManager.saveAuthData(
-          accessToken: token
+          accessToken: accessToken,
+          refreshToken: refreshToken,
         );
-        return token;
+        return accessToken;
       }
       throw Exception('Token không hợp lệ.');
     } else {
