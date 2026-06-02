@@ -36,12 +36,6 @@ public class RoomController {
 
     // ================= READ =================
 
-    @GetMapping("/area/{areaId}")
-    @PreAuthorize("hasAuthority('SCOPE_LANDLORD')")
-    public ResponseEntity<List<RoomResponse>> getRoomsByArea(@PathVariable UUID areaId) {
-        return ResponseEntity.ok(roomService.getRoomsByArea(areaId));
-    }
-
     @GetMapping("/{id}")
     @PreAuthorize("hasAuthority('SCOPE_LANDLORD')")
     public ResponseEntity<RoomResponse> getRoomById(@PathVariable UUID id) {
