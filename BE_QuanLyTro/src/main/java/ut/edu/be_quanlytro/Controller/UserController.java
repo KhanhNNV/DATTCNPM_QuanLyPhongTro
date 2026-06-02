@@ -40,13 +40,17 @@ public class UserController {
     }
 
     /**
-     * API Lấy danh sách Khách thuê theo Khu trọ (Area).
-     * Chỉ Chủ trọ mới cần xem danh sách khách thuê.
+     * API Lấy danh sách Khách thuê đang ở trong một Khu trọ cụ thể.
+     * Chỉ Chủ trọ (LANDLORD) mới có quyền xem danh sách này.
+     *
+     * @param areaId Mã định danh UUID của Khu trọ
+     * @return Danh sách UserResponse chứa thông tin khách thuê (đã ẩn mật khẩu)
      */
     @GetMapping("/area/{areaId}")
-    @PreAuthorize("hasRole('LANDLORD')") // Đã chuyển sang hasRole
+    @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<List<UserResponse>> getUsersByArea(@PathVariable UUID areaId) {
-        return ResponseEntity.ok(userService.getUsersByArea(areaId));
+        List<UserResponse> tenants = userService.getUsersByArea(areaId);
+        return ResponseEntity.ok(tenants);
     }
 
     /**
