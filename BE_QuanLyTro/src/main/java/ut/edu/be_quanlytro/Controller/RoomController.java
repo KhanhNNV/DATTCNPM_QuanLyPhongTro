@@ -9,6 +9,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import ut.edu.be_quanlytro.Dto.Request.RoomRequest;
 import ut.edu.be_quanlytro.Dto.Response.RoomResponse;
+import ut.edu.be_quanlytro.Entity.Enum.RoomStatus;
 import ut.edu.be_quanlytro.Entity.Room;
 import ut.edu.be_quanlytro.Service.RoomService;
 
@@ -34,22 +35,36 @@ public class RoomController {
     }
 
     // ================= READ =================
-    @GetMapping
-    @PreAuthorize("hasAnyAuthority('SCOPE_LANDLORD', 'SCOPE_TENANT')") // Khách và Chủ
-    public ResponseEntity<List<RoomResponse>> getAllRooms() {
-        return ResponseEntity.ok(roomService.getAllRooms());
-    }
 
     @GetMapping("/area/{areaId}")
-    @PreAuthorize("hasAnyAuthority('SCOPE_LANDLORD', 'SCOPE_TENANT')") // Khách và Chủ
+    @PreAuthorize("hasAuthority('SCOPE_LANDLORD')")
     public ResponseEntity<List<RoomResponse>> getRoomsByArea(@PathVariable UUID areaId) {
         return ResponseEntity.ok(roomService.getRoomsByArea(areaId));
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyAuthority('SCOPE_LANDLORD', 'SCOPE_TENANT')") // Khách và Chủ
+    @PreAuthorize("hasAuthority('SCOPE_LANDLORD')")
     public ResponseEntity<RoomResponse> getRoomById(@PathVariable UUID id) {
         return ResponseEntity.ok(roomService.getRoomResponseById(id));
+    }
+
+    /**
+     * Lấy danh sách phòng trong 1 khu trọ (Có hỗ trợ lọc theo trạng thái)
+     * - Frontend gọi: GET /api/rooms/area/{areaId}
+     * - Hoặc gọi: GET /api/rooms/area/{areaId}?status=AVAILABLE
+     */
+    @GetMapping("/area/{areaId}")
+    @PreAuthorize("hasAnyAuthority('SCOPE_LANDLORD', 'SCOPE_TENANT')")
+    public ResponseEntity<List<RoomResponse>> getRoomsByArea(
+            @PathVariable UUID areaId,
+            @RequestParam(required = false) RoomStatus status) {
+
+        // Nếu Frontend truyền status lên, gọi hàm lọc theo khu vực VÀ status
+        if (status != null) {
+            return ResponseEntity.ok(roomService.getRoomsByAreaAndStatus(areaId, status));
+        }
+        // Nếu không truyền status, trả về tất cả phòng trong khu đó
+        return ResponseEntity.ok(roomService.getRoomsByArea(areaId));
     }
 
     // ================= UPDATE =================

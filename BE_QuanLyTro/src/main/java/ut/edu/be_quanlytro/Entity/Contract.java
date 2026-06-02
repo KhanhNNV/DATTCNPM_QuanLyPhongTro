@@ -10,6 +10,8 @@ import ut.edu.be_quanlytro.Entity.Enum.ContractStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -29,6 +31,11 @@ public class Contract {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "tenant_id", nullable = false)
     private User tenant;
+
+    // BỔ SUNG: Danh sách TẤT CẢ THÀNH VIÊN ở trong phòng này
+    @OneToMany(mappedBy = "contract", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ContractMember> members = new ArrayList<>();
 
     @Column(name = "start_date")
     private LocalDate startDate;

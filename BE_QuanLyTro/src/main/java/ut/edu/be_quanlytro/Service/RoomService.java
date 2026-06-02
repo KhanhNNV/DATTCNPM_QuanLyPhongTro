@@ -69,13 +69,6 @@ public class RoomService {
 
     // ================= READ (TRẢ VỀ DTO) =================
 
-    public List<RoomResponse> getAllRooms() {
-        return roomRepository.findAll()
-                .stream()
-                .map(this::mapToDTO)
-                .toList();
-    }
-
     public List<RoomResponse> getRoomsByArea(UUID areaId) {
         return roomRepository.findByAreaId(areaId)
                 .stream()
@@ -91,6 +84,14 @@ public class RoomService {
     public Room getRoomById(UUID id) {
         return roomRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng với ID: " + id));
+    }
+
+    // Lấy danh sách phòng theo trạng thái trong 1 khu trọ cụ thể
+    public List<RoomResponse> getRoomsByAreaAndStatus(UUID areaId, RoomStatus status) {
+        return roomRepository.findByAreaIdAndStatus(areaId, status)
+                .stream()
+                .map(this::mapToDTO)
+                .toList();
     }
 
     // ================= UPDATE =================
