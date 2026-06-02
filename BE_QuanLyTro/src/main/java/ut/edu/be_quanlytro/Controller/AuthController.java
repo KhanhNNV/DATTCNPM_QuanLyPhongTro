@@ -3,6 +3,7 @@ package ut.edu.be_quanlytro.Controller;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import ut.edu.be_quanlytro.Dto.Request.ChangePasswordRequest;
 import ut.edu.be_quanlytro.Dto.Request.LoginRequest;
+import ut.edu.be_quanlytro.Dto.Request.RefreshTokenRequest;
 import ut.edu.be_quanlytro.Dto.Request.RegisterRequest;
 import ut.edu.be_quanlytro.Dto.Response.LoginResponse;
 import ut.edu.be_quanlytro.Entity.User;
@@ -24,9 +25,6 @@ import org.springframework.security.oauth2.jwt.Jwt;
 public class AuthController {
 
     private final AuthenticationService authenticationService;
-    private final JwtService jwtService;
-    private final TokenBlacklistService tokenBlacklistService;
-    private final UserRepository userRepository;
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
@@ -36,60 +34,34 @@ public class AuthController {
     }
 
     @PostMapping("/refresh")
-    public ResponseEntity<LoginResponse> refresh(
-            @CookieValue(name = "refreshToken", required = false) String refreshToken) {
-
+    public ResponseEntity<?> refresh(@RequestBody RefreshTokenRequest request) { // Dùng Body thay vì Cookie
         try {
-            // Kiểm tra tính hợp lệ và thời hạn của Refresh Token trong Cookie
-            if (refreshToken == null || !jwtService.verifyToken(refreshToken)) {
-                return ResponseEntity.status(403).build(); // 403 Forbidden
-            }
-
-            // Trích xuất SĐT (Subject) từ token cũ ra thay vì email như dự án cũ
-            String phone = jwtService.extractPhone(refreshToken);
-            User user = userRepository.findByPhone(phone)
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng hệ thống"));
-
-            // Tạo Access Token mới (Lưu ý: Luồng đơn giản này chưa kẹp lại areaId/roomId,
-            // nếu cần thiết bạn có thể gọi lại logic tìm kiếm hợp đồng như ở AuthenticationService)
-            String newAccessToken = jwtService.generateAccessToken(user, null, null);
-
-            return ResponseEntity.ok(LoginResponse.builder().accessToken(newAccessToken).build());
-        } catch (Exception e) {
-            return ResponseEntity.status(403).build();
+            LoginResponse response = authenticationService.refreshToken(request.getRefreshToken());
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(403).body(e.getMessage());
         }
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(
+    public ResponseEntity<String> logout(
             HttpServletRequest request,
-            @CookieValue(name = "refreshToken", required = false) String refreshToken) {
+            @RequestBody(required = false) RefreshTokenRequest refreshTokenRequest) {
 
-        // 1. Lấy Access Token từ Header "Authorization: Bearer <token>" để đưa vào Redis Blacklist
+        String accessToken = null;
         String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
-            String accessToken = authHeader.substring(7);
-            tokenBlacklistService.addToBlacklist(accessToken);
+            accessToken = authHeader.substring(7);
         }
 
-        // 2. Đưa luôn Refresh Token hiện tại vào Redis Blacklist để hủy hoàn toàn phiên làm việc
-        if (refreshToken != null && !refreshToken.isEmpty()) {
-            tokenBlacklistService.addToBlacklist(refreshToken);
+        String refreshToken = null;
+        if (refreshTokenRequest != null) {
+            refreshToken = refreshTokenRequest.getRefreshToken();
         }
+        authenticationService.logout(accessToken, refreshToken);
 
-        // 3. Tiến hành xóa bỏ Cookie lưu Refresh Token ở phía Client (Trình duyệt/Mobile) bằng cách set maxAge = 0
-        ResponseCookie cleanCookie = ResponseCookie.from("refreshToken", "")
-                .httpOnly(true)
-                .secure(false)
-                .path("/")
-                .maxAge(0) // Hết hạn ngay lập tức
-                .build();
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cleanCookie.toString())
-                .build();
+        return ResponseEntity.ok("Đăng xuất thành công, Token đã bị vô hiệu hóa!");
     }
-
     @PostMapping("/register")
     public ResponseEntity<String> register(@RequestBody RegisterRequest request) {
         try {
@@ -106,7 +78,6 @@ public class AuthController {
             @AuthenticationPrincipal Jwt jwt) {
 
         try {
-
             String phone = jwt.getSubject();
             authenticationService.changePassword(request, phone);
 

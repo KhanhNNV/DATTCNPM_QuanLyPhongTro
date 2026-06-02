@@ -28,6 +28,7 @@ public class AuthenticationService {
     private final ContractRepository contractRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final TokenBlacklistService tokenBlacklistService;
 
     public LoginResponse login(LoginRequest request) {
         // 1. Xác thực thông tin qua Spring Security bằng SĐT và Password
@@ -86,5 +87,43 @@ public class AuthenticationService {
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         user.setIsFirstLogin(false);
         userRepository.save(user);
+    }
+
+
+    public LoginResponse refreshToken(String refreshToken) {
+        try {
+            // 1. Kiểm tra tính hợp lệ của Token
+            if (refreshToken == null || !jwtService.verifyToken(refreshToken)) {
+                throw new RuntimeException("Refresh Token không hợp lệ hoặc đã hết hạn");
+            }
+
+            // 2. Lấy SĐT và tìm User
+            String phone = jwtService.extractPhone(refreshToken);
+            User user = userRepository.findByPhone(phone)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng hệ thống"));
+
+            // 3. Tạo Access Token mới cứng
+            String newAccessToken = jwtService.generateAccessToken(user, null, null);
+
+            // 4. Trả về cả cụm (có thể giữ lại refresh token cũ cho Mobile xài tiếp)
+            return LoginResponse.builder()
+                    .accessToken(newAccessToken)
+                    .refreshToken(refreshToken)
+                    .build();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi xác thực Refresh Token");
+        }
+    }
+    public void logout(String accessToken, String refreshToken) {
+        // 1. Đưa Access Token vào Blacklist
+        if (accessToken != null && !accessToken.isEmpty()) {
+            tokenBlacklistService.addToBlacklist(accessToken);
+        }
+
+        // 2. Đưa Refresh Token vào Blacklist
+        if (refreshToken != null && !refreshToken.isEmpty()) {
+            tokenBlacklistService.addToBlacklist(refreshToken);
+        }
     }
 }
