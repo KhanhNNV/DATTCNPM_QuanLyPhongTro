@@ -1,6 +1,10 @@
 import 'dart:convert';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import '../../features/landlord_app/welcome/welcome_screen.dart';
+import '../../main.dart';
 import '../utils/token_manager.dart';
+
 
 class ApiClient {
   // Cấu hình IP Backend dùng chung cho toàn bộ App
@@ -65,8 +69,12 @@ class ApiClient {
         headers = await _getHeaders();
         response = await http.get(url, headers: headers);
       } else {
-        // Refresh thất bại -> Xóa dữ liệu để app văng ra Login
+        // Xóa dữ liệu để app văng ra Login
         await TokenManager.clearAuthData();
+        navigatorKey.currentState?.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+              (route) => false, // Xóa sạch lịch sử các trang trước đó, không cho bấm back quay lại
+        );
         throw Exception('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
       }
     }

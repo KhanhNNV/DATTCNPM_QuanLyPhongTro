@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_quanlytro/features/landlord_app/onboarding/view_models/onboarding_view_model.dart';
 import '../../../core/constants/app_colors.dart';
+import '../home_page/home_page_screen.dart';
 import 'models/onboarding_models.dart';
 import 'widgets/general_info_card.dart';
 import 'widgets/services_card.dart';
@@ -14,6 +16,7 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
+  final OnboardingViewModel _viewModel = OnboardingViewModel();
   // --- 1. STATE THÔNG TIN KHU TRỌ ---
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
@@ -38,6 +41,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final TextEditingController _floorCountController = TextEditingController();
   int _floorCount = 0;
   final List<TextEditingController> _roomsPerFloorControllers = [];
+
+
+  @override
+  void initState() {
+    super.initState();
+    // Lắng nghe lỗi từ ViewModel để hiện SnackBar
+    _viewModel.addListener(_onViewModelChanged);
+  }
+
+  void _onViewModelChanged() {
+    if (_viewModel.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_viewModel.errorMessage!),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      _viewModel.clearError();
+    }
+  }
 
   @override
   void dispose() {
@@ -77,25 +100,52 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
   }
 
+// --- HÀM SUBMIT GỌI VIEWMODEL ---
   void _submitData() {
+    // Gom danh sách số lượng phòng mỗi tầng
     List<int> roomsPerFloor = _roomsPerFloorControllers
         .map((controller) => int.tryParse(controller.text) ?? 0)
         .toList();
 
+    // Gom danh sách dịch vụ
     List<Map<String, dynamic>> servicesPayload = _services.map((s) {
       return {
         'name': s.name,
         'calcType': s.calcType.backendValue,
-        'price': s.priceController.text.isEmpty ? 0 : num.tryParse(s.priceController.text) ?? 0,
+        'price': num.tryParse(s.priceController.text) ?? 0,
       };
     }).toList();
 
-    print('--- Dữ liệu chuẩn bị gửi đi ---');
-    print('Khu trọ: ${_nameController.text} - $_addressController');
-    print('Số tầng: $roomsPerFloor');
-    print('Dịch vụ: $servicesPayload');
+    // Đóng gói toàn bộ thành JSON
+    final payload = {
+      "name": _nameController.text.trim(),
+      "address": _addressController.text.trim(),
+      "invoiceDay": _invoiceDay,
+      "dueDate": _dueDate,
+      "services": servicesPayload,
+      "roomsPerFloor": roomsPerFloor,
+      "defaultAreaSize": double.tryParse(_areaSizeController.text) ?? 0.0,
+      "defaultRentPrice": double.tryParse(_rentPriceController.text) ?? 0.0,
+      "defaultDepositAmount": double.tryParse(_depositController.text) ?? 0.0,
+      "defaultMaxOccupants": int.tryParse(_maxOccupantsController.text) ?? 1,
+    };
 
-    // TODO: Kết nối API service tại đây
+    // 4. Gọi hàm từ ViewModel
+    _viewModel.submitOnboarding(
+      payload: payload,
+      onSuccess: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Khởi tạo Khu trọ thành công!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const HomePageScreen()),
+        );
+      },
+    );
   }
 
   @override
