@@ -25,19 +25,22 @@ public class RoomController {
 
     // ================= CREATE =================
     @PostMapping
-    @PreAuthorize("hasAuthority('SCOPE_LANDLORD')") // Chỉ Chủ trọ
+    @PreAuthorize("hasRole('LANDLORD')") // Chỉ Chủ trọ được tạo phòng
     public ResponseEntity<Room> createRoom(
             @RequestBody RoomRequest request,
             @AuthenticationPrincipal Jwt jwt) {
-        UUID currentUserId = UUID.fromString(jwt.getSubject());
+
+        // Trích xuất ID chuẩn xác từ claim
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
         Room createdRoom = roomService.createRoom(request, currentUserId);
+
         return new ResponseEntity<>(createdRoom, HttpStatus.CREATED);
     }
 
     // ================= READ =================
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAuthority('SCOPE_LANDLORD')")
+    @PreAuthorize("hasAnyRole('LANDLORD', 'TENANT')") // Khách và Chủ đều có quyền xem thông tin phòng
     public ResponseEntity<RoomResponse> getRoomById(@PathVariable UUID id) {
         return ResponseEntity.ok(roomService.getRoomResponseById(id));
     }
@@ -48,7 +51,7 @@ public class RoomController {
      * - Hoặc gọi: GET /api/rooms/area/{areaId}?status=AVAILABLE
      */
     @GetMapping("/area/{areaId}")
-    @PreAuthorize("hasAnyAuthority('SCOPE_LANDLORD', 'SCOPE_TENANT')")
+    @PreAuthorize("hasAnyRole('LANDLORD', 'TENANT')") // Khách và Chủ đều xem được danh sách
     public ResponseEntity<List<RoomResponse>> getRoomsByArea(
             @PathVariable UUID areaId,
             @RequestParam(required = false) RoomStatus status) {
@@ -63,23 +66,29 @@ public class RoomController {
 
     // ================= UPDATE =================
     @PutMapping("/{id}")
-    @PreAuthorize("hasAuthority('SCOPE_LANDLORD')") // Chỉ Chủ trọ
+    @PreAuthorize("hasRole('LANDLORD')") // Chỉ Chủ trọ được phép chỉnh sửa phòng
     public ResponseEntity<Room> updateRoom(
             @PathVariable UUID id,
             @RequestBody RoomRequest request,
             @AuthenticationPrincipal Jwt jwt) {
-        UUID currentUserId = UUID.fromString(jwt.getSubject());
+
+        // Trích xuất ID chuẩn xác từ claim
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+
         return ResponseEntity.ok(roomService.updateRoom(id, request, currentUserId));
     }
 
     // ================= DELETE =================
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAuthority('SCOPE_LANDLORD')") // Chỉ Chủ trọ
+    @PreAuthorize("hasRole('LANDLORD')") // Chỉ Chủ trọ được phép xóa phòng
     public ResponseEntity<String> deleteRoom(
             @PathVariable UUID id,
             @AuthenticationPrincipal Jwt jwt) {
-        UUID currentUserId = UUID.fromString(jwt.getSubject());
+
+        // Trích xuất ID chuẩn xác từ claim
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
         roomService.deleteRoom(id, currentUserId);
+
         return ResponseEntity.ok("Xóa phòng thành công");
     }
 }
