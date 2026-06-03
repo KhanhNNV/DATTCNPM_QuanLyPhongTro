@@ -1,5 +1,6 @@
 import 'dart:convert';
 import '../../../core/network/api_client.dart';
+import '../models/area_model.dart';
 
 class AreaProvider {
   final ApiClient _apiClient = ApiClient();
@@ -11,6 +12,17 @@ class AreaProvider {
       return;
     } else {
       throw Exception('Lỗi khởi tạo khu trọ: ${response.body}');
+    }
+  }
+
+  //Lấy area của chủ trọ hiện tại
+  Future<List<AreaModel>> getAreasByLandlord() async {
+    final response = await _apiClient.get('/api/areas');
+    if (response.statusCode == 200) {
+      final List<dynamic> decodedData = jsonDecode(utf8.decode(response.bodyBytes));
+      return decodedData.map((json) => AreaModel.fromJson(json)).toList();
+    } else {
+      throw Exception('Không thể tải danh sách khu trọ: ${response.body}');
     }
   }
 }

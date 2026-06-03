@@ -54,14 +54,9 @@ class _HomePageScreenState extends State<HomePageScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Không cần dùng AppBar ở đây nữa vì MainLayoutScreen đã bao bọc nó rồi
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: const Text('Trang Chủ', style: TextStyle(fontWeight: FontWeight.bold)),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        centerTitle: true,
-      ),
       body: Center(
         // Xử lý 3 trạng thái của màn hình: Đang tải / Bị lỗi / Thành công
         child: _isLoading
@@ -96,9 +91,9 @@ class _HomePageScreenState extends State<HomePageScreen> {
 
             // Nút bấm test gọi lại API
             ElevatedButton.icon(
-              onPressed: _fetchUserData, // Bấm vào sẽ chạy lại hàm
+              onPressed: _fetchUserData,
               icon: const Icon(Icons.refresh),
-              label: const Text('Test Gọi lại API (Check Refresh Token)'),
+              label: const Text('Test Gọi lại API'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,

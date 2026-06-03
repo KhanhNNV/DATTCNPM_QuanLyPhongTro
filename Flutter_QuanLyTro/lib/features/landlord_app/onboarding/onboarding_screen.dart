@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_quanlytro/features/landlord_app/onboarding/view_models/onboarding_view_model.dart';
 import '../../../core/constants/app_colors.dart';
 import '../home_page/home_page_screen.dart';
+import '../main_layout/main_layout_screen.dart';
 import 'models/onboarding_models.dart';
 import 'widgets/general_info_card.dart';
 import 'widgets/services_card.dart';
@@ -142,7 +143,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         );
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (context) => const HomePageScreen()),
+          MaterialPageRoute(builder: (context) => const MainLayoutScreen()),
         );
       },
     );

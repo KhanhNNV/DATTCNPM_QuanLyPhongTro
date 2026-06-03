@@ -5,7 +5,6 @@ import '../../../../data/models/user_model.dart';
 
 class LoginViewModel extends ChangeNotifier {
   final AuthProvider _authProvider = AuthProvider();
-  final UserProvider _userProvider = UserProvider();
 
   // Trạng thái Loading
   bool _isLoading = false;
