@@ -31,6 +31,7 @@ public class ActivityLog {
     private String entityName;
 
     @Column(name = "entity_id")
+    @JdbcTypeCode(SqlTypes.VARCHAR)
     private UUID entityId;
 
     @Column(columnDefinition = "TEXT")
