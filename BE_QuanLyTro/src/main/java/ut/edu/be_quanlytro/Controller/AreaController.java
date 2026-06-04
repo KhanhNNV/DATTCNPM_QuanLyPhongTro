@@ -25,16 +25,18 @@ public class AreaController {
 
     // ================= ONBOARDING =================
     @PostMapping("/onboarding")
-    @PreAuthorize("hasRole('LANDLORD')") // Đã chuyển sang hasRole
-    public ResponseEntity<Area> onboardNewLandlord(
+    @PreAuthorize("hasRole('LANDLORD')")
+    public ResponseEntity<AreaResponse> onboardNewLandlord(
             @RequestBody OnboardingRequest request,
             @AuthenticationPrincipal Jwt jwt) {
 
         // Trích xuất ID chuẩn xác từ claim
         UUID landlordId = UUID.fromString(jwt.getClaimAsString("userId"));
-        Area createdArea = areaManagementService.onboardNewLandlord(request, landlordId);
 
-        return new ResponseEntity<>(createdArea, HttpStatus.CREATED);
+        // Hứng dữ liệu trả về với kiểu AreaResponse
+        AreaResponse response = areaManagementService.onboardNewLandlord(request, landlordId);
+
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     // ================= CRUD =================
