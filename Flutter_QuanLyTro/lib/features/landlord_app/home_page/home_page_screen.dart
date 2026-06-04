@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../../data/providers/user_provider.dart';
 import '../../../../data/models/user_model.dart';
+import '../auth/login_screen.dart';
 
 class HomePageScreen extends StatefulWidget {
-  const HomePageScreen({super.key});
+  final String? selectedAreaId;
+  const HomePageScreen({super.key, this.selectedAreaId});
 
   @override
   State<HomePageScreen> createState() => _HomePageScreenState();
@@ -22,6 +24,39 @@ class _HomePageScreenState extends State<HomePageScreen> {
     super.initState();
     // Gọi API lấy dữ liệu user ngay khi màn hình vừa mở lên
     _fetchUserData();
+  }
+
+  @override
+  void didUpdateWidget(covariant HomePageScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Nếu ID khu trọ mới khác ID khu trọ cũ -> Tiến hành gọi API load lại phòng của trọ đó
+    if (widget.selectedAreaId != oldWidget.selectedAreaId) {
+      print("Đã nhận lệnh đổi Khu trọ sang ID: ${widget.selectedAreaId}");
+      _fetchRoomsData();
+    }
+  }
+
+  Future<void> _fetchRoomsData() async {
+    if (widget.selectedAreaId == null || widget.selectedAreaId!.isEmpty) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // TODO: Gọi API lấy danh sách phòng theo ID khu trọ tại đây
+      // Ví dụ: final rooms = await _roomProvider.getRooms(widget.selectedAreaId!);
+
+      await Future.delayed(const Duration(milliseconds: 300)); // Giả lập call API
+    } catch (e) {
+      // Xử lý lỗi
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   // Hàm gọi API
@@ -100,6 +135,29 @@ class _HomePageScreenState extends State<HomePageScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pushAndRemoveUntil(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const LoginScreen(),
+                  ),
+                      (route) => false,
+                );
+              },
+              icon: const Icon(Icons.logout),
+              label: const Text('Đăng xuất'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
                 ),
               ),
             ),

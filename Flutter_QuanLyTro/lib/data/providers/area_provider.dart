@@ -5,14 +5,21 @@ import '../models/area_model.dart';
 class AreaProvider {
   final ApiClient _apiClient = ApiClient();
 
-  Future<void> onboardNewLandlord(Map<String, dynamic> requestData) async {
+  Future<AreaModel> onboardNewLandlord(Map<String, dynamic> requestData) async {
     final response = await _apiClient.post('/api/areas/onboarding', requestData);
 
-    if (response.statusCode == 201 || response.statusCode == 200) {
-      return;
-    } else {
-      throw Exception('Lỗi khởi tạo khu trọ: ${response.body}');
+    if (response.statusCode == 200 ||
+        response.statusCode == 201) {
+
+      final json = jsonDecode(
+        utf8.decode(response.bodyBytes),
+      );
+
+      return AreaModel.fromJson(json);
     }
+    throw Exception(
+      'Lỗi khởi tạo khu trọ: ${response.body}',
+    );
   }
 
   //Lấy area của chủ trọ hiện tại

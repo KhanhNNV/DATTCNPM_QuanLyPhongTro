@@ -27,7 +27,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   @override
   void initState() {
     super.initState();
-    _viewModel.fetchAreas();
+    _viewModel.fetchInitialData();
   }
 
   // Hàm hiển thị danh sách chọn khu trọ
@@ -64,7 +64,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                           itemCount: _viewModel.areas.length,
                           itemBuilder: (context, index) {
                             final area = _viewModel.areas[index];
-                            final isSelected = area.name == _viewModel.selectedArea?.name;
+                            final isSelected = area.id == _viewModel.selectedArea?.id;
 
                             return ListTile(
                               leading: Icon(
@@ -124,7 +124,10 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
           ),
 
           endDrawer: MainDrawer(
-            currentAreaName: displayName,
+            currentUser: _viewModel.currentUser,
+            onAreaCreated: (newArea) {
+              _viewModel.addAndSelectArea(newArea);
+            },
           ),
 
           body: _viewModel.isLoading
@@ -139,7 +142,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                 Text('Lỗi: ${_viewModel.errorMessage}', style: const TextStyle(color: Colors.redAccent)),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: _viewModel.fetchAreas,
+                  onPressed: _viewModel.fetchInitialData,
                   child: const Text('Thử lại'),
                 ),
               ],

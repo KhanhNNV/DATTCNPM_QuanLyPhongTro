@@ -10,7 +10,10 @@ import 'widgets/default_room_card.dart';
 import 'widgets/dynamic_floor_card.dart';
 
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key});
+  // Nếu là true nghĩa là được gọi từ menu bên phải (thêm mới khu trọ).
+  final bool isAddingNewArea;
+
+  const OnboardingScreen({super.key,this.isAddingNewArea = false});
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -134,17 +137,24 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     // 4. Gọi hàm từ ViewModel
     _viewModel.submitOnboarding(
       payload: payload,
-      onSuccess: () {
+      onSuccess: (newArea) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Khởi tạo Khu trọ thành công!'),
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const MainLayoutScreen()),
-        );
+        if (widget.isAddingNewArea) {
+          Navigator.pop(context, newArea);
+        } else {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const MainLayoutScreen(),
+            ),
+                (route) => false,
+          );
+        }
       },
     );
   }

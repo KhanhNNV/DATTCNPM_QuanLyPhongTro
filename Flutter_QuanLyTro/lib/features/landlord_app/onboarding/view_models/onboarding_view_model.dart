@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../data/models/area_model.dart';
 import '../../../../data/providers/area_provider.dart';
 
 class OnboardingViewModel extends ChangeNotifier {
@@ -12,7 +13,7 @@ class OnboardingViewModel extends ChangeNotifier {
 
   Future<void> submitOnboarding({
     required Map<String, dynamic> payload,
-    required VoidCallback onSuccess,
+    required Function(AreaModel area) onSuccess,
   }) async {
     if (payload['name'].toString().trim().isEmpty ||
         payload['address'].toString().trim().isEmpty) {
@@ -39,8 +40,9 @@ class OnboardingViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _areaProvider.onboardNewLandlord(payload);
-      onSuccess();
+      final AreaModel newArea = await _areaProvider.onboardNewLandlord(payload);
+
+      onSuccess(newArea);
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
     } finally {

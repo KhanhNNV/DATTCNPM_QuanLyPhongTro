@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../data/models/area_model.dart';
+import '../../../../data/models/user_model.dart';
+import '../../onboarding/onboarding_screen.dart';
 
 class MainDrawer extends StatelessWidget {
-  final String currentAreaName;
+  final UserModel? currentUser;
+  final Function(AreaModel area) onAreaCreated;
 
   const MainDrawer({
     super.key,
-    required this.currentAreaName,
+    required this.currentUser,
+    required this.onAreaCreated,
   });
 
   @override
@@ -17,13 +22,13 @@ class MainDrawer extends StatelessWidget {
           UserAccountsDrawerHeader(
             decoration: const BoxDecoration(color: AppColors.primary),
             accountName: Text(
-              currentAreaName,
+              currentUser?.fullName ?? 'Đang tải...',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            accountEmail: const Text('Quản lý khu trọ'),
+            accountEmail: Text(currentUser?.phone ?? '...'),
             currentAccountPicture: const CircleAvatar(
               backgroundColor: Colors.white,
-              child: Icon(Icons.home_work, color: AppColors.primary, size: 32),
+              child: Icon(Icons.person, color: AppColors.primary, size: 32),
             ),
           ),
           ListTile(
@@ -37,9 +42,19 @@ class MainDrawer extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.add_business_outlined),
             title: const Text('Thêm mới nhà trọ'),
-            onTap: () {
+            onTap: () async {
               Navigator.pop(context);
-              // TODO: Điều hướng sang OnboardingScreen
+
+              final AreaModel? newArea = await Navigator.push<AreaModel>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const OnboardingScreen(isAddingNewArea: true),
+                  )
+              );
+
+              if (newArea != null) {
+                onAreaCreated(newArea);
+              }
             },
           ),
           const Divider(),
