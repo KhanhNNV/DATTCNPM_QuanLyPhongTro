@@ -9,6 +9,7 @@ import java.util.UUID;
 
 @Getter @Builder
 public class AreaServiceResponse {
+    private UUID id;
     private String name;
     private ServiceCalculationType calcType;
     private BigDecimal price;

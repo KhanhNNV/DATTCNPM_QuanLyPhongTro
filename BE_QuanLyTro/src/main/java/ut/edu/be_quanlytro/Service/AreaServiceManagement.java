@@ -82,6 +82,7 @@ public class AreaServiceManagement {
     // MAPPER
     private AreaServiceResponse mapToResponse(AreaService service) {
         return AreaServiceResponse.builder()
+                .id(service.getId())
                 .name(service.getName())
                 .calcType(service.getCalcType())
                 .price(service.getPrice())

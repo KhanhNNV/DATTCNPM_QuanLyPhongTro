@@ -8,6 +8,7 @@ import java.util.UUID;
 
 @Getter @Builder
 public class AreaResponse {
+    private UUID id;
     private String name;
     private String address;
     private Integer invoiceDay;
