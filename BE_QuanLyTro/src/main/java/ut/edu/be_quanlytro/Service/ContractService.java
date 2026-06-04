@@ -113,6 +113,7 @@ public class ContractService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng"));
 
         return ContractDetailResponse.builder()
+                .id(contract.getId())
                 .roomName(contract.getRoom().getRoomNumber()) // Lấy tên phòng
                 .tenantName(contract.getTenant().getFullName())
                 .tenantPhone(contract.getTenant().getPhone())
