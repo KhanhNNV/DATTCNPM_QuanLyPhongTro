@@ -33,7 +33,7 @@ public class AreaManagementService {
 
     //==============TẠO KHU TRỌ, PHÒNG, DỊCH VỤ===========
     @Transactional
-    public Area onboardNewLandlord(OnboardingRequest request, UUID landlordId) {
+    public AreaResponse onboardNewLandlord(OnboardingRequest request, UUID landlordId) {
 
         // 1. Kiểm tra chủ trọ
         User landlord = userRepository.findById(landlordId)
@@ -61,7 +61,7 @@ public class AreaManagementService {
         if (request.getServices() != null && !request.getServices().isEmpty()) {
             List<AreaService> areaServices = request.getServices().stream().map(svc ->
                     AreaService.builder()
-                            .area(savedArea) // Trỏ về Khu trọ vừa tạo
+                            .area(savedArea)
                             .name(svc.getName())
                             .calcType(svc.getCalcType())
                             .price(svc.getPrice())
@@ -69,7 +69,7 @@ public class AreaManagementService {
                             .build()
             ).toList();
 
-            areaServiceRepository.saveAll(areaServices); // Lưu toàn bộ dịch vụ 1 lần
+            areaServiceRepository.saveAll(areaServices);
         }
 
         // ==========================================
@@ -86,7 +86,7 @@ public class AreaManagementService {
                 for (int j = 1; j <= numberOfRooms; j++) {
                     String roomNumber = floorNumber + String.format("%02d", j);
                     Room room = Room.builder()
-                            .area(savedArea) // Trỏ về Khu trọ vừa tạo
+                            .area(savedArea)
                             .floor(floorNumber)
                             .roomNumber(roomNumber)
                             .areaSize(request.getDefaultAreaSize())
@@ -98,7 +98,7 @@ public class AreaManagementService {
                     newRooms.add(room);
                 }
             }
-            roomRepository.saveAll(newRooms); // Lưu toàn bộ phòng 1 lần
+            roomRepository.saveAll(newRooms);
         }
 
         // ==========================================
@@ -111,7 +111,16 @@ public class AreaManagementService {
 
         activityLog.createLog(landlord, "ONBOARDING_COMPLETED", "areas, rooms, area_services", savedArea.getId(), description);
 
-        return savedArea;
+        // ==========================================
+        // BƯỚC 5: MAP ENTITY SANG DTO VÀ TRẢ VỀ
+        // ==========================================
+        return AreaResponse.builder()
+                .name(savedArea.getName())
+                .address(savedArea.getAddress())
+                .invoiceDay(savedArea.getInvoiceDay())
+                .dueDate(savedArea.getDueDate())
+                .createdAt(savedArea.getCreatedAt())
+                .build();
     }
 
     // ================= READ =================
