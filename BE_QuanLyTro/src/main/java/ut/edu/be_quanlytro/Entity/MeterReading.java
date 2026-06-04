@@ -46,4 +46,8 @@ public class MeterReading {
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @Builder.Default
+    @Column(name = "is_invoiced")
+    private Boolean isInvoiced = false;
 }
