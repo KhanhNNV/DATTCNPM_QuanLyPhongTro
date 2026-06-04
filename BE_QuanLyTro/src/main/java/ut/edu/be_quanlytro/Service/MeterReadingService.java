@@ -14,6 +14,8 @@ import ut.edu.be_quanlytro.Repository.RoomRepository;
 import ut.edu.be_quanlytro.Repository.UserRepository;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -57,5 +59,16 @@ public class MeterReadingService {
                 .isInvoiced(false)
                 .build();
         return meterReadingRepository.save(newReading);
+    }
+
+    // gop tinh dien nuoc....
+    @Transactional
+    public List<MeterReading> createBulkMeterReading(List<MeterReadingCreateRequest> requests, UUID currentUserId) {
+        List<MeterReading> savedReadings = new ArrayList<>();
+       for (MeterReadingCreateRequest request : requests) {
+           MeterReading saved = this.createMeterReading(request, currentUserId);
+           savedReadings.add(saved);
+       }
+       return savedReadings;
     }
 }
