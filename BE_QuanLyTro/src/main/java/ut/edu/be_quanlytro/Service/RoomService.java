@@ -69,6 +69,7 @@ public class RoomService {
 
     // ================= READ (TRẢ VỀ DTO) =================
 
+    @Transactional(readOnly = true)
     public List<RoomResponse> getRoomsByArea(UUID areaId) {
         return roomRepository.findByAreaId(areaId)
                 .stream()
@@ -87,6 +88,7 @@ public class RoomService {
     }
 
     // Lấy danh sách phòng theo trạng thái trong 1 khu trọ cụ thể
+    @Transactional(readOnly = true)
     public List<RoomResponse> getRoomsByAreaAndStatus(UUID areaId, RoomStatus status) {
         return roomRepository.findByAreaIdAndStatus(areaId, status)
                 .stream()

@@ -17,12 +17,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
   // Khởi tạo ViewModel
   final MainLayoutViewModel _viewModel = MainLayoutViewModel();
 
-  final List<Widget> _screens = [
-    const HomePageScreen(),
-    const Center(child: Text('Màn hình Khách thuê (Đang xây dựng)')),
-    const Center(child: Text('Màn hình Hóa đơn (Đang xây dựng)')),
-    const Center(child: Text('Màn hình Cài đặt (Đang xây dựng)')),
-  ];
+
 
   @override
   void initState() {
@@ -125,8 +120,12 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
 
           endDrawer: MainDrawer(
             currentUser: _viewModel.currentUser,
+            selectedArea: _viewModel.selectedArea,
             onAreaCreated: (newArea) {
               _viewModel.addAndSelectArea(newArea);
+            },
+            onAreaUpdated: () async {
+              await _viewModel.fetchInitialData();
             },
           ),
 
@@ -150,7 +149,21 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
           )
               : IndexedStack(
             index: _viewModel.currentIndex,
-            children: _screens,
+            children: [
+              HomePageScreen(
+                selectedAreaId:
+                _viewModel.selectedAreaId,
+              ),
+              const Center(
+                child: Text('Màn hình Khách thuê'),
+              ),
+              const Center(
+                child: Text('Màn hình Hóa đơn'),
+              ),
+              const Center(
+                child: Text('Màn hình Cài đặt'),
+              ),
+            ],
           ),
 
           bottomNavigationBar: MainBottomBar(

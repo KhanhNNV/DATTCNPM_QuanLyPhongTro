@@ -51,6 +51,13 @@ class OnboardingViewModel extends ChangeNotifier {
     }
   }
 
+  Future<void> updateArea({
+    required String areaId,
+    required Map<String, dynamic> payload,
+  }) async {
+    await _areaProvider.updateArea(areaId, payload);
+  }
+
   void clearError() {
     _errorMessage = null;
     notifyListeners();

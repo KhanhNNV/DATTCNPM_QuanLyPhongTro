@@ -5,7 +5,6 @@ import '../../features/landlord_app/welcome/welcome_screen.dart';
 import '../../main.dart';
 import '../utils/token_manager.dart';
 
-
 class ApiClient {
   // Cấu hình IP Backend dùng chung cho toàn bộ App
   static const String baseUrl = 'http://192.168.0.197:8080';
@@ -44,7 +43,9 @@ class ApiClient {
         // Lưu Access Token mới và Refresh Token mới
         await TokenManager.saveAuthData(
           accessToken: data['accessToken'],
-          refreshToken: data['refreshToken'] ?? currentRefreshToken, // Nếu backend ko cấp refresh mới thì xài lại cái cũ
+          refreshToken:
+              data['refreshToken'] ??
+              currentRefreshToken, // Nếu backend ko cấp refresh mới thì xài lại cái cũ
         );
         return true;
       } else {
@@ -73,7 +74,8 @@ class ApiClient {
         await TokenManager.clearAuthData();
         navigatorKey.currentState?.pushAndRemoveUntil(
           MaterialPageRoute(builder: (context) => const WelcomeScreen()),
-              (route) => false, // Xóa sạch lịch sử các trang trước đó, không cho bấm back quay lại
+          (route) =>
+              false, // Xóa sạch lịch sử các trang trước đó, không cho bấm back quay lại
         );
         throw Exception('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
       }
@@ -93,7 +95,11 @@ class ApiClient {
       bool isRefreshed = await _refreshToken();
       if (isRefreshed) {
         headers = await _getHeaders(); // Lấy token mới
-        response = await http.post(url, headers: headers, body: jsonBody); // Gọi lại lần 2
+        response = await http.post(
+          url,
+          headers: headers,
+          body: jsonBody,
+        ); // Gọi lại lần 2
       } else {
         await TokenManager.clearAuthData();
         throw Exception('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
@@ -103,4 +109,32 @@ class ApiClient {
     return response;
   }
 
+  Future<http.Response> put(String endpoint, Map<String, dynamic> body) async {
+    final url = Uri.parse('$baseUrl$endpoint');
+    var headers = await _getHeaders();
+    final jsonBody = jsonEncode(body);
+
+    var response = await http.put(url, headers: headers, body: jsonBody);
+
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      bool isRefreshed = await _refreshToken();
+
+      if (isRefreshed) {
+        headers = await _getHeaders();
+
+        response = await http.put(url, headers: headers, body: jsonBody);
+      } else {
+        await TokenManager.clearAuthData();
+
+        navigatorKey.currentState?.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+          (route) => false,
+        );
+
+        throw Exception('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      }
+    }
+
+    return response;
+  }
 }

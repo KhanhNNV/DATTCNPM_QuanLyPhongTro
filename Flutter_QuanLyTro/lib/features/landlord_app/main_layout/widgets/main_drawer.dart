@@ -6,12 +6,16 @@ import '../../onboarding/onboarding_screen.dart';
 
 class MainDrawer extends StatelessWidget {
   final UserModel? currentUser;
+  final AreaModel? selectedArea;
   final Function(AreaModel area) onAreaCreated;
+  final VoidCallback onAreaUpdated;
 
   const MainDrawer({
     super.key,
     required this.currentUser,
+    required this.selectedArea,
     required this.onAreaCreated,
+    required this.onAreaUpdated,
   });
 
   @override
@@ -34,9 +38,24 @@ class MainDrawer extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.edit_outlined),
             title: const Text('Chỉnh sửa thông tin nhà trọ'),
-            onTap: () {
+            onTap: () async {
               Navigator.pop(context);
-              // TODO: Điều hướng sang màn hình chỉnh sửa
+
+              if (selectedArea == null) return;
+
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => OnboardingScreen(
+                    isEditing: true,
+                    area: selectedArea,
+                  ),
+                ),
+              );
+
+              if (result == true) {
+                onAreaUpdated();
+              }
             },
           ),
           ListTile(

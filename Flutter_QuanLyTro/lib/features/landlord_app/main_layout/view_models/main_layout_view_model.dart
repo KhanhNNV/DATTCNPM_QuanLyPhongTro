@@ -38,6 +38,8 @@ class MainLayoutViewModel extends ChangeNotifier {
 
 
     try {
+      // Lưu id đang chọn trước khi refresh
+      final selectedAreaId = _selectedArea?.id;
       final results = await Future.wait([
         _areaProvider.getAreasByLandlord(),
         _userProvider.getCurrentUser(),
@@ -50,7 +52,19 @@ class MainLayoutViewModel extends ChangeNotifier {
       _currentUser = user;
 
       if (_areas.isNotEmpty) {
-        _selectedArea = selectLast ? _areas.last : _areas.first;
+        if (selectedAreaId != null) {
+          try {
+            _selectedArea = _areas.firstWhere(
+                  (a) => a.id == selectedAreaId,
+            );
+          } catch (_) {
+            _selectedArea = _areas.first;
+          }
+        } else {
+          _selectedArea = selectLast
+              ? _areas.last
+              : _areas.first;
+        }
       }
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
@@ -88,4 +102,5 @@ class MainLayoutViewModel extends ChangeNotifier {
 
     notifyListeners();
   }
+
 }

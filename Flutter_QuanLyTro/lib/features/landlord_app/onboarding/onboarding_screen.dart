@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_quanlytro/features/landlord_app/onboarding/view_models/onboarding_view_model.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../data/models/area_model.dart';
 import '../home_page/home_page_screen.dart';
 import '../main_layout/main_layout_screen.dart';
 import 'models/onboarding_models.dart';
@@ -12,8 +13,15 @@ import 'widgets/dynamic_floor_card.dart';
 class OnboardingScreen extends StatefulWidget {
   // Nếu là true nghĩa là được gọi từ menu bên phải (thêm mới khu trọ).
   final bool isAddingNewArea;
+  final bool isEditing;
+  final AreaModel? area;
 
-  const OnboardingScreen({super.key,this.isAddingNewArea = false});
+  const OnboardingScreen({
+    super.key,
+    this.isAddingNewArea = false,
+    this.isEditing = false,
+    this.area,
+  });
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -52,6 +60,20 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.initState();
     // Lắng nghe lỗi từ ViewModel để hiện SnackBar
     _viewModel.addListener(_onViewModelChanged);
+    if (widget.isEditing && widget.area != null) {
+      _loadAreaData();
+    }
+  }
+
+  void _loadAreaData() {
+    final area = widget.area!;
+
+    _nameController.text = area.name;
+    _addressController.text = area.address;
+    _invoiceDay = area.invoiceDay;
+    _dueDate = area.dueDate;
+
+    setState(() {});
   }
 
   void _onViewModelChanged() {
@@ -159,12 +181,45 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 
+  Future<void> _updateArea() async {
+    try {
+      await _viewModel.updateArea(
+        areaId: widget.area!.id,
+        payload: {
+          "name": _nameController.text.trim(),
+          "address": _addressController.text.trim(),
+          "invoiceDay": _invoiceDay,
+          "dueDate": _dueDate,
+        },
+      );
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Cập nhật thành công"),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        Navigator.pop(context, true);
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: AppBar(
-        title: const Text('Khởi tạo Khu trọ'),
+        title: Text(
+          widget.isEditing
+              ? 'Chỉnh sửa Khu trọ'
+              : 'Khởi tạo Khu trọ',
+        ),
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
@@ -212,14 +267,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
             const SizedBox(height: 32),
             ElevatedButton(
-              onPressed: _submitData,
+              onPressed: widget.isEditing
+                  ? _updateArea
+                  : _submitData,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('Hoàn tất khởi tạo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              //child: const Text('Hoàn tất khởi tạo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text(
+                widget.isEditing
+                    ? 'Lưu thay đổi'
+                    : 'Hoàn tất khởi tạo',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),),
             ),
             const SizedBox(height: 32),
           ],
