@@ -62,7 +62,7 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
         return mapToResponse(user);
     }
-    
+
     // ================= READ (LẤY DANH SÁCH THEO KHU TRỌ) =================
     public List<UserResponse> getUsersByArea(UUID areaId) {
         // Gọi hàm findTenantsByAreaId có chứa @Query thay vì findByAreaId

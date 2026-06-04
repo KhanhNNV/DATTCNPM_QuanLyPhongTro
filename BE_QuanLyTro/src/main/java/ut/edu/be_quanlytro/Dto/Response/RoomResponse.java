@@ -2,6 +2,7 @@ package ut.edu.be_quanlytro.Dto.Response;
 import lombok.*;
 import ut.edu.be_quanlytro.Entity.Enum.RoomStatus;
 import java.math.BigDecimal;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -9,7 +10,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 @Builder
 public class RoomResponse {
-
+    private UUID id;
     private String areaName;
     private Integer floor;
     private String roomNumber;

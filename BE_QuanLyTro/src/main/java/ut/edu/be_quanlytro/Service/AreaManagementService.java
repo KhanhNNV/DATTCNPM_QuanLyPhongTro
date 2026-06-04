@@ -16,9 +16,12 @@ import ut.edu.be_quanlytro.Repository.AreaServiceRepository;
 import ut.edu.be_quanlytro.Repository.RoomRepository;
 import ut.edu.be_quanlytro.Repository.UserRepository;
 import ut.edu.be_quanlytro.Entity.Enum.RoleType;
+
+import java.text.Normalizer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -29,11 +32,39 @@ public class AreaManagementService {
     private final ActivityLogService activityLog;
     private final AreaServiceRepository areaServiceRepository;
     private final RoomRepository roomRepository;
+    /**
+     * Hàm hỗ trợ: Biến tên khu trọ thành mã viết tắt.
+     * Ví dụ: "Khu trọ Sinh viên IT" -> "KTSVI"
+     */
+    private String generateAreaCodeFromName(String name) {
+        if (name == null || name.trim().isEmpty()) return "ROOM";
+
+        // 1. Loại bỏ dấu tiếng Việt
+        String temp = Normalizer.normalize(name, Normalizer.Form.NFD);
+        Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
+        String noAccent = pattern.matcher(temp).replaceAll("")
+                .replaceAll("Đ", "D").replaceAll("đ", "d");
+
+        // 2. Tách các từ theo khoảng trắng
+        String[] words = noAccent.trim().split("\\s+");
+        StringBuilder areaCode = new StringBuilder();
+
+        // 3. Lấy chữ cái đầu tiên của mỗi từ (bỏ qua các ký tự đặc biệt)
+        for (String word : words) {
+            if (!word.isEmpty() && Character.isLetterOrDigit(word.charAt(0))) {
+                areaCode.append(Character.toUpperCase(word.charAt(0)));
+            }
+        }
+
+        // 4. Giới hạn độ dài mã (Lấy tối đa 4-5 ký tự để mã phòng không bị quá dài)
+        String finalCode = areaCode.toString();
+        return finalCode.length() > 5 ? finalCode.substring(0, 5) : finalCode;
+    }
 
 
     //==============TẠO KHU TRỌ, PHÒNG, DỊCH VỤ===========
     @Transactional
-    public Area onboardNewLandlord(OnboardingRequest request, UUID landlordId) {
+    public AreaResponse onboardNewLandlord(OnboardingRequest request, UUID landlordId) {
 
         // 1. Kiểm tra chủ trọ
         User landlord = userRepository.findById(landlordId)
@@ -61,7 +92,7 @@ public class AreaManagementService {
         if (request.getServices() != null && !request.getServices().isEmpty()) {
             List<AreaService> areaServices = request.getServices().stream().map(svc ->
                     AreaService.builder()
-                            .area(savedArea) // Trỏ về Khu trọ vừa tạo
+                            .area(savedArea)
                             .name(svc.getName())
                             .calcType(svc.getCalcType())
                             .price(svc.getPrice())
@@ -69,7 +100,7 @@ public class AreaManagementService {
                             .build()
             ).toList();
 
-            areaServiceRepository.saveAll(areaServices); // Lưu toàn bộ dịch vụ 1 lần
+            areaServiceRepository.saveAll(areaServices);
         }
 
         // ==========================================
@@ -79,26 +110,38 @@ public class AreaManagementService {
         List<Integer> floors = request.getRoomsPerFloor();
 
         if (floors != null && !floors.isEmpty()) {
+            int globalRoomCounter = 1; // Biến đếm liên tục cho toàn bộ khu
+
+            // Gọi hàm helper để lấy mã viết tắt từ Tên khu trọ
+            String shortAreaCode = generateAreaCodeFromName(savedArea.getName());
+
             for (int i = 0; i < floors.size(); i++) {
                 int floorNumber = i + 1;
                 int numberOfRooms = floors.get(i);
 
                 for (int j = 1; j <= numberOfRooms; j++) {
-                    String roomNumber = floorNumber + String.format("%02d", j);
+                    // 1. Format số thứ tự: 001, 002...
+                    String roomSequence = String.format("%03d", globalRoomCounter);
+
+                    // 2. Ghép Mã viết tắt với Số thứ tự. Kết quả: "KTSVI-001"
+                    String displayRoomNumber = shortAreaCode + "-" + roomSequence;
+
                     Room room = Room.builder()
-                            .area(savedArea) // Trỏ về Khu trọ vừa tạo
+                            .area(savedArea)
                             .floor(floorNumber)
-                            .roomNumber(roomNumber)
+                            .roomNumber(displayRoomNumber) // Lưu chuỗi như KTSVI-001
                             .areaSize(request.getDefaultAreaSize())
                             .rentPrice(request.getDefaultRentPrice())
                             .depositAmount(request.getDefaultDepositAmount())
                             .maxOccupants(request.getDefaultMaxOccupants())
                             .status(RoomStatus.AVAILABLE)
                             .build();
+
                     newRooms.add(room);
+                    globalRoomCounter++;
                 }
             }
-            roomRepository.saveAll(newRooms); // Lưu toàn bộ phòng 1 lần
+            roomRepository.saveAll(newRooms);
         }
 
         // ==========================================
@@ -111,7 +154,10 @@ public class AreaManagementService {
 
         activityLog.createLog(landlord, "ONBOARDING_COMPLETED", "areas, rooms, area_services", savedArea.getId(), description);
 
-        return savedArea;
+        // ==========================================
+        // BƯỚC 5: MAP ENTITY SANG DTO VÀ TRẢ VỀ
+        // ==========================================
+        return mapToResponse(savedArea);
     }
 
     // ================= READ =================
@@ -162,6 +208,7 @@ public class AreaManagementService {
     // MAPPER
     private AreaResponse mapToResponse(Area area) {
         return AreaResponse.builder()
+                .id(area.getId())
                 .name(area.getName())
                 .address(area.getAddress())
                 .invoiceDay(area.getInvoiceDay())

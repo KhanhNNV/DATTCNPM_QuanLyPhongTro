@@ -157,6 +157,7 @@ public class RoomService {
         if (room == null) return null;
 
         return RoomResponse.builder()
+                .id(room.getId())
                 .areaName(room.getArea() != null ? room.getArea().getName() : null)
                 .floor(room.getFloor())
                 .roomNumber(room.getRoomNumber())
