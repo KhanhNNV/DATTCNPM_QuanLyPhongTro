@@ -71,4 +71,24 @@ public class MeterReadingService {
        }
        return savedReadings;
     }
+
+    @Transactional
+    public MeterReading updateMeterReading(UUID readingId, Integer newIndex) {
+        MeterReading existingReading = meterReadingRepository.findById(readingId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy phiếu chốt số!"));
+
+        // 1. Chặn nếu đã lên hóa đơn
+        if (existingReading.getIsInvoiced()) {
+            throw new RuntimeException("Phiếu này đã được lập hóa đơn, không thể sửa!");
+        }
+
+        // 2. Chặn nếu số mới sửa lại nhỏ hơn số cũ
+        if (newIndex < existingReading.getOldIndex()) {
+            throw new RuntimeException(String.format("Lỗi: Số mới (%d) không được nhỏ hơn số cũ (%d)!", newIndex, existingReading.getOldIndex()));
+        }
+
+        // 3. Cập nhật số mới và lưu lại
+        existingReading.setNewIndex(newIndex);
+        return meterReadingRepository.save(existingReading);
+    }
 }
