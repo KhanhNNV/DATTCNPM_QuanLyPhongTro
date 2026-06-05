@@ -3,6 +3,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../data/models/area_model.dart';
 import '../../../../data/models/user_model.dart';
 import '../../onboarding/onboarding_screen.dart';
+import '../../area_management/edit_area_screen.dart';
 
 class MainDrawer extends StatelessWidget {
   final UserModel? currentUser;
@@ -43,12 +44,12 @@ class MainDrawer extends StatelessWidget {
 
               if (selectedArea == null) return;
 
+              // Đổi từ OnboardingScreen sang EditAreaScreen mới tách
               final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => OnboardingScreen(
-                    isEditing: true,
-                    area: selectedArea,
+                  builder: (_) => EditAreaScreen(
+                    area: selectedArea!,
                   ),
                 ),
               );

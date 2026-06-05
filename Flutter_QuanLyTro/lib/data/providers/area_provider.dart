@@ -33,8 +33,6 @@ class AreaProvider {
   }
 
   Future<void> updateArea(String areaId, Map<String, dynamic> payload) async {
-    final response = await _apiClient.put('/api/areas/$areaId', payload);
-    print("Loi: ${response.statusCode}");
-    print("Loi2: ${response.body}");
+    await _apiClient.put('/api/areas/$areaId', payload);
   }
 }

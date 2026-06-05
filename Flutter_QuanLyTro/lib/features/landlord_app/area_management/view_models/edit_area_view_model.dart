@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../../../data/models/area_model.dart';
 import '../../../../data/providers/area_provider.dart';
 
-class OnboardingViewModel extends ChangeNotifier {
+class EditAreaViewModel extends ChangeNotifier {
   final AreaProvider _areaProvider = AreaProvider();
 
   bool _isLoading = false;
@@ -11,28 +10,15 @@ class OnboardingViewModel extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
-  Future<void> submitOnboarding({
+  Future<bool> updateAreaInfo({
+    required String areaId,
     required Map<String, dynamic> payload,
-    required Function(AreaModel area) onSuccess,
   }) async {
     if (payload['name'].toString().trim().isEmpty ||
         payload['address'].toString().trim().isEmpty) {
-      _errorMessage = 'Vui lòng nhập tên và địa chỉ khu trọ.';
+      _errorMessage = 'Tên và địa chỉ không được để trống.';
       notifyListeners();
-      return;
-    }
-
-    if (payload['defaultRentPrice'] == 0) {
-      _errorMessage = 'Vui lòng nhập giá phòng mặc định.';
-      notifyListeners();
-      return;
-    }
-
-    List<int> floors = payload['roomsPerFloor'];
-    if (floors.isEmpty || floors.every((count) => count == 0)) {
-      _errorMessage = 'Vui lòng cấu hình ít nhất 1 phòng cho khu trọ.';
-      notifyListeners();
-      return;
+      return false;
     }
 
     _isLoading = true;
@@ -40,10 +26,11 @@ class OnboardingViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final AreaModel newArea = await _areaProvider.onboardNewLandlord(payload);
-      onSuccess(newArea);
+      await _areaProvider.updateArea(areaId, payload);
+      return true;
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
+      return false;
     } finally {
       _isLoading = false;
       notifyListeners();
