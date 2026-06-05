@@ -3,6 +3,7 @@ package ut.edu.be_quanlytro.Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ut.edu.be_quanlytro.Dto.Request.MeterReadingBulkUpdateRequest;
 import ut.edu.be_quanlytro.Dto.Request.MeterReadingCreateRequest;
 import ut.edu.be_quanlytro.Entity.AreaService;
 import ut.edu.be_quanlytro.Entity.MeterReading;
@@ -89,6 +90,23 @@ public class MeterReadingService {
 
         // 3. Cập nhật số mới và lưu lại
         existingReading.setNewIndex(newIndex);
-        return meterReadingRepository.save(existingReading);
+        MeterReading savedReading = meterReadingRepository.save(existingReading);
+
+        savedReading.getRoom().getRoomNumber();
+        savedReading.getService().getName();
+
+        return savedReading;
+    }
+    @Transactional
+    public List<MeterReading> updateBulkMeterReadings(List<MeterReadingBulkUpdateRequest> requests) {
+        List<MeterReading> updatedReadings = new ArrayList<>();
+
+        for (MeterReadingBulkUpdateRequest request : requests) {
+            // Tái sử dụng lại hàm update lẻ để nó tự check logic (isInvoiced, lớn hơn số cũ...)
+            MeterReading updated = this.updateMeterReading(request.getId(), request.getNewIndex());
+            updatedReadings.add(updated);
+        }
+
+        return updatedReadings;
     }
 }
