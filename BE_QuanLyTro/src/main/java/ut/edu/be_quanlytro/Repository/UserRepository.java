@@ -20,4 +20,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query("SELECT DISTINCT cm.user FROM ContractMember cm WHERE cm.contract.room.area.id = :areaId")
     List<User> findTenantsByAreaId(@Param("areaId") UUID areaId);
 
+    @Query("SELECT COUNT(cm) > 0 FROM ContractMember cm WHERE cm.user.id = :tenantId AND cm.contract.room.area.landlord.id = :landlordId")
+    boolean existsTenantInLandlordAreas(@Param("tenantId") UUID tenantId, @Param("landlordId") UUID landlordId);
 }

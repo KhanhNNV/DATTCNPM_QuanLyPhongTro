@@ -22,7 +22,7 @@ public class AreaServiceController {
     private final AreaServiceManagement areaServiceManagement;
 
     @PostMapping("/area/{areaId}")
-    @PreAuthorize("hasRole('LANDLORD')") // Đã đổi sang hasRole
+    @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<AreaServiceResponse> createService(
             @PathVariable UUID areaId,
             @RequestBody AreaServiceRequest request,
@@ -36,13 +36,20 @@ public class AreaServiceController {
     }
 
     @GetMapping("/area/{areaId}")
-    @PreAuthorize("hasAnyRole('LANDLORD', 'TENANT')") // Đã đổi sang hasAnyRole
-    public ResponseEntity<List<AreaServiceResponse>> getServicesByAreaId(@PathVariable UUID areaId) {
-        return ResponseEntity.ok(areaServiceManagement.getServicesByAreaId(areaId));
+    @PreAuthorize("hasRole('LANDLORD')")
+    public ResponseEntity<List<AreaServiceResponse>> getServicesByAreaId(
+            @PathVariable UUID areaId,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        // Trích xuất ID từ Token
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+
+        // Truyền cả 2 tham số xuống Service
+        return ResponseEntity.ok(areaServiceManagement.getServicesByAreaId(areaId, currentUserId));
     }
 
     @PutMapping("/{serviceId}")
-    @PreAuthorize("hasRole('LANDLORD')") // Đã đổi sang hasRole
+    @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<AreaServiceResponse> updateService(
             @PathVariable UUID serviceId,
             @RequestBody AreaServiceRequest request,
