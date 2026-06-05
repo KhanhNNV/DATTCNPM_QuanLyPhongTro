@@ -3,6 +3,7 @@ package ut.edu.be_quanlytro.Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ut.edu.be_quanlytro.Dto.Request.MeterReadingBulkUpdateRequest;
 import ut.edu.be_quanlytro.Dto.Request.MeterReadingCreateRequest;
 import ut.edu.be_quanlytro.Entity.AreaService;
 import ut.edu.be_quanlytro.Entity.MeterReading;
@@ -70,5 +71,42 @@ public class MeterReadingService {
            savedReadings.add(saved);
        }
        return savedReadings;
+    }
+
+    @Transactional
+    public MeterReading updateMeterReading(UUID readingId, Integer newIndex) {
+        MeterReading existingReading = meterReadingRepository.findById(readingId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy phiếu chốt số!"));
+
+        // 1. Chặn nếu đã lên hóa đơn
+        if (existingReading.getIsInvoiced()) {
+            throw new RuntimeException("Phiếu này đã được lập hóa đơn, không thể sửa!");
+        }
+
+        // 2. Chặn nếu số mới sửa lại nhỏ hơn số cũ
+        if (newIndex < existingReading.getOldIndex()) {
+            throw new RuntimeException(String.format("Lỗi: Số mới (%d) không được nhỏ hơn số cũ (%d)!", newIndex, existingReading.getOldIndex()));
+        }
+
+        // 3. Cập nhật số mới và lưu lại
+        existingReading.setNewIndex(newIndex);
+        MeterReading savedReading = meterReadingRepository.save(existingReading);
+
+        savedReading.getRoom().getRoomNumber();
+        savedReading.getService().getName();
+
+        return savedReading;
+    }
+    @Transactional
+    public List<MeterReading> updateBulkMeterReadings(List<MeterReadingBulkUpdateRequest> requests) {
+        List<MeterReading> updatedReadings = new ArrayList<>();
+
+        for (MeterReadingBulkUpdateRequest request : requests) {
+            // Tái sử dụng lại hàm update lẻ để nó tự check logic (isInvoiced, lớn hơn số cũ...)
+            MeterReading updated = this.updateMeterReading(request.getId(), request.getNewIndex());
+            updatedReadings.add(updated);
+        }
+
+        return updatedReadings;
     }
 }

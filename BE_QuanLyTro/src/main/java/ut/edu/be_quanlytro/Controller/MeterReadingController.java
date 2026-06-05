@@ -7,7 +7,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import ut.edu.be_quanlytro.Dto.Request.MeterReadingBulkUpdateRequest;
 import ut.edu.be_quanlytro.Dto.Request.MeterReadingCreateRequest;
+import ut.edu.be_quanlytro.Dto.Request.MeterReadingUpdateRequest;
 import ut.edu.be_quanlytro.Dto.Response.MeterReadingResponse;
 import ut.edu.be_quanlytro.Entity.MeterReading;
 import ut.edu.be_quanlytro.Service.MeterReadingService;
@@ -83,4 +85,60 @@ public class MeterReadingController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+    /**
+     * API Sửa chỉ số điện/nước khi nhập sai
+     */
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('LANDLORD')")
+    public ResponseEntity<?> updateMeterReading(
+            @PathVariable UUID id,
+            @Valid @RequestBody MeterReadingUpdateRequest request) { // <-- SỬA Ở ĐÂY
+        try {
+            // Truyền request.getNewIndex() vào Service
+            MeterReading updatedReading = meterReadingService.updateMeterReading(id, request.getNewIndex());
+
+            MeterReadingResponse response = MeterReadingResponse.builder()
+                    .id(updatedReading.getId())
+                    .roomNumber(updatedReading.getRoom().getRoomNumber())
+                    .serviceName(updatedReading.getService().getName())
+                    .oldIndex(updatedReading.getOldIndex())
+                    .newIndex(updatedReading.getNewIndex())
+                    .readingDate(updatedReading.getReadingMonth())
+                    .isInvoiced(updatedReading.getIsInvoiced())
+                    .build();
+
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    /**
+     * API Cập nhật ĐỒNG LOẠT nhiều chỉ số (Điện, Nước...)
+     */
+    @PutMapping("/bulk")
+    @PreAuthorize("hasRole('LANDLORD')")
+    public ResponseEntity<?> updateBulkMeterReadings(
+            @Valid @RequestBody List<MeterReadingBulkUpdateRequest> requests) {
+        try {
+            List<MeterReading> updatedReadings = meterReadingService.updateBulkMeterReadings(requests);
+
+            List<MeterReadingResponse> responses = updatedReadings.stream().map(reading ->
+                    MeterReadingResponse.builder()
+                            .id(reading.getId())
+                            .roomNumber(reading.getRoom().getRoomNumber())
+                            .serviceName(reading.getService().getName())
+                            .oldIndex(reading.getOldIndex())
+                            .newIndex(reading.getNewIndex())
+                            .readingDate(reading.getReadingMonth())
+                            .isInvoiced(reading.getIsInvoiced())
+                            .build()
+            ).toList();
+
+            return ResponseEntity.ok(responses);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
 }
