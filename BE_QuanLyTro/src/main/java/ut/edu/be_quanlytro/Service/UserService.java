@@ -8,7 +8,10 @@ import org.springframework.util.StringUtils;
 import ut.edu.be_quanlytro.Dto.Request.UserCreateRequest;
 import ut.edu.be_quanlytro.Dto.Request.UserUpdateRequest;
 import ut.edu.be_quanlytro.Dto.Response.UserResponse;
+import ut.edu.be_quanlytro.Entity.Area;
+import ut.edu.be_quanlytro.Entity.Enum.RoleType;
 import ut.edu.be_quanlytro.Entity.User;
+import ut.edu.be_quanlytro.Repository.AreaRepository;
 import ut.edu.be_quanlytro.Repository.UserRepository;
 
 import java.util.List;
@@ -20,6 +23,7 @@ import java.util.stream.Collectors;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final AreaRepository areaRepository;
     private final PasswordEncoder passwordEncoder;
     private final ActivityLogService activityLog;
 
@@ -56,27 +60,94 @@ public class UserService {
         return mapToResponse(savedUser);
     }
 
-    // ================= READ =================
-    public UserResponse getUserById(UUID id) {
-        User user = userRepository.findById(id)
+    // ================= READ (XEM CHI TIẾT USER CÓ CHECK QUYỀN) =================
+    @Transactional(readOnly = true) // Đảm bảo giữ Session mở để check liên kết bảng
+    public UserResponse getUserById(UUID id, UUID currentUserId) {
+        // 1. Lấy thông tin người dùng cần xem (Target User)
+        User targetUser = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
-        return mapToResponse(user);
+
+        // 2. Lấy thông tin người đang thực hiện cuộc gọi (Current User)
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại trong hệ thống"));
+
+        // 3. 🔒 KIỂM TRA BẢO MẬT BIẾN THỂ (IDOR)
+        // Trường hợp A: Nếu tự xem hồ sơ của chính mình thì luôn luôn hợp lệ
+        if (id.equals(currentUserId)) {
+            return mapToResponse(targetUser);
+        }
+
+        // Trường hợp B: Nếu Chủ trọ muốn xem thông tin của một người khác (Khách thuê)
+        if (currentUser.getRole() == RoleType.LANDLORD) {
+
+            // Tiến hành kiểm tra xem targetUser (Khách) có nằm trong bất kỳ Khu trọ nào của Chủ trọ này không
+            // Dựa trên hàm findTenantsByAreaId bạn đã viết ở bước trước, chúng ta có thể check ngược lại trong DB:
+            boolean isYourTenant = userRepository.existsTenantInLandlordAreas(id, currentUserId);
+
+            if (!isYourTenant) {
+                throw new RuntimeException("Truy cập bị từ chối! Khách thuê này không thuộc khu trọ nào do bạn quản lý.");
+            }
+        } else {
+            // Trường hợp C: Khách thuê tuyệt đối không được tự ý điền ID để xem người khác
+            throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xem thông tin của người dùng khác.");
+        }
+
+        // 4. Map sang DTO và trả về nếu hợp lệ
+        return mapToResponse(targetUser);
     }
 
     // ================= READ (LẤY DANH SÁCH THEO KHU TRỌ) =================
-    public List<UserResponse> getUsersByArea(UUID areaId) {
-        // Gọi hàm findTenantsByAreaId có chứa @Query thay vì findByAreaId
+    @Transactional(readOnly = true) // 💡 Giữ Session mở để tránh lỗi Lazy Load khi gọi area.getLandlord()
+    public List<UserResponse> getUsersByArea(UUID areaId, UUID currentUserId) {
+
+        // 1. Lấy thông tin Khu trọ để kiểm tra quyền sở hữu
+        // (Đảm bảo bạn đã inject areaRepository vào class Service này)
+        Area area = areaRepository.findById(areaId)
+                .orElseThrow(() -> new RuntimeException("Khu trọ không tồn tại"));
+
+        // 2. Lấy thông tin người dùng đang gọi API để xác định Vai trò (Role)
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại trong hệ thống"));
+
+        // 3. 🔒 KIỂM TRA BẢO MẬT: Nếu là Chủ trọ thì chỉ được xem khách thuê thuộc khu của mình
+        if (currentUser.getRole() == RoleType.LANDLORD) {
+            if (!area.getLandlord().getId().equals(currentUserId)) {
+                throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xem danh sách khách thuê của khu trọ khác.");
+            }
+        }
+
+        // 4. Nếu vượt qua vòng bảo mật, tiến hành lấy danh sách và map sang DTO
         return userRepository.findTenantsByAreaId(areaId)
                 .stream()
                 .map(this::mapToResponse)
-                .collect(Collectors.toList());
+                .toList(); // Sử dụng .toList() thay cho .collect(Collectors.toList()) nếu dùng Java 16+ cho code ngắn gọn
     }
 
     // ================= UPDATE =================
     @Transactional
     public UserResponse updateUser(UUID id, UserUpdateRequest request, UUID currentUserId) {
+        // Lấy thông tin người dùng cần chỉnh sửa (Target User)
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+
+        // 🔒 KIỂM TRA BẢO MẬT: Xác nhận quyền chỉnh sửa thông tin
+        if (!id.equals(currentUserId)) { // Nếu không phải hành vi tự sửa hồ sơ của chính mình
+
+            // Lấy thông tin của người đang thực hiện cuộc gọi từ hệ thống
+            User currentUser = userRepository.findById(currentUserId)
+                    .orElseThrow(() -> new RuntimeException("Người dùng thực hiện thao tác không tồn tại"));
+
+            if (currentUser.getRole() == RoleType.LANDLORD) {
+                // Kiểm tra xem khách thuê này có thuộc quyền quản lý của chủ trọ thông qua hợp đồng không
+                boolean isYourTenant = userRepository.existsTenantInLandlordAreas(id, currentUserId);
+                if (!isYourTenant) {
+                    throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền chỉnh sửa thông tin của khách thuê thuộc khu trọ khác.");
+                }
+            } else {
+                // Nếu vai trò là TENANT hoặc các vai trò khác cố tình truyền ID người khác lên
+                throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền chỉnh sửa thông tin của người dùng khác.");
+            }
+        }
 
         // 1. Xử lý cập nhật Số điện thoại (Tên đăng nhập)
         if (StringUtils.hasText(request.getPhone())) {
@@ -96,7 +167,7 @@ public class UserService {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
-        // 3. Xử lý các trường thông tin cơ bản khác (Như cũ)
+        // 3. Xử lý các trường thông tin cơ bản khác
         if (StringUtils.hasText(request.getFullName())) {
             user.setFullName(request.getFullName().trim());
         }
@@ -127,16 +198,37 @@ public class UserService {
     // ================= DELETE =================
     @Transactional
     public void deleteUser(UUID id, UUID currentUserId) {
-        // Tìm user trước để lấy thông tin SĐT ghi log (Thay vì chỉ dùng existsById)
+        // 1. Tìm user trước để lấy thông tin (Target User)
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng để xóa"));
 
+        // 2. 🔒 KIỂM TRA BẢO MẬT: Xác nhận quyền xóa tài khoản
+        if (!id.equals(currentUserId)) { // Nếu không phải tự xóa tài khoản của chính mình
+
+            // Lấy thông tin của người đang thực hiện cuộc gọi
+            User currentUser = userRepository.findById(currentUserId)
+                    .orElseThrow(() -> new RuntimeException("Người dùng thực hiện thao tác không tồn tại"));
+
+            if (currentUser.getRole() == RoleType.LANDLORD) {
+                // Kiểm tra xem khách thuê này có thuộc quyền quản lý của chủ trọ không
+                boolean isYourTenant = userRepository.existsTenantInLandlordAreas(id, currentUserId);
+                if (!isYourTenant) {
+                    throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xóa tài khoản khách thuê thuộc khu trọ khác.");
+                }
+            } else {
+                // Các Role khác không được phép xóa tài khoản người khác
+                throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xóa tài khoản của người dùng khác.");
+            }
+        }
+
+        // Lấy thông tin trước khi thực hiện xóa để ghi log
         String phone = user.getPhone();
         String role = user.getRole().name();
 
+        // 3. Thực hiện xóa người dùng
         userRepository.delete(user);
 
-        // GHI LOG DELETE
+        // 4. GHI LOG DELETE
         User userProxy = userRepository.getReferenceById(currentUserId);
         String action = "DELETE_USER";
         String entityName = "users";

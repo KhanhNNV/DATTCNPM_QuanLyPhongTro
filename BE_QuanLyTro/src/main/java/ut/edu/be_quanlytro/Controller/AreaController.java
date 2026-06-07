@@ -41,7 +41,7 @@ public class AreaController {
 
     // ================= CRUD =================
     @GetMapping
-    @PreAuthorize("hasRole('LANDLORD')") // Đã chuyển sang hasRole
+    @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<List<AreaResponse>> getAreasByLandlord(@AuthenticationPrincipal Jwt jwt) {
 
         // Trích xuất ID chuẩn xác từ claim
@@ -50,9 +50,16 @@ public class AreaController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('LANDLORD', 'TENANT')") // Đã chuyển sang hasAnyRole
-    public ResponseEntity<AreaResponse> getAreaById(@PathVariable UUID id) {
-        return ResponseEntity.ok(areaManagementService.getAreaById(id));
+    @PreAuthorize("hasRole('LANDLORD')")// Khách và Chủ đều dùng API này
+    public ResponseEntity<AreaResponse> getAreaById(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwt) { // Bổ sung tham số đọc Token
+
+        // Trích xuất ID chuẩn xác từ claim
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+
+        // Truyền cả id khu trọ và id người dùng xuống Service
+        return ResponseEntity.ok(areaManagementService.getAreaById(id, currentUserId));
     }
 
     @PutMapping("/{id}")

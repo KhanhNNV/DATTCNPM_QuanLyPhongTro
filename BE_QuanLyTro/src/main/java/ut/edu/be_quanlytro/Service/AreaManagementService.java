@@ -167,8 +167,26 @@ public class AreaManagementService {
                 .toList();
     }
 
-    public AreaResponse getAreaById(UUID id) {
+    public AreaResponse getAreaById(UUID id, UUID currentUserId) {
+        // 1. Lấy thông tin Khu trọ từ Database
         Area area = getAreaEntityById(id);
+
+        // 2. Tìm thông tin người dùng đang gọi API
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại trong hệ thống"));
+
+        // 3. KIỂM TRA BẢO MẬT: Nếu là Chủ trọ thì chỉ được xem khu của mình
+        if (currentUser.getRole() == RoleType.LANDLORD) {
+            // So sánh ID của chủ khu trọ với ID của người đang đăng nhập
+            if (!area.getLandlord().getId().equals(currentUserId)) {
+                throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xem khu trọ của người khác.");
+            }
+        }
+
+        // (Tùy chọn cho tương lai: Nếu Role là TENANT, bạn cũng có thể thêm logic
+        // kiểm tra xem Khách đó có đang thuê phòng thuộc khu này hay không).
+
+        // 4. Nếu qua được vòng kiểm tra, map sang DTO và trả về
         return mapToResponse(area);
     }
 
@@ -182,6 +200,12 @@ public class AreaManagementService {
     public AreaResponse updateArea(UUID id, AreaRequest request, UUID landlordId) {
         Area area = getAreaEntityById(id);
 
+        // 🔒 KIỂM TRA BẢO MẬT: Xác nhận quyền sở hữu
+        if (!area.getLandlord().getId().equals(landlordId)) {
+            throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền chỉnh sửa khu trọ của người khác.");
+        }
+
+        // Cập nhật các trường thông tin nếu có truyền lên
         if (request.getName() != null) area.setName(request.getName());
         if (request.getAddress() != null) area.setAddress(request.getAddress());
         if (request.getInvoiceDay() != null) area.setInvoiceDay(request.getInvoiceDay());
@@ -189,6 +213,7 @@ public class AreaManagementService {
 
         Area updatedArea = areaRepository.save(area);
 
+        // Ghi Log hoạt động
         User landlord = userRepository.getReferenceById(landlordId);
         activityLog.createLog(landlord, "UPDATE_AREA", "areas", updatedArea.getId(), "Cập nhật thông tin khu trọ: " + updatedArea.getName());
 
@@ -199,8 +224,34 @@ public class AreaManagementService {
     @Transactional
     public void deleteArea(UUID id, UUID landlordId) {
         Area area = getAreaEntityById(id);
+
+        // 🔒 KIỂM TRA BẢO MẬT: Xác nhận quyền sở hữu
+        if (!area.getLandlord().getId().equals(landlordId)) {
+            throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xóa khu trọ của người khác.");
+        }
+
+        // ==========================================
+        // BƯỚC 1: DỌN DẸP DỮ LIỆU CON TRƯỚC KHI XÓA CHA
+        // ==========================================
+
+        // 1.1 Xóa tất cả các Phòng (Rooms) thuộc về Khu trọ này
+        List<Room> rooms = roomRepository.findByAreaId(id);
+        if (!rooms.isEmpty()) {
+            roomRepository.deleteAll(rooms);
+        }
+
+        // 1.2 Xóa tất cả các Dịch vụ (AreaServices) thuộc về Khu trọ này
+        List<AreaService> services = areaServiceRepository.findByAreaId(id);
+        if (!services.isEmpty()) {
+            areaServiceRepository.deleteAll(services);
+        }
+
+        // ==========================================
+        // BƯỚC 2: XÓA DỮ LIỆU CHA (Khu trọ)
+        // ==========================================
         areaRepository.delete(area);
 
+        // Ghi Log hoạt động
         User landlord = userRepository.getReferenceById(landlordId);
         activityLog.createLog(landlord, "DELETE_AREA", "areas", id, "Xóa khu trọ: " + area.getName());
     }

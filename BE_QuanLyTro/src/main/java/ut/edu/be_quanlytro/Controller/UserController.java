@@ -23,57 +23,57 @@ public class UserController {
     private final UserService userService;
 
     /**
-     * API Khởi tạo tài khoản người dùng mới.
-     * Chỉ Chủ trọ mới được phép tạo tài khoản cho khách.
-     */
-    @PostMapping
-    @PreAuthorize("hasRole('LANDLORD')") // Đã chuyển sang hasRole
-    public ResponseEntity<UserResponse> createUser(
-            @RequestBody UserCreateRequest request,
-            @AuthenticationPrincipal Jwt jwt) {
-
-        // Lấy đúng trường "userId" từ Token
-        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
-        UserResponse response = userService.createUser(request, currentUserId);
-
-        return new ResponseEntity<>(response, HttpStatus.CREATED);
-    }
-
-    /**
      * API Lấy danh sách Khách thuê đang ở trong một Khu trọ cụ thể.
      * Chỉ Chủ trọ (LANDLORD) mới có quyền xem danh sách này.
      *
      * @param areaId Mã định danh UUID của Khu trọ
+     * @param jwt Token chứa thông tin xác thực của người gọi API
      * @return Danh sách UserResponse chứa thông tin khách thuê (đã ẩn mật khẩu)
      */
     @GetMapping("/area/{areaId}")
     @PreAuthorize("hasRole('LANDLORD')")
-    public ResponseEntity<List<UserResponse>> getUsersByArea(@PathVariable UUID areaId) {
-        List<UserResponse> tenants = userService.getUsersByArea(areaId);
+    public ResponseEntity<List<UserResponse>> getUsersByArea(
+            @PathVariable UUID areaId,
+            @AuthenticationPrincipal Jwt jwt) { // Bổ sung việc hứng Token ở đây
+
+        // 1. Trích xuất ID người dùng từ Token
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+
+        // 2. Truyền đủ 2 tham số (areaId và currentUserId) xuống Service
+        List<UserResponse> tenants = userService.getUsersByArea(areaId, currentUserId);
+
         return ResponseEntity.ok(tenants);
     }
 
     /**
-     * API Lấy thông tin chi tiết của một người dùng dựa vào ID.
-     * Thường Chủ trọ mới có quyền tra cứu thông tin của người khác.
+     * API 1: Xem hồ sơ cá nhân của CHÍNH NGƯỜI ĐANG ĐĂNG NHẬP (Current Profile).
+     * URL: GET /api/users/current
      */
-    @GetMapping("/{id}")
-    @PreAuthorize("hasRole('LANDLORD')") // Đã chuyển sang hasRole
-    public ResponseEntity<UserResponse> getUserById(@PathVariable UUID id) {
-        return ResponseEntity.ok(userService.getUserById(id));
+    @GetMapping("/current")
+    @PreAuthorize("hasAnyRole('LANDLORD', 'TENANT')")
+    public ResponseEntity<UserResponse> getCurrentUser(@AuthenticationPrincipal Jwt jwt) {
+        // Trích xuất ID từ Token
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+
+        // Vì tự xem chính mình nên truyền tham số ID cần xem trùng với ID người gọi
+        return ResponseEntity.ok(userService.getUserById(currentUserId, currentUserId));
     }
 
     /**
-     * API Xem hồ sơ cá nhân của chính người đang đăng nhập (Current User).
-     * Cả Chủ trọ và Khách thuê đều có quyền xem hồ sơ của mình.
+     * API 2: Chủ trọ chủ động xem chi tiết thông tin của một Khách thuê qua ID.
+     * URL: GET /api/users/{id}
      */
-    @GetMapping("/current")
-    @PreAuthorize("hasAnyRole('LANDLORD', 'TENANT')") // Khách và Chủ đều dùng được
-    public ResponseEntity<UserResponse> getCurrentUser(@AuthenticationPrincipal Jwt jwt) {
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('LANDLORD')") // Chỉ Chủ trọ mới được quyền gọi luồng xem chéo này
+    public ResponseEntity<UserResponse> getUserById(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwt) {
 
-        // Lấy đúng trường "userId" từ Token
+        // Trích xuất ID của Chủ trọ đang gọi từ Token
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
-        return ResponseEntity.ok(userService.getUserById(currentUserId));
+
+        // Đẩy cả ID khách cần xem và ID chủ trọ xuống để Service check quyền sở hữu
+        return ResponseEntity.ok(userService.getUserById(id, currentUserId));
     }
 
     /**
@@ -81,7 +81,7 @@ public class UserController {
      * Cả Chủ trọ và Khách thuê đều có quyền cập nhật thông tin cá nhân.
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('LANDLORD', 'TENANT')") // Khách và Chủ đều dùng được
+    @PreAuthorize("hasRole('LANDLORD')")  // Khách và Chủ đều dùng được
     public ResponseEntity<UserResponse> updateUser(
             @PathVariable UUID id,
             @RequestBody UserUpdateRequest request,

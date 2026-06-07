@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import ut.edu.be_quanlytro.Dto.Request.RoomRequest;
 import ut.edu.be_quanlytro.Dto.Response.RoomResponse;
 import ut.edu.be_quanlytro.Entity.Area;
+import ut.edu.be_quanlytro.Entity.Enum.RoleType;
 import ut.edu.be_quanlytro.Entity.Enum.RoomStatus;
 import ut.edu.be_quanlytro.Entity.Room;
 import ut.edu.be_quanlytro.Entity.User;
@@ -27,11 +28,16 @@ public class RoomService {
 
     // ================= CREATE =================
     @Transactional
-    public Room createRoom(RoomRequest request, UUID currentUserId) {
+    public RoomResponse createRoom(RoomRequest request, UUID currentUserId) {
 
         // 1. Kiểm tra khu trọ
         Area area = areaRepository.findById(request.getAreaId())
                 .orElseThrow(() -> new RuntimeException("Khu trọ không tồn tại"));
+
+        // 🔒 KIỂM TRA BẢO MẬT: Xác nhận quyền sở hữu khu trọ
+        if (!area.getLandlord().getId().equals(currentUserId)) {
+            throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền thêm phòng vào khu trọ của người khác.");
+        }
 
         // 2. Kiểm tra trùng mã phòng
         if (roomRepository.existsByRoomNumberAndAreaId(request.getRoomNumber(), request.getAreaId())) {
@@ -63,22 +69,54 @@ public class RoomService {
 
         activityLog.createLog(userProxy, action, entityName, savedRoom.getId(), description);
 
-        // 6. Trả về entity đã lưu
-        return savedRoom;
+        // 6. MAP ENTITY SANG DTO VÀ TRẢ VỀ
+        return mapToDTO(savedRoom);
     }
 
     // ================= READ (TRẢ VỀ DTO) =================
-
     @Transactional(readOnly = true)
-    public List<RoomResponse> getRoomsByArea(UUID areaId) {
+    public List<RoomResponse> getRoomsByArea(UUID areaId, UUID currentUserId) {
+
+        // 1. Lấy thông tin Khu trọ để kiểm tra quyền
+        Area area = areaRepository.findById(areaId)
+                .orElseThrow(() -> new RuntimeException("Khu trọ không tồn tại"));
+
+        // 2. Lấy thông tin người dùng đang gọi API
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại trong hệ thống"));
+
+        // 3. 🔒 KIỂM TRA BẢO MẬT: Nếu là Chủ trọ thì chỉ được xem phòng khu của mình
+        if (currentUser.getRole() == RoleType.LANDLORD) {
+            if (!area.getLandlord().getId().equals(currentUserId)) {
+                throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xem danh sách phòng của khu trọ khác.");
+            }
+        }
+
+        // 4. Nếu qua được chốt kiểm tra, lấy danh sách và map sang DTO
         return roomRepository.findByAreaId(areaId)
                 .stream()
                 .map(this::mapToDTO)
                 .toList();
     }
 
-    public RoomResponse getRoomResponseById(UUID id) {
+
+    @Transactional(readOnly = true)
+    public RoomResponse getRoomResponseById(UUID id, UUID currentUserId) {
+        // 1. Lấy thông tin Phòng từ Database (Dùng lại hàm helper cũ của bạn)
         Room room = getRoomById(id);
+
+        // 2. Lấy thông tin người dùng đang gọi API
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại trong hệ thống"));
+
+        // 3. 🔒 KIỂM TRA BẢO MẬT: Nếu là Chủ trọ thì chỉ được xem phòng thuộc khu của mình
+        if (currentUser.getRole() == RoleType.LANDLORD) {
+            if (!room.getArea().getLandlord().getId().equals(currentUserId)) {
+                throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xem thông tin phòng thuộc khu trọ của người khác.");
+            }
+        }
+
+        // 4. Map sang DTO và trả về
         return mapToDTO(room);
     }
 
@@ -87,26 +125,49 @@ public class RoomService {
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng với ID: " + id));
     }
 
-    // Lấy danh sách phòng theo trạng thái trong 1 khu trọ cụ thể
+    // ================= READ (LỌC THEO TRẠNG THÁI) =================
     @Transactional(readOnly = true)
-    public List<RoomResponse> getRoomsByAreaAndStatus(UUID areaId, RoomStatus status) {
+    public List<RoomResponse> getRoomsByAreaAndStatus(UUID areaId, RoomStatus status, UUID currentUserId) {
+
+        // 1. Lấy thông tin Khu trọ để kiểm tra quyền
+        Area area = areaRepository.findById(areaId)
+                .orElseThrow(() -> new RuntimeException("Khu trọ không tồn tại"));
+
+        // 2. Lấy thông tin người dùng đang gọi API
+        User currentUser = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại trong hệ thống"));
+
+        // 3. 🔒 KIỂM TRA BẢO MẬT: Nếu là Chủ trọ thì chỉ được xem phòng khu của mình
+        if (currentUser.getRole() == RoleType.LANDLORD) {
+            if (!area.getLandlord().getId().equals(currentUserId)) {
+                throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xem danh sách phòng của khu trọ khác.");
+            }
+        }
+
+        // 4. Nếu qua được chốt kiểm tra, lấy danh sách theo trạng thái và map sang DTO
         return roomRepository.findByAreaIdAndStatus(areaId, status)
                 .stream()
                 .map(this::mapToDTO)
                 .toList();
     }
-
     // ================= UPDATE =================
     @Transactional
-    public Room updateRoom(UUID id, RoomRequest request, UUID currentUserId) {
+    public RoomResponse updateRoom(UUID id, RoomRequest request, UUID currentUserId) {
         Room existingRoom = getRoomById(id);
 
-        // Cập nhật các trường thông tin
+        // 1. 🔒 KIỂM TRA BẢO MẬT: Xác nhận quyền sở hữu
+        // Từ phòng -> Gọi lên Khu trọ -> Gọi lên Chủ trọ -> Lấy ID đem so sánh
+        if (!existingRoom.getArea().getLandlord().getId().equals(currentUserId)) {
+            throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền chỉnh sửa phòng thuộc khu trọ của người khác.");
+        }
+
+        // 2. Cập nhật các trường thông tin nếu có truyền lên
         if (request.getFloor() != null) existingRoom.setFloor(request.getFloor());
         if (request.getRoomNumber() != null) {
+            // Chỉ kiểm tra trùng lặp nếu người dùng thực sự đổi tên phòng
             if (!existingRoom.getRoomNumber().equals(request.getRoomNumber()) &&
                     roomRepository.existsByRoomNumberAndAreaId(request.getRoomNumber(), existingRoom.getArea().getId())) {
-                throw new RuntimeException("Tên phòng này đã bị trùng");
+                throw new RuntimeException("Tên phòng này đã bị trùng trong khu trọ");
             }
             existingRoom.setRoomNumber(request.getRoomNumber());
         }
@@ -118,7 +179,7 @@ public class RoomService {
 
         Room updatedRoom = roomRepository.save(existingRoom);
 
-        // GHI LOG UPDATE
+        // 3. GHI LOG UPDATE
         User userProxy = userRepository.getReferenceById(currentUserId);
         String action = "UPDATE_ROOM";
         String entityName = "rooms";
@@ -127,7 +188,8 @@ public class RoomService {
 
         activityLog.createLog(userProxy, action, entityName, updatedRoom.getId(), description);
 
-        return updatedRoom;
+        // 4. MAP SANG DTO VÀ TRẢ VỀ
+        return mapToDTO(updatedRoom);
     }
 
     // ================= DELETE =================
@@ -135,17 +197,25 @@ public class RoomService {
     public void deleteRoom(UUID id, UUID currentUserId) {
         Room room = getRoomById(id);
 
+        // 1. 🔒 KIỂM TRA BẢO MẬT: Xác nhận quyền sở hữu
+        // Từ phòng -> Gọi lên Khu trọ -> Gọi lên Chủ trọ -> Lấy ID đem so sánh
+        if (!room.getArea().getLandlord().getId().equals(currentUserId)) {
+            throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xóa phòng thuộc khu trọ của người khác.");
+        }
+
+        // 2. Kiểm tra điều kiện nghiệp vụ: Không cho xóa phòng đang có khách
         if (room.getStatus() == RoomStatus.RENTED) {
             throw new RuntimeException("Không thể xóa phòng đang có người thuê");
         }
 
-        // Lấy thông tin phòng và khu trọ trước khi xóa để ghi log
+        // 3. Lấy thông tin phòng và khu trọ trước khi xóa để ghi log
         String roomNumber = room.getRoomNumber();
         String areaName = room.getArea().getName();
 
+        // 4. Xóa phòng
         roomRepository.delete(room);
 
-        // GHI LOG DELETE
+        // 5. GHI LOG DELETE
         User userProxy = userRepository.getReferenceById(currentUserId);
         String action = "DELETE_ROOM";
         String entityName = "rooms";
