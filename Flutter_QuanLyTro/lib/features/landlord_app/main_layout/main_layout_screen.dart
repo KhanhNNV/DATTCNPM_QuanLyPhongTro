@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_quanlytro/features/landlord_app/main_layout/view_models/main_layout_view_model.dart';
 import '../../../core/constants/app_colors.dart';
 import '../home_page/home_page_screen.dart';
+import '../home_page/home_screen.dart';
 import 'widgets/main_app_bar.dart';
 import 'widgets/main_drawer.dart';
 import 'widgets/main_bottom_bar.dart';
@@ -154,6 +155,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                 selectedAreaId:
                 _viewModel.selectedAreaId,
               ),
+              HomeScreen(),
               const Center(
                 child: Text('Màn hình Khách thuê'),
               ),
