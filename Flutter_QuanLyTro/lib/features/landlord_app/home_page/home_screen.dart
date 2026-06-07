@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_quanlytro/features/landlord_app/home_page/quick_action_item.dart';
 import '../../../core/constants/app_colors.dart';
+import '../deposit_page/deposit_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,7 +18,16 @@ class _HomeScreenState extends State<HomeScreen> {
       QuickActionItem(
         title: 'Cọc giữ chỗ',
         icon: Icons.handshake_outlined,
-        onTap: () => _navigateTo('Nút: Cọc giữ chỗ'),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => DepositScreen(
+                areaId: selectedArea.id,
+              ),
+            ),
+          );
+        },
       ),
       QuickActionItem(
         title: 'Lập hợp đồng mới',

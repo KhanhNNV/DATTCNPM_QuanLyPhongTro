@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import '../../../core/network/api_client.dart';
-import '../models/room_model.dart';
+import '../models/response/room_model.dart';
 
 class RoomProvider {
   final ApiClient _apiClient = ApiClient();

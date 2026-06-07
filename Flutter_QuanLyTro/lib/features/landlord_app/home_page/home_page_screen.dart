@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_quanlytro/features/landlord_app/home_page/view_models/home_page_view_model.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../../data/providers/user_provider.dart';
-import '../../../../data/models/user_model.dart';
+import '../../../data/models/response/user_model.dart';
 import '../auth/login_screen.dart';
 
 class HomePageScreen extends StatefulWidget {

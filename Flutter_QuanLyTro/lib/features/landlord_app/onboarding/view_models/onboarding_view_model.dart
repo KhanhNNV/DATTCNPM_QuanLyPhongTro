@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../data/models/area_model.dart';
+import '../../../../data/models/response/area_model.dart';
 import '../../../../data/providers/area_provider.dart';
 
 class OnboardingViewModel extends ChangeNotifier {

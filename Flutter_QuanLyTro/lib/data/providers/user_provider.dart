@@ -1,6 +1,6 @@
 import 'dart:convert';
 import '../../../core/network/api_client.dart';
-import '../models/user_model.dart';
+import '../models/response/user_model.dart';
 
 class UserProvider {
   // Gọi thông qua ApiClient dùng chung
