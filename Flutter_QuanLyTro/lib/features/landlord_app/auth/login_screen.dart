@@ -3,6 +3,7 @@ import 'package:flutter_quanlytro/features/landlord_app/auth/register_screen.dar
 import 'package:flutter_quanlytro/features/landlord_app/auth/view_models/login_view_model.dart';
 import '../../../core/constants/app_colors.dart';
 import '../home_page/home_page_screen.dart';
+import '../main_layout/main_layout_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -50,7 +51,7 @@ class _LoginScreenState extends State<LoginScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-            builder: (context) => HomePageScreen(),
+            builder: (context) => MainLayoutScreen(),
           ),
         );
       },

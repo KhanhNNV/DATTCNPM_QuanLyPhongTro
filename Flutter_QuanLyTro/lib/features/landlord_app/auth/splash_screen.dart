@@ -4,6 +4,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/token_manager.dart';
 import '../../../../data/providers/user_provider.dart';
 import '../home_page/home_page_screen.dart';
+import '../main_layout/main_layout_screen.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -58,7 +59,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => HomePageScreen()),
+        MaterialPageRoute(builder: (context) => MainLayoutScreen()),
       );
     }
   }

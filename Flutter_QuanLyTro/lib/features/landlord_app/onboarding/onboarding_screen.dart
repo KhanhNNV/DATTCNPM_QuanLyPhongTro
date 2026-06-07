@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_quanlytro/features/landlord_app/onboarding/view_models/onboarding_view_model.dart';
 import '../../../core/constants/app_colors.dart';
-import '../home_page/home_page_screen.dart';
+import '../../../data/models/area_model.dart';
+import '../main_layout/main_layout_screen.dart';
 import 'models/onboarding_models.dart';
+import 'view_models/onboarding_view_model.dart';
 import 'widgets/general_info_card.dart';
 import 'widgets/services_card.dart';
 import 'widgets/default_room_card.dart';
 import 'widgets/dynamic_floor_card.dart';
 
 class OnboardingScreen extends StatefulWidget {
-  const OnboardingScreen({super.key});
+  final bool isAddingNewArea;
+
+  const OnboardingScreen({
+    super.key,
+    this.isAddingNewArea = false,
+  });
 
   @override
   State<OnboardingScreen> createState() => _OnboardingScreenState();
@@ -17,6 +23,7 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final OnboardingViewModel _viewModel = OnboardingViewModel();
+
   // --- 1. STATE THÔNG TIN KHU TRỌ ---
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
@@ -42,11 +49,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   int _floorCount = 0;
   final List<TextEditingController> _roomsPerFloorControllers = [];
 
-
   @override
   void initState() {
     super.initState();
-    // Lắng nghe lỗi từ ViewModel để hiện SnackBar
     _viewModel.addListener(_onViewModelChanged);
   }
 
@@ -100,14 +105,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
   }
 
-// --- HÀM SUBMIT GỌI VIEWMODEL ---
   void _submitData() {
-    // Gom danh sách số lượng phòng mỗi tầng
     List<int> roomsPerFloor = _roomsPerFloorControllers
         .map((controller) => int.tryParse(controller.text) ?? 0)
         .toList();
 
-    // Gom danh sách dịch vụ
     List<Map<String, dynamic>> servicesPayload = _services.map((s) {
       return {
         'name': s.name,
@@ -116,7 +118,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       };
     }).toList();
 
-    // Đóng gói toàn bộ thành JSON
     final payload = {
       "name": _nameController.text.trim(),
       "address": _addressController.text.trim(),
@@ -130,20 +131,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       "defaultMaxOccupants": int.tryParse(_maxOccupantsController.text) ?? 1,
     };
 
-    // 4. Gọi hàm từ ViewModel
     _viewModel.submitOnboarding(
       payload: payload,
-      onSuccess: () {
+      onSuccess: (newArea) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Khởi tạo Khu trọ thành công!'),
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const HomePageScreen()),
-        );
+        if (widget.isAddingNewArea) {
+          Navigator.pop(context, newArea);
+        } else {
+          Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const MainLayoutScreen(),
+            ),
+                (route) => false,
+          );
+        }
       },
     );
   }
@@ -173,14 +180,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               onInvoiceDayChanged: (val) => setState(() => _invoiceDay = val!),
               onDueDateChanged: (val) => setState(() => _dueDate = val!),
             ),
-
             const SizedBox(height: 20),
             _buildSectionTitle('2. Cấu hình dịch vụ cơ bản'),
             ServicesCard(
               services: _services,
-              onServiceTypeChanged: () => setState(() {}), // Refresh UI để cập nhật hậu tố đơn vị
+              onServiceTypeChanged: () => setState(() {}),
             ),
-
             const SizedBox(height: 20),
             _buildSectionTitle('3. Cấu hình phòng mẫu'),
             DefaultRoomCard(
@@ -189,7 +194,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               areaSizeController: _areaSizeController,
               maxOccupantsController: _maxOccupantsController,
             ),
-
             const SizedBox(height: 20),
             _buildSectionTitle('4. Cấu hình số lượng phòng'),
             DynamicFloorCard(
@@ -198,17 +202,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               roomsPerFloorControllers: _roomsPerFloorControllers,
               onFloorCountChanged: _updateFloorCount,
             ),
-
             const SizedBox(height: 32),
             ElevatedButton(
-              onPressed: _submitData,
+              onPressed: _viewModel.isLoading ? null : _submitData,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('Hoàn tất khởi tạo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              child: _viewModel.isLoading
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text('Hoàn tất khởi tạo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
             ),
             const SizedBox(height: 32),
           ],

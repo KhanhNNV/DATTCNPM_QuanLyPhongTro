@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_quanlytro/core/constants/app_colors.dart';
 import 'features/landlord_app/auth/splash_screen.dart';
 import 'features/landlord_app/welcome/welcome_screen.dart';
 
@@ -18,7 +19,7 @@ class MyApp extends StatelessWidget {
       navigatorKey: navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
         useMaterial3: true,
       ),
       home: const SplashScreen(),
