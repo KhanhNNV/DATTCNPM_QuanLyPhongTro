@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import 'view_models/area_config_view_model.dart';
+import 'package:intl/intl.dart';
 
 class AreaConfigScreen extends StatefulWidget {
   final String areaId;
@@ -41,18 +42,14 @@ class _AreaConfigScreenState extends State<AreaConfigScreen> with SingleTickerPr
     super.dispose();
   }
 
-  String formatNumber(dynamic value) {
-    if (value == null) return '';
+  String formatCurrency(dynamic value) {
+    if (value == null) return '0';
 
-    final number = double.tryParse(value.toString());
+    final number = double.tryParse(value.toString()) ?? 0;
 
-    if (number == null) return value.toString();
-
-    if (number == number.toInt()) {
-      return number.toInt().toString();
-    }
-
-    return number.toString();
+    return NumberFormat('#,###', 'vi_VN')
+        .format(number)
+        .replaceAll(',', '.');
   }
 
   @override
@@ -100,7 +97,7 @@ class _AreaConfigScreenState extends State<AreaConfigScreen> with SingleTickerPr
       itemCount: _viewModel.services.length,
       itemBuilder: (context, index) {
         final service = _viewModel.services[index];
-        final priceController = TextEditingController(text: formatNumber(service['price']));
+        final priceController = TextEditingController(text: formatCurrency(service['price']));
 
         return Card(
           margin: const EdgeInsets.only(bottom: 12),
@@ -180,32 +177,125 @@ class _AreaConfigScreenState extends State<AreaConfigScreen> with SingleTickerPr
         itemCount: _viewModel.rooms.length,
         itemBuilder: (context, index) {
           final room = _viewModel.rooms[index];
+
           return Card(
             margin: const EdgeInsets.only(bottom: 12),
-            child: ListTile(
-              leading: CircleAvatar(
-                backgroundColor: AppColors.primary.withOpacity(0.1),
-                child: Text('T${room['floor']}', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
-              ),
-              title: Text('Phòng ${room['roomNumber']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Column(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            child: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Giá: ${room['rentPrice']}đ'),
-                  Text('Diện tích: ${room['areaSize']}m²'),
-                Text()
-                final priceController = TextEditingController(text: isEdit ? room['rentPrice'].toString() : '');
-          final depositController = TextEditingController(text: isEdit ? room['depositAmount'].toString() : '');
-          final maxController = TextEditingController(text: isEdit ? room['maxOccupants'].toString() : '4');
-                ],
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(icon: const Icon(Icons.edit, color: Colors.orange), onPressed: () => _showRoomFormDialog(room)),
-                  IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.redAccent),
-                    onPressed: () => _confirmDeleteRoom(room['id'].toString(), room['roomNumber'].toString()),
+                  // --- Dòng 1: Header (Tầng, Tên phòng, Menu 3 chấm) ---
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 18,
+                            backgroundColor: AppColors.primary.withOpacity(0.1),
+                            child: Text(
+                                'T${room['floor']}',
+                                style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13)
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                              'Phòng ${room['roomNumber']}',
+                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)
+                          ),
+                        ],
+                      ),
+
+                      // Nút 3 chấm (PopupMenuButton)
+                      PopupMenuButton<String>(
+                        icon: const Icon(Icons.more_vert, color: Colors.grey),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        onSelected: (String value) {
+                          if (value == 'edit') {
+                            _showRoomFormDialog(room);
+                          } else if (value == 'delete') {
+                            _confirmDeleteRoom(room['id'].toString(), room['roomNumber'].toString());
+                          }
+                        },
+                        itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                          const PopupMenuItem<String>(
+                            value: 'edit',
+                            child: Row(
+                              children: [
+                                Icon(Icons.edit, color: Colors.orange, size: 20),
+                                SizedBox(width: 8),
+                                Text('Sửa phòng'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem<String>(
+                            value: 'delete',
+                            child: Row(
+                              children: [
+                                Icon(Icons.delete, color: Colors.redAccent, size: 20),
+                                SizedBox(width: 8),
+                                Text('Xóa phòng'),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8.0),
+                    child: Divider(height: 1, thickness: 0.5),
+                  ),
+
+                  // --- Dòng 2: Thông tin Giá và Cọc (Text thường, nhấn mạnh giá) ---
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              'Giá thuê: ',
+                              style: TextStyle(fontSize: 14, color: Colors.grey[800]),
+                            ),
+                            Text(
+                              '${formatCurrency(room['rentPrice'])}đ',
+                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.blue),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Text(
+                              'Tiền cọc: ${formatCurrency(room['depositAmount'])}đ',
+                              style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // --- Dòng 3: Hiển thị các Badge phụ (Diện tích, Người, Trạng thái) ---
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      _buildBadge(Icons.aspect_ratio, '${formatCurrency(room['areaSize'])}m²', Colors.teal),
+                      _buildBadge(Icons.people, 'Tối đa: ${room['maxOccupants']} người', Colors.purple),
+                      _buildBadge(
+                          Icons.info_outline,
+                          _getStatusText(room['status']),
+                          _getStatusColor(room['status']),
+                          isFilled: true
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -214,6 +304,54 @@ class _AreaConfigScreenState extends State<AreaConfigScreen> with SingleTickerPr
         },
       ),
     );
+  }
+
+  Widget _buildBadge(IconData icon, String text, Color color, {bool isFilled = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      decoration: BoxDecoration(
+        color: isFilled ? color : color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: isFilled ? null : Border.all(color: color.withOpacity(0.4)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: isFilled ? Colors.white : color),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isFilled ? Colors.white : color,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Chuyển đổi mã trạng thái sang Text Tiếng Việt
+  String _getStatusText(String? status) {
+    switch (status) {
+      case 'AVAILABLE': return 'Trống';
+      case 'DEPOSITED': return 'Đã cọc';
+      case 'RENTED': return 'Đã thuê';
+      case 'MAINTENANCE': return 'Bảo trì';
+      default: return status ?? 'Không rõ';
+    }
+  }
+
+  // Chuyển đổi mã trạng thái sang Màu sắc
+  Color _getStatusColor(String? status) {
+    switch (status) {
+      case 'AVAILABLE': return Colors.green;
+      case 'DEPOSITED': return Colors.redAccent;
+      case 'RENTED': return Colors.redAccent;
+      case 'MAINTENANCE': return Colors.orange;
+      default: return Colors.grey;
+    }
   }
 
   // Hộp thoại Thêm/Sửa phòng dựa trên RoomRequest DTO
