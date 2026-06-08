@@ -139,6 +139,33 @@ class ApiClient {
     return response;
   }
 
+
+  Future<http.Response> delete(String endpoint) async {
+    final url = Uri.parse('$baseUrl$endpoint');
+    var headers = await _getHeaders();
+
+    var response = await http.delete(url, headers: headers);
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      bool isRefreshed = await _refreshToken();
+
+      if (isRefreshed) {
+        headers = await _getHeaders();
+        response = await http.delete(url, headers: headers);
+      } else {
+        await TokenManager.clearAuthData();
+
+        navigatorKey.currentState?.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+              (route) => false,
+        );
+
+        throw Exception('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      }
+    }
+
+    return response;
+  }
+
   // Hàm xử lý upload file (PUT)
   Future<http.StreamedResponse> putMultipart(
       String endpoint,

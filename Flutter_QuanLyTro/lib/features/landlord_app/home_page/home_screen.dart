@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_quanlytro/features/landlord_app/home_page/quick_action_item.dart';
 import '../../../core/constants/app_colors.dart';
+import '../area_management/area_config_screen.dart';
 import '../deposit_page/deposit_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_quanlytro/features/landlord_app/main_layout/view_models/main_layout_view_model.dart';
@@ -82,7 +83,30 @@ class _HomeScreenState extends State<HomeScreen> {
       QuickActionItem(
         title: 'Cấu hình Khu trọ',
         icon: Icons.business_outlined,
-        onTap: () => _navigateTo('Nút: Tinh chỉnh phòng đơn / Dịch vụ'),
+        onTap: () {
+          final currentAreaId = context.read<MainLayoutViewModel>().selectedAreaId;
+
+          if (currentAreaId == null || currentAreaId.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Vui lòng chọn khu trọ ở bộ lọc phía trên trước khi cấu hình!'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => AreaConfigScreen(areaId: currentAreaId),
+            ),
+          ).then((_) {
+            // Tự động làm mới lại màn hình chính khi quay trở về
+            if (context.mounted) {
+              context.read<MainLayoutViewModel>().fetchInitialData();
+            }
+          });
+        },
       ),
       QuickActionItem(
         title: 'Thiết lập Chữ ký',
