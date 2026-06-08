@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_quanlytro/features/landlord_app/home_page/quick_action_item.dart';
 import '../../../core/constants/app_colors.dart';
 import '../deposit_page/deposit_screen.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_quanlytro/features/landlord_app/main_layout/view_models/main_layout_view_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -19,11 +21,20 @@ class _HomeScreenState extends State<HomeScreen> {
         title: 'Cọc giữ chỗ',
         icon: Icons.handshake_outlined,
         onTap: () {
+          // Lấy areaId từ Global Provider
+          final currentAreaId = context.read<MainLayoutViewModel>().selectedAreaId;
+
+          if (currentAreaId == null || currentAreaId.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Vui lòng chọn khu trọ trước!')),
+            );
+            return;
+          }
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => DepositScreen(
-                areaId: selectedArea.id,
+                areaId: currentAreaId,
               ),
             ),
           );

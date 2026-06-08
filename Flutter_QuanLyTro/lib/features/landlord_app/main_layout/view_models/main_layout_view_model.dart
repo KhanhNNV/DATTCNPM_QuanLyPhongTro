@@ -4,7 +4,6 @@ import 'package:flutter_quanlytro/data/providers/user_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../data/models/response/area_model.dart';
 import '../../../../data/providers/area_provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class MainLayoutViewModel extends ChangeNotifier {
   final AreaProvider _areaProvider = AreaProvider();
