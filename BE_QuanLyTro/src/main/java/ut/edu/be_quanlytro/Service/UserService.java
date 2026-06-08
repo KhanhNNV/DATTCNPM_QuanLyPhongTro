@@ -5,6 +5,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 import ut.edu.be_quanlytro.Dto.Request.UserCreateRequest;
 import ut.edu.be_quanlytro.Dto.Request.UserUpdateRequest;
 import ut.edu.be_quanlytro.Dto.Response.UserResponse;
@@ -26,6 +27,7 @@ public class UserService {
     private final AreaRepository areaRepository;
     private final PasswordEncoder passwordEncoder;
     private final ActivityLogService activityLog;
+    private final CloudinaryService cloudinaryService;
 
     // ================= CREATE =================
     @Transactional
@@ -235,6 +237,37 @@ public class UserService {
         String description = String.format("Xóa tài khoản %s (SĐT: %s)", role, phone);
 
         activityLog.createLog(userProxy, action, entityName, id, description);
+    }
+
+
+
+    @Transactional
+    public String updateSignature(MultipartFile file, UUID currentUserId) {
+        if (file.isEmpty()) {
+            throw new RuntimeException("Vui lòng chọn hoặc vẽ chữ ký trước khi tải lên!");
+        }
+
+        User user = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
+
+        if (user.getRole() != RoleType.LANDLORD) {
+            throw new RuntimeException("Truy cập bị từ chối! Chỉ tài khoản Chủ trọ mới có quyền thiết lập chữ ký số.");
+        }
+
+        // TỰ ĐỘNG DỌN RÁC: Nếu đã có chữ ký cũ, tiến hành xóa tận gốc trên Cloudinary trước
+        if (user.getLandlordSignature() != null && !user.getLandlordSignature().isEmpty()) {
+            cloudinaryService.deleteFile(user.getLandlordSignature());
+        }
+
+        // Sau đó mới tải ảnh mới lên như bình thường
+        String signatureUrl = cloudinaryService.uploadFile(file, "signatures");
+
+        user.setLandlordSignature(signatureUrl);
+        userRepository.save(user);
+
+        activityLog.createLog(user, "UPDATE_SIGNATURE", "users", user.getId(), "Cập nhật chữ ký số cá nhân.");
+
+        return signatureUrl;
     }
 
     // ================= HELPER / MAPPER =================

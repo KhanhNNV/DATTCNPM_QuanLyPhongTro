@@ -7,6 +7,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import ut.edu.be_quanlytro.Dto.Request.UserCreateRequest;
 import ut.edu.be_quanlytro.Dto.Request.UserUpdateRequest;
 import ut.edu.be_quanlytro.Dto.Response.UserResponse;
@@ -109,5 +110,17 @@ public class UserController {
         userService.deleteUser(id, currentUserId);
 
         return ResponseEntity.ok("Xóa tài khoản người dùng thành công");
+    }
+
+    @PutMapping("/signature")
+    @PreAuthorize("hasRole('LANDLORD')")
+    public ResponseEntity<String> updateSignature(
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+        String signatureUrl = userService.updateSignature(file, currentUserId);
+
+        return ResponseEntity.ok(signatureUrl);
     }
 }
