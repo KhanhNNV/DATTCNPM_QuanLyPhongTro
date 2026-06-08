@@ -5,6 +5,8 @@ import '../deposit_page/deposit_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_quanlytro/features/landlord_app/main_layout/view_models/main_layout_view_model.dart';
 
+import '../signature/signature_screen.dart';
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -85,7 +87,17 @@ class _HomeScreenState extends State<HomeScreen> {
       QuickActionItem(
         title: 'Thiết lập Chữ ký',
         icon: Icons.draw_outlined,
-        onTap: () => _navigateTo('Nút: Thiết lập chữ ký số hệ thống'),
+        onTap: () async {
+          final isUpdated = await Navigator.push<bool>(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const SignatureScreen(),
+            ),
+          );
+          if (isUpdated == true && context.mounted) {
+            context.read<MainLayoutViewModel>().fetchInitialData();
+          }
+        },
       ),
       QuickActionItem(
         title: 'Thống kê Doanh thu',

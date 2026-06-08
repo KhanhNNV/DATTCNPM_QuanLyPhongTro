@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../features/landlord_app/welcome/welcome_screen.dart';
@@ -136,5 +137,58 @@ class ApiClient {
     }
 
     return response;
+  }
+
+  // Hàm xử lý upload file (PUT)
+  Future<http.StreamedResponse> putMultipart(
+      String endpoint,
+      String fileField,
+      Uint8List fileBytes,
+      String fileName
+      ) async {
+    final url = Uri.parse('$baseUrl$endpoint');
+    var request = http.MultipartRequest('PUT', url);
+
+    // Lấy Token gắn vào header
+    final token = await TokenManager.getAccessToken();
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+
+    // Gắn file vào request
+    request.files.add(
+      http.MultipartFile.fromBytes(
+        fileField,
+        fileBytes,
+        filename: fileName,
+      ),
+    );
+
+    var streamedResponse = await request.send();
+
+    // Xử lý logic Refresh Token nếu bị lỗi 401/403
+    if (streamedResponse.statusCode == 401 || streamedResponse.statusCode == 403) {
+      bool isRefreshed = await _refreshToken();
+
+      if (isRefreshed) {
+        // Tạo lại request mới sau khi có token mới
+        request = http.MultipartRequest('PUT', url);
+        final newToken = await TokenManager.getAccessToken();
+        request.headers['Authorization'] = 'Bearer $newToken';
+        request.files.add(
+          http.MultipartFile.fromBytes(fileField, fileBytes, filename: fileName),
+        );
+        streamedResponse = await request.send();
+      } else {
+        await TokenManager.clearAuthData();
+        navigatorKey.currentState?.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+              (route) => false,
+        );
+        throw Exception('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      }
+    }
+
+    return streamedResponse;
   }
 }
