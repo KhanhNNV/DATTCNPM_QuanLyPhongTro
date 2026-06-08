@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_quanlytro/data/models/user_model.dart';
+import 'package:flutter_quanlytro/data/models/response/user_model.dart';
 import 'package:flutter_quanlytro/data/providers/user_provider.dart';
-import '../../../../data/models/area_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../data/models/response/area_model.dart';
 import '../../../../data/providers/area_provider.dart';
 
 class MainLayoutViewModel extends ChangeNotifier {
   final AreaProvider _areaProvider = AreaProvider();
   final UserProvider _userProvider = UserProvider();
+
+  // Key dùng để lưu và đọc ID khu trọ dưới bộ nhớ máy
+  static const String _selectedAreaKey = 'SELECTED_AREA_ID';
 
   // --- QUẢN LÝ TAB ---
   int _currentIndex = 0;
@@ -36,10 +40,16 @@ class MainLayoutViewModel extends ChangeNotifier {
     _errorMessage = null;
     notifyListeners();
 
-
     try {
-      // Lưu id đang chọn trước khi refresh
-      final selectedAreaId = _selectedArea?.id;
+      // Lấy id đang chọn hiện tại
+      String? targetAreaId = _selectedArea?.id;
+
+      // Nếu là lần đầu mở app (targetAreaId chưa có), thử đọc ID đã lưu từ SharedPreferences
+      if (targetAreaId == null) {
+        final prefs = await SharedPreferences.getInstance();
+        targetAreaId = prefs.getString(_selectedAreaKey);
+      }
+
       final results = await Future.wait([
         _areaProvider.getAreasByLandlord(),
         _userProvider.getCurrentUser(),
@@ -52,19 +62,23 @@ class MainLayoutViewModel extends ChangeNotifier {
       _currentUser = user;
 
       if (_areas.isNotEmpty) {
-        if (selectedAreaId != null) {
+        if (targetAreaId != null) {
           try {
+            // Kiểm tra xem ID đã lưu có thực sự tồn tại trong danh sách mới tải về không
             _selectedArea = _areas.firstWhere(
-                  (a) => a.id == selectedAreaId,
+                  (a) => a.id == targetAreaId,
             );
           } catch (_) {
+            // Nếu không tìm thấy (Khu trọ đã bị xóa ở thiết bị khác), fallback về khu đầu tiên
             _selectedArea = _areas.first;
           }
         } else {
-          _selectedArea = selectLast
-              ? _areas.last
-              : _areas.first;
+          _selectedArea = selectLast ? _areas.last : _areas.first;
         }
+
+        // Đồng bộ lại ID thực tế được chọn vào bộ nhớ
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(_selectedAreaKey, _selectedArea!.id);
       }
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
@@ -74,7 +88,6 @@ class MainLayoutViewModel extends ChangeNotifier {
     }
   }
 
-
   // Chuyển Tab BottomBar
   void changeTab(int index) {
     if (_currentIndex != index) {
@@ -83,11 +96,15 @@ class MainLayoutViewModel extends ChangeNotifier {
     }
   }
 
-  // Đổi khu trọ đang được chọn
-  void changeArea(AreaModel newArea) {
+  // Đổi khu trọ đang được chọn (Chuyển sang hàm async để lưu dữ liệu)
+  Future<void> changeArea(AreaModel newArea) async {
     if (_selectedArea?.id != newArea.id){
       _selectedArea = newArea;
       notifyListeners();
+
+      // Lưu ID mới vào bộ nhớ khi người dùng bấm chọn
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_selectedAreaKey, newArea.id);
 
       // TODO: Sau này bạn có thể bắn thêm event ở đây để báo cho HomePage tải lại danh sách phòng
     }
@@ -95,12 +112,14 @@ class MainLayoutViewModel extends ChangeNotifier {
 
   String? get selectedAreaId => _selectedArea?.id;
 
-  void addAndSelectArea(AreaModel area) {
+  // Cập nhật hàm để tự ghi nhớ khi tạo mới khu trọ thành công
+  Future<void> addAndSelectArea(AreaModel area) async {
     _areas.add(area);
-
     _selectedArea = area;
-
     notifyListeners();
-  }
 
+    // Lưu ID của khu trọ vừa tạo mới
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_selectedAreaKey, area.id);
+  }
 }

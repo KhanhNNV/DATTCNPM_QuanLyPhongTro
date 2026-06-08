@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../data/models/area_model.dart';
-import '../../../../data/models/user_model.dart';
+import '../../../../data/models/response/area_model.dart';
+import '../../../../data/models/response/user_model.dart';
 import '../../onboarding/onboarding_screen.dart';
 import '../../area_management/edit_area_screen.dart';
 

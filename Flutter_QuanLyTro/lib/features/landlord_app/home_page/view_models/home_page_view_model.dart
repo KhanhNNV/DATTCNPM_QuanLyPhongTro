@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../data/models/room_model.dart';
+import '../../../../data/models/response/room_model.dart';
 import '../../../../data/providers/room_provider.dart';
 
 class HomePageViewModel extends ChangeNotifier {

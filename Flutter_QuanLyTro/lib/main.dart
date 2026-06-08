@@ -1,12 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter_quanlytro/core/constants/app_colors.dart';
 import 'features/landlord_app/auth/splash_screen.dart';
-import 'features/landlord_app/welcome/welcome_screen.dart';
+import 'features/landlord_app/main_layout/view_models/main_layout_view_model.dart'; // Import ViewModel
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => MainLayoutViewModel()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {

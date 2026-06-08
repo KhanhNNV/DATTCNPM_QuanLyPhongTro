@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../data/models/area_model.dart';
+import '../../../data/models/response/area_model.dart';
 import '../main_layout/main_layout_screen.dart';
 import 'models/onboarding_models.dart';
 import 'view_models/onboarding_view_model.dart';

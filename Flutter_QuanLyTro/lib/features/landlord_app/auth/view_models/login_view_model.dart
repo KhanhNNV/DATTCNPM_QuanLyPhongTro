@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../data/providers/auth_provider.dart';
 import '../../../../data/providers/user_provider.dart';
-import '../../../../data/models/user_model.dart';
+import '../../../../data/models/response/user_model.dart';
 
 class LoginViewModel extends ChangeNotifier {
   final AuthProvider _authProvider = AuthProvider();

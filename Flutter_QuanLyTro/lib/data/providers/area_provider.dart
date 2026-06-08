@@ -1,6 +1,6 @@
 import 'dart:convert';
 import '../../../core/network/api_client.dart';
-import '../models/area_model.dart';
+import '../models/response/area_model.dart';
 
 class AreaProvider {
   final ApiClient _apiClient = ApiClient();
