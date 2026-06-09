@@ -284,7 +284,6 @@ public class UserService {
                 .idCardFront(user.getIdCardFront())
                 .idCardBack(user.getIdCardBack())
                 .isFirstLogin(user.getIsFirstLogin())
-                .landlordSignature(user.getLandlordSignature())
                 .build();
     }
 }

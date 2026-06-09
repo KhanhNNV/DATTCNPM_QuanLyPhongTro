@@ -20,5 +20,4 @@ public class UserResponse {
     private String idCardFront;
     private String idCardBack;
     private Boolean isFirstLogin;
-    private String landlordSignature;
 }

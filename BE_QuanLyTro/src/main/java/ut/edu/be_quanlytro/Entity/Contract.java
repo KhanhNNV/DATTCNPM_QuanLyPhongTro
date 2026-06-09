@@ -35,7 +35,7 @@ public class Contract {
     @JoinColumn(name = "tenant_id", nullable = false)
     private User tenant;
 
-    // BỔ SUNG: Danh sách TẤT CẢ THÀNH VIÊN ở trong phòng này
+
     @OneToMany(mappedBy = "contract", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<ContractMember> members = new ArrayList<>();

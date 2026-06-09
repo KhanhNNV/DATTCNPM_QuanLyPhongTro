@@ -165,6 +165,40 @@ public class DepositService {
                 .toList();
     }
 
+    // ================= AUTOMATION (TỰ ĐỘNG HỦY CỌC QUÁ HẠN) =================
+    @Transactional
+    public void autoCancelExpiredDeposits() {
+        LocalDate today = LocalDate.now();
+
+        // 1. Tìm các phiếu cọc PENDING đã quá ngày hẹn dọn vào
+        List<Deposit> expiredDeposits = depositRepository
+                .findAllByStatusAndExpectedMoveInDateBefore(DepositStatus.PENDING, today);
+
+        if (expiredDeposits.isEmpty()) {
+            return;
+        }
+
+        System.out.println("Phát hiện " + expiredDeposits.size() + " phiếu đặt cọc quá hạn cần hủy");
+
+        for (Deposit deposit : expiredDeposits) {
+            // 2. Chuyển trạng thái phiếu cọc sang CANCELLED
+            deposit.setStatus(DepositStatus.CANCELLED);
+            deposit.setNote(deposit.getNote() + " | [Hệ thống tự động hủy do quá hạn ngày hẹn dọn vào].");
+
+            // 3. Giải phóng phòng: Chuyển trạng thái phòng về lại AVAILABLE nếu phòng đang bị khóa cọc
+            Room room = deposit.getRoom();
+            if (room.getStatus() == RoomStatus.DEPOSITED) {
+                room.setStatus(RoomStatus.AVAILABLE);
+                roomRepository.save(room);
+            }
+
+            depositRepository.save(deposit);
+            System.out.println("-> Đã hủy phiếu cọc ID: " + deposit.getId() + " của phòng: " + room.getRoomNumber());
+        }
+
+        System.out.println("Hoàn tất tiến trình quét dọn phiếu cọc quá hạn");
+    }
+
     // ================= MAPPER =================
     private DepositResponse mapToResponse(Deposit deposit) {
         return DepositResponse.builder()

@@ -12,6 +12,7 @@ import ut.edu.be_quanlytro.Entity.Contract;
 import ut.edu.be_quanlytro.Entity.ContractMember;
 import ut.edu.be_quanlytro.Entity.Enum.ContractStatus;
 import ut.edu.be_quanlytro.Entity.Enum.RoleType;
+import ut.edu.be_quanlytro.Entity.Enum.RoomStatus;
 import ut.edu.be_quanlytro.Entity.Room;
 import ut.edu.be_quanlytro.Entity.User;
 import ut.edu.be_quanlytro.Repository.ContractRepository;
@@ -43,40 +44,53 @@ public class ContractService {
         Room room = roomRepository.findById(request.getRoomId())
                 .orElseThrow(() -> new RuntimeException("Phòng không tồn tại"));
 
-        // 2. Tạo tài khoản cho Khách đại diện (Tận dụng UserService)
+        // 2. KIỂM TRA BẢO MẬT: Chỉ Chủ trọ của phòng này mới được phép tạo hợp đồng
+        User landlord = room.getArea().getLandlord();
+        if (!landlord.getId().equals(currentUserId)) {
+            throw new RuntimeException("Bạn không có quyền tạo hợp đồng cho phòng thuộc khu trọ khác");
+        }
+
+        // 3. CHỐT CHẶN CHỮ KÝ SỐ: Bắt buộc chủ trọ phải cài chữ ký Cloudinary trước
+        if (landlord.getLandlordSignature() == null || landlord.getLandlordSignature().isEmpty()) {
+            throw new RuntimeException("Vui lòng thiết lập chữ ký số cá nhân trước khi tiến hành lập hợp đồng!");
+        }
+
+        // 4. KIỂM TRA TRẠNG THÁI PHÒNG: Không cho phép lập hợp đồng đè lên phòng đang có người ở
+        if (room.getStatus() == RoomStatus.RENTED || room.getStatus() == RoomStatus.MAINTENANCE) {
+            throw new RuntimeException("Phòng đang ở trạng thái không thể cho thuê (Đang ở hoặc Bảo trì)!");
+        }
+
+        // 5. Tạo tài khoản cho Khách đại diện (Tận dụng UserService)
         String rawPassword = generateRandomPassword();
         User tenant = userRepository.findByPhone(request.getTenantPhone()).orElse(null);
 
         if (tenant == null) {
-            // Đóng gói dữ liệu gửi sang UserService
             UserCreateRequest userReq = new UserCreateRequest();
             userReq.setPhone(request.getTenantPhone());
             userReq.setPassword(rawPassword);
             userReq.setFullName(request.getTenantName());
             userReq.setRole(RoleType.TENANT);
 
-            // Gọi hàm tạo User (Hàm này đã tự động băm mật khẩu và ghi log "CREATE_USER" rồi)
             UserResponse userResponse = userService.createUser(userReq, currentUserId);
 
-            // Lấy lại thực thể User từ DB để gắn vào Hợp đồng
             tenant = userRepository.findById(userResponse.getId())
                     .orElseThrow(() -> new RuntimeException("Lỗi truy xuất tài khoản khách sau khi tạo"));
         } else {
             rawPassword = "Khách đã có tài khoản (Dùng mật khẩu cũ)";
         }
 
-        // 3. Khởi tạo đối tượng Hợp đồng
+        // 6. Khởi tạo đối tượng Hợp đồng
         Contract contract = Contract.builder()
                 .room(room)
                 .tenant(tenant)
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
                 .depositAmount(request.getDepositAmount())
-                .status(ContractStatus.DRAFT)
-                .members(new ArrayList<>()) // Khởi tạo danh sách rỗng để tránh lỗi Null
+                .status(ContractStatus.DRAFT) // Mặc định trạng thái bản nháp
+                .members(new ArrayList<>())
                 .build();
 
-        // 4. Khởi tạo Thành viên và NHÉT VÀO DANH SÁCH của Hợp đồng
+        // 7. Khởi tạo Thành viên chính thức (Khách đại diện) đưa vào phòng
         ContractMember mainMember = ContractMember.builder()
                 .contract(contract)
                 .user(tenant)
@@ -85,21 +99,18 @@ public class ContractService {
 
         contract.getMembers().add(mainMember);
 
-        // 5. Lưu Hợp đồng (Spring Boot sẽ tự động lưu luôn cả mainMember)
+        // 8. Lưu Hợp đồng & Thành viên
         Contract savedContract = contractRepository.save(contract);
 
-        // 6. GHI LOG TẠO HỢP ĐỒNG
-        User userProxy = userRepository.getReferenceById(currentUserId);
-        String action = "CREATE_CONTRACT";
-        String entityName = "contracts";
-        String description = String.format("Khởi tạo hợp đồng nháp cho phòng %s. Khách đại diện: %s (%s)",
-                room.getRoomNumber() != null ? room.getRoomNumber() : "chưa rõ",
-                tenant.getFullName() != null ? tenant.getFullName() : "Khách",
-                tenant.getPhone());
+        // 9. TỰ ĐỘNG CHUYỂN TRẠNG THÁI PHÒNG SANG RENTED (ĐÃ THUÊ)
+        room.setStatus(RoomStatus.RENTED);
+        roomRepository.save(room);
 
-        activityLog.createLog(userProxy, action, entityName, savedContract.getId(), description);
+        // 10. GHI LOG HOẠT ĐỘNG
+        String description = String.format("Khởi tạo hợp đồng cho phòng %s. Khách đại diện: %s (%s)",
+                room.getRoomNumber(), tenant.getFullName(), tenant.getPhone());
+        activityLog.createLog(landlord, "CREATE_CONTRACT", "contracts", savedContract.getId(), description);
 
-        // 7. Trả về kết quả
         return ContractCreateResponse.builder()
                 .tenantUsername(tenant.getPhone())
                 .tenantRawPassword(rawPassword)
