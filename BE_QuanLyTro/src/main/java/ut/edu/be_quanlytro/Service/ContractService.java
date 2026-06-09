@@ -93,7 +93,6 @@ public class ContractService {
         // 7. Khởi tạo Thành viên chính thức (Khách đại diện) đưa vào phòng
         ContractMember mainMember = ContractMember.builder()
                 .contract(contract)
-                .user(tenant)
                 .joinedAt(LocalDate.now())
                 .build();
 

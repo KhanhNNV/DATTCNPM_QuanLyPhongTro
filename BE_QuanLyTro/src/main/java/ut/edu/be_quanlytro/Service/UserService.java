@@ -242,7 +242,7 @@ public class UserService {
 
 
     @Transactional
-    public String updateSignature(MultipartFile file, UUID currentUserId) {
+    public void updateSignature(MultipartFile file, UUID currentUserId) {
         if (file.isEmpty()) {
             throw new RuntimeException("Vui lòng chọn hoặc vẽ chữ ký trước khi tải lên!");
         }
@@ -267,7 +267,19 @@ public class UserService {
 
         activityLog.createLog(user, "UPDATE_SIGNATURE", "users", user.getId(), "Cập nhật chữ ký số cá nhân.");
 
-        return signatureUrl;
+    }
+    // ================= LẤY CHỮ KÝ HIỆN TẠI =================
+    @Transactional(readOnly = true)
+    public String getSignature(UUID currentUserId) {
+        User user = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
+
+        if (user.getRole() != RoleType.LANDLORD) {
+            throw new RuntimeException("Truy cập bị từ chối! Chỉ tài khoản Chủ trọ mới có chữ ký số.");
+        }
+
+        // Trả về URL chữ ký (có thể là null hoặc chuỗi rỗng nếu chưa bao giờ cài đặt)
+        return user.getLandlordSignature();
     }
 
     // ================= HELPER / MAPPER =================

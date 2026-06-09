@@ -16,10 +16,13 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByPhone(String phone);
     boolean existsByPhone(String phone);
 
-    // Dùng JPQL để tìm tất cả Khách thuê (User) dựa vào hợp đồng của họ tại Khu trọ (Area)
-    @Query("SELECT DISTINCT cm.user FROM ContractMember cm WHERE cm.contract.room.area.id = :areaId")
+    //Lấy trực tiếp người đại diện (tenant) từ bảng Contract
+    @Query("SELECT DISTINCT c.tenant FROM Contract c WHERE c.room.area.id = :areaId")
     List<User> findTenantsByAreaId(@Param("areaId") UUID areaId);
 
-    @Query("SELECT COUNT(cm) > 0 FROM ContractMember cm WHERE cm.user.id = :tenantId AND cm.contract.room.area.landlord.id = :landlordId")
-    boolean existsTenantInLandlordAreas(@Param("tenantId") UUID tenantId, @Param("landlordId") UUID landlordId);
+    @Query("SELECT COUNT(c) > 0 FROM Contract c " +
+            "WHERE c.tenant.id = :tenantId " +
+            "AND c.room.area.landlord.id = :landlordId")
+    boolean existsTenantInLandlordAreas(@Param("tenantId") UUID tenantId,
+                                        @Param("landlordId") UUID landlordId);
 }
