@@ -14,6 +14,7 @@ import ut.edu.be_quanlytro.Dto.Response.UserResponse;
 import ut.edu.be_quanlytro.Service.UserService;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -114,13 +115,29 @@ public class UserController {
 
     @PutMapping("/signature")
     @PreAuthorize("hasRole('LANDLORD')")
-    public ResponseEntity<String> updateSignature(
+    public ResponseEntity<?> updateSignature(
             @RequestParam("file") MultipartFile file,
             @AuthenticationPrincipal Jwt jwt) {
 
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
-        String signatureUrl = userService.updateSignature(file, currentUserId);
+        userService.updateSignature(file, currentUserId);
 
-        return ResponseEntity.ok(signatureUrl);
+        return ResponseEntity.ok(Map.of("message", "Tải chữ ký lên thành công!"));
+    }
+
+    @GetMapping("/signature")
+    @PreAuthorize("hasRole('LANDLORD')")
+    public ResponseEntity<?> getSignature(@AuthenticationPrincipal Jwt jwt) {
+
+        // 1. Trích xuất ID người dùng từ Jwt Token đang đăng nhập
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+
+        // 2. Gọi Service lấy URL
+        String signatureUrl = userService.getSignature(currentUserId);
+
+        // 3. Bọc kết quả vào Map để trả về JSON chuẩn chỉnh cho Frontend
+        return ResponseEntity.ok(Map.of(
+                "signatureUrl", signatureUrl != null ? signatureUrl : ""
+        ));
     }
 }
