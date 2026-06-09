@@ -32,34 +32,6 @@ public class AreaManagementService {
     private final ActivityLogService activityLog;
     private final AreaServiceRepository areaServiceRepository;
     private final RoomRepository roomRepository;
-    /**
-     * Hàm hỗ trợ: Biến tên khu trọ thành mã viết tắt.
-     * Ví dụ: "Khu trọ Sinh viên IT" -> "KTSVI"
-     */
-    private String generateAreaCodeFromName(String name) {
-        if (name == null || name.trim().isEmpty()) return "ROOM";
-
-        // 1. Loại bỏ dấu tiếng Việt
-        String temp = Normalizer.normalize(name, Normalizer.Form.NFD);
-        Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
-        String noAccent = pattern.matcher(temp).replaceAll("")
-                .replaceAll("Đ", "D").replaceAll("đ", "d");
-
-        // 2. Tách các từ theo khoảng trắng
-        String[] words = noAccent.trim().split("\\s+");
-        StringBuilder areaCode = new StringBuilder();
-
-        // 3. Lấy chữ cái đầu tiên của mỗi từ (bỏ qua các ký tự đặc biệt)
-        for (String word : words) {
-            if (!word.isEmpty() && Character.isLetterOrDigit(word.charAt(0))) {
-                areaCode.append(Character.toUpperCase(word.charAt(0)));
-            }
-        }
-
-        // 4. Giới hạn độ dài mã (Lấy tối đa 4-5 ký tự để mã phòng không bị quá dài)
-        String finalCode = areaCode.toString();
-        return finalCode.length() > 5 ? finalCode.substring(0, 5) : finalCode;
-    }
 
 
     //==============TẠO KHU TRỌ, PHÒNG, DỊCH VỤ===========
@@ -112,24 +84,20 @@ public class AreaManagementService {
         if (floors != null && !floors.isEmpty()) {
             int globalRoomCounter = 1; // Biến đếm liên tục cho toàn bộ khu
 
-            // Gọi hàm helper để lấy mã viết tắt từ Tên khu trọ
-            String shortAreaCode = generateAreaCodeFromName(savedArea.getName());
 
             for (int i = 0; i < floors.size(); i++) {
                 int floorNumber = i + 1;
                 int numberOfRooms = floors.get(i);
 
                 for (int j = 1; j <= numberOfRooms; j++) {
-                    // 1. Format số thứ tự: 001, 002...
+                    // Format số thứ tự: 001, 002...
                     String roomSequence = String.format("%03d", globalRoomCounter);
 
-                    // 2. Ghép Mã viết tắt với Số thứ tự. Kết quả: "KTSVI-001"
-                    String displayRoomNumber = shortAreaCode + "-" + roomSequence;
 
                     Room room = Room.builder()
                             .area(savedArea)
                             .floor(floorNumber)
-                            .roomNumber(displayRoomNumber) // Lưu chuỗi như KTSVI-001
+                            .roomNumber(roomSequence)
                             .areaSize(request.getDefaultAreaSize())
                             .rentPrice(request.getDefaultRentPrice())
                             .depositAmount(request.getDefaultDepositAmount())

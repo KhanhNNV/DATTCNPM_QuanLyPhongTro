@@ -5,12 +5,12 @@ import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.UUID;
-
 
 @Entity
 @Table(name = "contract_members")
@@ -23,18 +23,36 @@ public class ContractMember {
     @JdbcTypeCode(SqlTypes.VARCHAR)
     private UUID id;
 
+    // Giữ lại liên kết này để @OneToMany(mappedBy = "contract") bên bảng Contract không bị lỗi
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contract_id", nullable = false)
     private Contract contract;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @Column(nullable = false)
+    private String phone;
+
+    @Column(name = "full_name", nullable = false)
+    private String fullName;
+
+    private LocalDate dob;
+
+    private String hometown;
+
+    @Column(name = "id_card_front")
+    private String idCardFront; // Lưu link ảnh mặt trước CCCD trên Cloudinary
+
+    @Column(name = "id_card_back")
+    private String idCardBack;  // Lưu link ảnh mặt sau CCCD trên Cloudinary
 
     @Column(name = "joined_at")
-    private LocalDate joinedAt;
+    @Builder.Default
+    private LocalDate joinedAt = LocalDate.now();
 
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 }
