@@ -14,4 +14,5 @@ public interface MeterReadingRepository extends JpaRepository<MeterReading, UUID
    boolean existsByRoomIdAndServiceIdAndReadingMonth(UUID roomId, UUID serviceId, LocalDate readingMonth);
    Optional<MeterReading> findTopByRoomIdAndServiceIdAndReadingMonthBeforeOrderByReadingMonthDesc(
            UUID roomId, UUID serviceId, LocalDate readingMonth);
+    Optional<MeterReading> findFirstByRoomIdAndServiceIdAndIsInvoicedFalse(UUID roomId, UUID serviceId);
 }
