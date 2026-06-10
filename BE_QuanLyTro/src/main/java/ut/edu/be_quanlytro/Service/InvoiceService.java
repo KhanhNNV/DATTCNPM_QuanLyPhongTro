@@ -4,11 +4,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ut.edu.be_quanlytro.Dto.Request.InvoiceCreateRequest;
+import ut.edu.be_quanlytro.Dto.Response.InvoiceDetailResponse;
+import ut.edu.be_quanlytro.Dto.Response.InvoiceItemResponse;
 import ut.edu.be_quanlytro.Dto.Response.InvoiceResponse;
 import ut.edu.be_quanlytro.Entity.*;
 import ut.edu.be_quanlytro.Entity.Enum.ContractStatus;
 import ut.edu.be_quanlytro.Entity.Enum.InvoiceStatus;
 import ut.edu.be_quanlytro.Repository.*;
+import java.util.UUID;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -93,6 +96,41 @@ public class InvoiceService {
                 .roomPrice(invoice.getRoomPrice())
                 .totalAmount(invoice.getTotalAmount())
                 .status(invoice.getStatus().name())
+                .build();
+    }
+
+
+    @Transactional(readOnly = true)
+    public InvoiceDetailResponse getInvoiceDetail(UUID invoiceId) {
+        // 1. Tìm hóa đơn gốc
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn yêu cầu!"));
+
+        // 2. Tìm danh sách chi tiết dịch vụ đi kèm hóa đơn đó
+        List<InvoiceDetail> details = invoiceDetailRepository.findByInvoiceId(invoiceId);
+
+        // 3. Map từ Entity sang DTO dòng chi tiết
+        List<InvoiceItemResponse> itemResponses = details.stream().map(d ->
+                InvoiceItemResponse.builder()
+                        .serviceName(d.getServiceName())
+                        .oldIndex(d.getOldIndex())
+                        .newIndex(d.getNewIndex())
+                        .quantity(d.getQuantity())
+                        .price(d.getPrice())
+                        .totalAmount(d.getTotalAmount())
+                        .build()
+        ).toList();
+
+
+        return InvoiceDetailResponse.builder()
+                .id(invoice.getId())
+                .roomNumber(invoice.getRoom().getRoomNumber())
+                .invoicePeriod(invoice.getInvoicePeriod())
+                .dueDate(invoice.getDueDate())
+                .roomPrice(invoice.getRoomPrice())
+                .totalAmount(invoice.getTotalAmount())
+                .status(invoice.getStatus().name())
+                .items(itemResponses)
                 .build();
     }
 }
