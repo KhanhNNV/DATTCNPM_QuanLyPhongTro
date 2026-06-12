@@ -3,20 +3,16 @@ package ut.edu.be_quanlytro.Dto.Response;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
-import ut.edu.be_quanlytro.Entity.Enum.RoleType;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Getter @Setter @Builder
-public class UserResponse {
+public class ContractMemberResponse {
     private UUID id;
-    private String phone;
-    private RoleType role;
     private String fullName;
+    private String phone;
     private LocalDate dob;
     private String hometown;
-    private String idCardNumber;
-    private Boolean isFirstLogin;
+    private LocalDate joinedAt;
 }

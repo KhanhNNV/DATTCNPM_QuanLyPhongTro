@@ -38,11 +38,8 @@ public class ContractMember {
 
     private String hometown;
 
-    @Column(name = "id_card_front")
-    private String idCardFront; // Lưu link ảnh mặt trước CCCD trên Cloudinary
-
-    @Column(name = "id_card_back")
-    private String idCardBack;  // Lưu link ảnh mặt sau CCCD trên Cloudinary
+    @Column(name = "id_card_number", nullable = false)
+    private String idCardNumber;
 
     @Column(name = "joined_at")
     @Builder.Default

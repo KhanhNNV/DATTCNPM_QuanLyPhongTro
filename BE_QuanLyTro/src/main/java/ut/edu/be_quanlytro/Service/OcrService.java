@@ -17,7 +17,6 @@ import ut.edu.be_quanlytro.Dto.Response.OcrCccdResponse;
 @RequiredArgsConstructor
 public class OcrService {
 
-    private final CloudinaryService cloudinaryService;
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -29,8 +28,9 @@ public class OcrService {
 
     public OcrCccdResponse extractCccdData(MultipartFile frontImage, MultipartFile backImage) {
 
-        if (frontImage.isEmpty() || backImage.isEmpty()) {
-            throw new RuntimeException("Vui lòng cung cấp đầy đủ ảnh mặt trước và mặt sau CCCD!");
+        // Vì chỉ đọc thông tin mặt trước (Tên, số CCCD, ngày sinh...) nên chỉ cần bắt buộc có ảnh mặt trước
+        if (frontImage == null || frontImage.isEmpty()) {
+            throw new RuntimeException("Vui lòng cung cấp ảnh mặt trước CCCD!");
         }
 
         String idNumber = "";
@@ -42,7 +42,7 @@ public class OcrService {
             // 1. CẤU HÌNH HEADER GỬI LÊN FPT
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-            headers.set("api-key", FPT_API_KEY); // Truyền chìa khóa vào Header
+            headers.set("api-key", FPT_API_KEY);
 
             // 2. ĐÓNG GÓI ẢNH MẶT TRƯỚC ĐỂ GỬI ĐI
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
@@ -84,19 +84,12 @@ public class OcrService {
             throw new RuntimeException("Lỗi trong quá trình quét CCCD: " + e.getMessage());
         }
 
-        // 6. UPLOAD ẢNH LÊN CLOUDINARY LÀM MINH CHỨNG (Giữ nguyên như cũ)
-        System.out.println("Đang lưu ảnh minh chứng lên Cloudinary...");
-        String frontUrl = cloudinaryService.uploadFile(frontImage, "cccd_proofs");
-        String backUrl = cloudinaryService.uploadFile(backImage, "cccd_proofs");
-
-        // 7. TRẢ KẾT QUẢ VỀ CHO FRONTEND
+        // 7. TRẢ KẾT QUẢ VỀ CHO FRONTEND (Các trường URL ảnh sẽ mang giá trị null)
         return OcrCccdResponse.builder()
                 .idNumber(idNumber)
                 .fullName(fullName)
                 .dob(dob)
                 .hometown(hometown)
-                .idCardFrontUrl(frontUrl)
-                .idCardBackUrl(backUrl)
                 .build();
     }
 }

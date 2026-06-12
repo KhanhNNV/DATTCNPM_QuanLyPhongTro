@@ -1,5 +1,6 @@
 package ut.edu.be_quanlytro.Dto.Request;
 
+import jakarta.persistence.Column;
 import lombok.Getter;
 import lombok.Setter;
 import ut.edu.be_quanlytro.Entity.Enum.RoleType;
@@ -14,4 +15,5 @@ public class UserCreateRequest {
     private String fullName;
     private LocalDate dob;
     private String hometown;
+    private String idCardNumber;
 }

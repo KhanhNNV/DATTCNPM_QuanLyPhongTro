@@ -8,15 +8,17 @@ import java.time.LocalDate;
 import java.util.UUID;
 
 @Getter @Setter
-public class ContractCreateRequest {
+public class ContractCreateManualRequest {
     private UUID roomId;
     private LocalDate startDate;
     private LocalDate endDate;
     private BigDecimal depositAmount;
-
-    // Thông tin cơ bản
-    private String tenantPhone;
-
-    // Có thể null nếu khách không đặt cọc trước
     private UUID depositId;
+
+    // Thông tin khách thuê chủ trọ tự gõ tay
+    private String tenantName;
+    private String tenantPhone;
+    private LocalDate tenantDob;
+    private String tenantHometown;
+    private String tenantIdCardNumber;
 }

@@ -52,6 +52,9 @@ public class Contract {
     @Column(name = "tenant_signature", columnDefinition = "TEXT")
     private String tenantSignature;
 
+    @Column(name = "landlord_signature", columnDefinition = "TEXT")
+    private String landlordSignature;
+
     @Column(name = "contract_file_url")
     private String contractFileUrl;
 
