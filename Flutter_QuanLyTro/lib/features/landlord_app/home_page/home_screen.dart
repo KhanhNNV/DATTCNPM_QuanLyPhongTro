@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_quanlytro/features/landlord_app/home_page/quick_action_item.dart';
+import 'package:flutter_quanlytro/features/landlord_app/meter_reading_page/meter_reading_screen.dart';
 import '../../../core/constants/app_colors.dart';
 import '../area_management/area_config_screen.dart';
 import '../deposit_page/deposit_screen.dart';
@@ -56,7 +57,10 @@ class _HomeScreenState extends State<HomeScreen> {
       QuickActionItem(
         title: 'Chốt điện/nước',
         icon: Icons.receipt_long_outlined,
-        onTap: () => _navigateTo('Nút: Lập hóa đơn lẻ'),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const MeterReadingScreen()),
+        ),
       ),
       QuickActionItem(
         title: 'Xem hóa đơn',

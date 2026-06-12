@@ -85,7 +85,7 @@ class ApiClient {
     return response;
   }
 
-  Future<http.Response> post(String endpoint, Map<String, dynamic> body) async {
+  Future<http.Response> post(String endpoint, dynamic body) async {
     final url = Uri.parse('$baseUrl$endpoint');
     var headers = await _getHeaders();
     final jsonBody = jsonEncode(body);
@@ -110,7 +110,7 @@ class ApiClient {
     return response;
   }
 
-  Future<http.Response> put(String endpoint, Map<String, dynamic> body) async {
+  Future<http.Response> put(String endpoint, dynamic body) async {
     final url = Uri.parse('$baseUrl$endpoint');
     var headers = await _getHeaders();
     final jsonBody = jsonEncode(body);

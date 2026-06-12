@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/custom_app_bar.dart';
 import 'view_models/area_config_view_model.dart';
 import 'package:intl/intl.dart';
 
@@ -56,22 +57,19 @@ class _AreaConfigScreenState extends State<AreaConfigScreen> with SingleTickerPr
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
-      appBar: AppBar(
-        title: const Text('Tinh chỉnh Khu trọ'),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        centerTitle: true,
-        bottom: TabBar(
-          controller: _tabController,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white70,
-          indicatorColor: Colors.white,
-          tabs: const [
-            Tab(icon: Icon(Icons.bolt), text: 'Dịch vụ'),
-            Tab(icon: Icon(Icons.door_front_door), text: 'Phòng trọ'),
-          ],
+        appBar: CustomAppBar(
+          title: 'Tinh chỉnh Khu trọ',
+          bottom: TabBar(
+            controller: _tabController,
+            labelColor: Colors.white,
+            unselectedLabelColor: Colors.white,
+            indicatorColor: Colors.white,
+            tabs: const [
+              Tab(icon: Icon(Icons.bolt), text: 'Dịch vụ'),
+              Tab(icon: Icon(Icons.door_front_door), text: 'Phòng trọ'),
+            ],
+          ),
         ),
-      ),
       body: ListenableBuilder(
         listenable: _viewModel,
         builder: (context, _) {
@@ -377,7 +375,7 @@ class _AreaConfigScreenState extends State<AreaConfigScreen> with SingleTickerPr
               TextField(controller: sizeController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Diện tích (m²)')),
               TextField(controller: priceController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Giá thuê')),
               TextField(controller: depositController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Tiền cọc')),
-              TextField(controller: maxController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Số người mớ đa')),
+              TextField(controller: maxController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Số người tối đa')),
             ],
           ),
         ),
