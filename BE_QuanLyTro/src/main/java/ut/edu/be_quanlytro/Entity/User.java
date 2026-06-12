@@ -46,11 +46,8 @@ public class User implements UserDetails {
 
     private String hometown;
 
-    @Column(name = "id_card_front")
-    private String idCardFront;
-
-    @Column(name = "id_card_back")
-    private String idCardBack;
+    @Column(name = "id_card_number", unique = true)
+    private String idCardNumber;
 
     @Column(name = "is_first_login", nullable = false)
     @Builder.Default

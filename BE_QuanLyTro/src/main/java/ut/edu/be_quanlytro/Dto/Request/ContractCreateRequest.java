@@ -14,7 +14,9 @@ public class ContractCreateRequest {
     private LocalDate endDate;
     private BigDecimal depositAmount;
 
-    // Thông tin cơ bản của Khách đại diện để hệ thống tạo tài khoản
-    private String tenantName;
+    // Thông tin cơ bản
     private String tenantPhone;
+
+    // Có thể null nếu khách không đặt cọc trước
+    private UUID depositId;
 }

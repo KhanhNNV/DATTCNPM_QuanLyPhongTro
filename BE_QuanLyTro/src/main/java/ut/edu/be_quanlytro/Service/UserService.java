@@ -43,7 +43,8 @@ public class UserService {
                 .fullName(request.getFullName())
                 .dob(request.getDob())
                 .hometown(request.getHometown())
-                .isFirstLogin(true) // Mặc định là true
+                .idCardNumber(request.getIdCardNumber())
+                .isFirstLogin(true)
                 .build();
 
         User savedUser = userRepository.save(user);
@@ -73,7 +74,7 @@ public class UserService {
         User currentUser = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại trong hệ thống"));
 
-        // 3. 🔒 KIỂM TRA BẢO MẬT BIẾN THỂ (IDOR)
+        // 3. KIỂM TRA BẢO MẬT BIẾN THỂ (IDOR)
         // Trường hợp A: Nếu tự xem hồ sơ của chính mình thì luôn luôn hợp lệ
         if (id.equals(currentUserId)) {
             return mapToResponse(targetUser);
@@ -197,48 +198,6 @@ public class UserService {
         return mapToResponse(updatedUser);
     }
 
-    // ================= DELETE =================
-    @Transactional
-    public void deleteUser(UUID id, UUID currentUserId) {
-        // 1. Tìm user trước để lấy thông tin (Target User)
-        User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng để xóa"));
-
-        // 2. 🔒 KIỂM TRA BẢO MẬT: Xác nhận quyền xóa tài khoản
-        if (!id.equals(currentUserId)) { // Nếu không phải tự xóa tài khoản của chính mình
-
-            // Lấy thông tin của người đang thực hiện cuộc gọi
-            User currentUser = userRepository.findById(currentUserId)
-                    .orElseThrow(() -> new RuntimeException("Người dùng thực hiện thao tác không tồn tại"));
-
-            if (currentUser.getRole() == RoleType.LANDLORD) {
-                // Kiểm tra xem khách thuê này có thuộc quyền quản lý của chủ trọ không
-                boolean isYourTenant = userRepository.existsTenantInLandlordAreas(id, currentUserId);
-                if (!isYourTenant) {
-                    throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xóa tài khoản khách thuê thuộc khu trọ khác.");
-                }
-            } else {
-                // Các Role khác không được phép xóa tài khoản người khác
-                throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xóa tài khoản của người dùng khác.");
-            }
-        }
-
-        // Lấy thông tin trước khi thực hiện xóa để ghi log
-        String phone = user.getPhone();
-        String role = user.getRole().name();
-
-        // 3. Thực hiện xóa người dùng
-        userRepository.delete(user);
-
-        // 4. GHI LOG DELETE
-        User userProxy = userRepository.getReferenceById(currentUserId);
-        String action = "DELETE_USER";
-        String entityName = "users";
-        String description = String.format("Xóa tài khoản %s (SĐT: %s)", role, phone);
-
-        activityLog.createLog(userProxy, action, entityName, id, description);
-    }
-
 
 
     @Transactional
@@ -293,8 +252,7 @@ public class UserService {
                 .fullName(user.getFullName())
                 .dob(user.getDob())
                 .hometown(user.getHometown())
-                .idCardFront(user.getIdCardFront())
-                .idCardBack(user.getIdCardBack())
+                .idCardNumber(user.getIdCardNumber())
                 .isFirstLogin(user.getIsFirstLogin())
                 .build();
     }

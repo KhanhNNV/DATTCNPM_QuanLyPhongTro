@@ -10,7 +10,4 @@ public class OcrCccdResponse {
     private String fullName;     // Họ và tên
     private String dob;          // Ngày sinh (Có thể để String để Frontend tự parse)
     private String hometown;     // Quê quán
-
-    private String idCardFrontUrl; // Link Cloudinary mặt trước
-    private String idCardBackUrl;  // Link Cloudinary mặt sau
 }

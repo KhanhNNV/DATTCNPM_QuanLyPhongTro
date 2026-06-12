@@ -66,7 +66,7 @@ public class UserController {
      * URL: GET /api/users/{id}
      */
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('LANDLORD')") // Chỉ Chủ trọ mới được quyền gọi luồng xem chéo này
+    @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<UserResponse> getUserById(
             @PathVariable UUID id,
             @AuthenticationPrincipal Jwt jwt) {
@@ -79,11 +79,10 @@ public class UserController {
     }
 
     /**
-     * API Cập nhật thông tin người dùng (Hỗ trợ Partial Update).
-     * Cả Chủ trọ và Khách thuê đều có quyền cập nhật thông tin cá nhân.
+     * API Cập nhật thông tin người dùng
      */
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('LANDLORD')")  // Khách và Chủ đều dùng được
+    @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<UserResponse> updateUser(
             @PathVariable UUID id,
             @RequestBody UserUpdateRequest request,
@@ -96,22 +95,7 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
-    /**
-     * API Xóa tài khoản người dùng vĩnh viễn khỏi hệ thống.
-     * Chỉ có Chủ trọ mới có quyền xóa.
-     */
-    @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('LANDLORD')") // Đã chuyển sang hasRole
-    public ResponseEntity<String> deleteUser(
-            @PathVariable UUID id,
-            @AuthenticationPrincipal Jwt jwt) {
 
-        // Lấy đúng trường "userId" từ Token để ghi Log
-        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
-        userService.deleteUser(id, currentUserId);
-
-        return ResponseEntity.ok("Xóa tài khoản người dùng thành công");
-    }
 
     @PutMapping("/signature")
     @PreAuthorize("hasRole('LANDLORD')")
