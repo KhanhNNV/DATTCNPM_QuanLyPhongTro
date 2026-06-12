@@ -9,6 +9,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import ut.edu.be_quanlytro.Dto.Request.ContractCreateManualRequest;
 import ut.edu.be_quanlytro.Dto.Request.ContractCreateRequest;
 import ut.edu.be_quanlytro.Dto.Response.ContractCreateResponse;
 import ut.edu.be_quanlytro.Service.ContractService;
@@ -49,5 +50,16 @@ public class ContractController {
             // Nếu có bất kỳ lỗi gì (OCR lỗi, phòng đã thuê, thiếu chữ ký...), thảy về mã lỗi 400 kèm tin nhắn
             throw new RuntimeException("Quá trình lập hợp đồng thất bại: " + e.getMessage());
         }
+    }
+
+    @PostMapping("/create/manual")
+    @PreAuthorize("hasRole('LANDLORD')")
+    public ResponseEntity<ContractCreateResponse> createContractManual(
+            @RequestBody ContractCreateManualRequest request, // Dùng thẳng @RequestBody vì là JSON mượt mà
+            @AuthenticationPrincipal Jwt jwt) {
+
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+        ContractCreateResponse response = contractService.createContractManual(request, currentUserId);
+        return ResponseEntity.ok(response);
     }
 }

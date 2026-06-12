@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import ut.edu.be_quanlytro.Dto.Request.ContractCreateManualRequest;
 import ut.edu.be_quanlytro.Dto.Request.ContractCreateRequest;
 import ut.edu.be_quanlytro.Dto.Request.UserCreateRequest;
 import ut.edu.be_quanlytro.Dto.Response.*;
@@ -37,7 +38,7 @@ public class ContractService {
     private final DepositRepository depositRepository;
     private final OcrService  ocrService;
 
-    // ================= 1. KHỞI TẠO HỢP ĐỒNG =================
+    // ================= 1. KHỞI TẠO HỢP ĐỒNG (Quét CCCD)=================
     @Transactional
     public ContractCreateResponse createContract(ContractCreateRequest request, MultipartFile frontImage, MultipartFile backImage, UUID currentUserId) {
 
@@ -169,6 +170,118 @@ public class ContractService {
                 .tenantUsername(tenant.getPhone())
                 .tenantRawPassword(rawPassword)
                 .message("Tạo hợp đồng thành công!")
+                .build();
+    }
+    // ================= 2. KHỞI TẠO HỢP ĐỒNG (NHẬP TAY) =================
+    @Transactional
+    public ContractCreateResponse createContractManual(ContractCreateManualRequest request, UUID currentUserId) {
+
+        // 1. KIỂM TRA PHÒNG VÀ QUYỀN CHỦ TRỌ
+        Room room = roomRepository.findById(request.getRoomId())
+                .orElseThrow(() -> new RuntimeException("Phòng không tồn tại"));
+
+        User landlord = room.getArea().getLandlord();
+        if (!landlord.getId().equals(currentUserId)) {
+            throw new RuntimeException("Bạn không có quyền tạo hợp đồng cho phòng thuộc khu trọ khác");
+        }
+
+        if (landlord.getLandlordSignature() == null || landlord.getLandlordSignature().isEmpty()) {
+            throw new RuntimeException("Vui lòng thiết lập chữ ký số cá nhân trước khi lập hợp đồng!");
+        }
+
+        // Chỉ cho phép tạo hợp đồng khi phòng trống hoặc phòng đã nhận cọc
+        if (room.getStatus() != RoomStatus.AVAILABLE && room.getStatus() != RoomStatus.DEPOSITED) {
+            throw new RuntimeException("Phòng hiện không ở trạng thái sẵn sàng để lập hợp đồng!");
+        }
+
+        // 2. KIỂM TRA ĐẶT CỌC
+        Deposit pendingDeposit = null;
+        if (request.getDepositId() != null) {
+            pendingDeposit = depositRepository.findById(request.getDepositId())
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy phiếu đặt cọc với ID đã cung cấp!"));
+
+            if (!pendingDeposit.getRoom().getId().equals(room.getId())) {
+                throw new RuntimeException("Phiếu đặt cọc này không thuộc về phòng bạn đang chọn!");
+            }
+
+            if (pendingDeposit.getStatus() != DepositStatus.PENDING) {
+                throw new RuntimeException("Phiếu đặt cọc này đã được xử lý hoặc đã bị hủy!");
+            }
+
+            if (!pendingDeposit.getPhone().equals(request.getTenantPhone())) {
+                throw new RuntimeException("Số điện thoại khách không khớp với phiếu cọc!");
+            }
+        }
+
+        // 3. TẠO TÀI KHOẢN KHÁCH THUÊ (Lấy trực tiếp thông tin từ Request nhập tay)
+        String rawPassword = generateRandomPassword();
+        User tenant = userRepository.findByPhone(request.getTenantPhone()).orElse(null);
+
+        if (tenant == null) {
+            UserCreateRequest userReq = new UserCreateRequest();
+            userReq.setPhone(request.getTenantPhone());
+            userReq.setPassword(rawPassword);
+            userReq.setFullName(request.getTenantName()); // Lấy từ request nhập tay
+            userReq.setRole(RoleType.TENANT);
+            userReq.setDob(request.getTenantDob());       // Lấy từ request nhập tay
+            userReq.setHometown(request.getTenantHometown()); // Lấy từ request nhập tay
+            userReq.setIdCardNumber(request.getTenantIdCardNumber()); // Lấy từ request nhập tay
+
+            UserResponse userResponse = userService.createUser(userReq, currentUserId);
+
+            tenant = userRepository.findById(userResponse.getId())
+                    .orElseThrow(() -> new RuntimeException("Lỗi truy xuất tài khoản khách sau khi tạo"));
+        } else {
+            rawPassword = "Khách đã có tài khoản (Dùng mật khẩu cũ)";
+        }
+
+        // 4. KHỞI TẠO HỢP ĐỒNG
+        Contract contract = Contract.builder()
+                .room(room)
+                .tenant(tenant)
+                .startDate(request.getStartDate())
+                .endDate(request.getEndDate())
+                .landlordSignature(landlord.getLandlordSignature())
+                .depositAmount(pendingDeposit != null ? pendingDeposit.getDepositAmount() : request.getDepositAmount())
+                .status(ContractStatus.DRAFT)
+                .members(new ArrayList<>())
+                .build();
+
+        // 5. KHỞI TẠO THÀNH VIÊN ĐẠI DIỆN
+        ContractMember mainMember = ContractMember.builder()
+                .contract(contract)
+                .phone(request.getTenantPhone())
+                .fullName(request.getTenantName())
+                .dob(request.getTenantDob())
+                .hometown(request.getTenantHometown())
+                .idCardNumber(request.getTenantIdCardNumber())
+                .joinedAt(LocalDate.now())
+                .build();
+
+        contract.getMembers().add(mainMember);
+
+        // 6. LƯU DATABASE
+        Contract savedContract = contractRepository.save(contract);
+
+        if (pendingDeposit != null) {
+            pendingDeposit.setStatus(DepositStatus.COMPLETED);
+            pendingDeposit.setContract(savedContract);
+            depositRepository.save(pendingDeposit);
+        }
+
+        room.setStatus(RoomStatus.RESERVED);
+        roomRepository.save(room);
+
+        // 7. GHI LOG
+        String description = String.format("Khởi tạo hợp đồng (Nhập tay) cho phòng %s. Khách: %s",
+                room.getRoomNumber(), tenant.getFullName());
+        activityLog.createLog(landlord, "CREATE_CONTRACT", "contracts", savedContract.getId(), description);
+
+        return ContractCreateResponse.builder()
+                .contractId(savedContract.getId())
+                .tenantUsername(tenant.getPhone())
+                .tenantRawPassword(rawPassword)
+                .message("Tạo hợp đồng nhập tay thành công!")
                 .build();
     }
 
