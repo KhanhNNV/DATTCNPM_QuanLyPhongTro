@@ -6,6 +6,7 @@ import org.springframework.stereotype.Repository;
 import ut.edu.be_quanlytro.Entity.MeterReading;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -15,4 +16,6 @@ public interface MeterReadingRepository extends JpaRepository<MeterReading, UUID
    Optional<MeterReading> findTopByRoomIdAndServiceIdAndReadingMonthBeforeOrderByReadingMonthDesc(
            UUID roomId, UUID serviceId, LocalDate readingMonth);
     Optional<MeterReading> findFirstByRoomIdAndServiceIdAndIsInvoicedFalse(UUID roomId, UUID serviceId);
+
+    List<MeterReading> findByRoomIdAndReadingMonth(UUID roomId, LocalDate readingMonth);
 }
