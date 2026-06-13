@@ -5,6 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ut.edu.be_quanlytro.Dto.Request.MeterReadingBulkUpdateRequest;
 import ut.edu.be_quanlytro.Dto.Request.MeterReadingCreateRequest;
+import ut.edu.be_quanlytro.Dto.Response.MeterReadingResponse;
 import ut.edu.be_quanlytro.Entity.AreaService;
 import ut.edu.be_quanlytro.Entity.MeterReading;
 import ut.edu.be_quanlytro.Entity.Room;
@@ -108,5 +109,20 @@ public class MeterReadingService {
         }
 
         return updatedReadings;
+    }
+    @Transactional(readOnly = true)
+    public List<MeterReadingResponse> getReadingsByRoomAndMonth(UUID roomId, LocalDate month) {
+        List<MeterReading> readings = meterReadingRepository.findByRoomIdAndReadingMonth(roomId, month);
+
+        return readings.stream().map(r -> MeterReadingResponse.builder()
+                .id(r.getId())
+                .roomNumber(r.getRoom().getRoomNumber())
+                .serviceName(r.getService().getName())
+                .oldIndex(r.getOldIndex())
+                .newIndex(r.getNewIndex())
+                .readingDate(r.getReadingMonth())
+                .isInvoiced(r.getIsInvoiced())
+                .build()
+        ).toList();
     }
 }

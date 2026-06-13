@@ -16,6 +16,7 @@ import ut.edu.be_quanlytro.Service.MeterReadingService;
 
 import jakarta.validation.Valid;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -137,6 +138,18 @@ public class MeterReadingController {
 
             return ResponseEntity.ok(responses);
         } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+    @GetMapping
+    @PreAuthorize("hasRole('LANDLORD')")
+    public ResponseEntity<?> getMeterReadings(
+            @RequestParam UUID roomId,
+            @RequestParam LocalDate month) {
+        try {
+            List<MeterReadingResponse> responses = meterReadingService.getReadingsByRoomAndMonth(roomId, month);
+            return ResponseEntity.ok(responses);
+        } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
