@@ -42,7 +42,7 @@ public class RoomController {
     // ================= READ =================
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('LANDLORD')") // Khách và Chủ đều có quyền xem thông tin phòng
+    @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<RoomResponse> getRoomById(
             @PathVariable UUID id,
             @AuthenticationPrincipal Jwt jwt) { // Bổ sung tham số đọc Token

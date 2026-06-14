@@ -12,8 +12,10 @@ import org.springframework.web.multipart.MultipartFile;
 import ut.edu.be_quanlytro.Dto.Request.ContractCreateManualRequest;
 import ut.edu.be_quanlytro.Dto.Request.ContractCreateRequest;
 import ut.edu.be_quanlytro.Dto.Response.ContractCreateResponse;
+import ut.edu.be_quanlytro.Dto.Response.ContractDetailResponse;
 import ut.edu.be_quanlytro.Service.ContractService;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -61,5 +63,40 @@ public class ContractController {
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
         ContractCreateResponse response = contractService.createContractManual(request, currentUserId);
         return ResponseEntity.ok(response);
+    }
+
+    // API 1: Xem chi tiết theo ID (Chỉ Chủ trọ)
+    @GetMapping("/{contractId}")
+    @PreAuthorize("hasRole('LANDLORD')")
+    public ResponseEntity<ContractDetailResponse> getContractDetail(
+            @PathVariable UUID contractId,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+        ContractDetailResponse response = contractService.getContractByIdForLandlord(contractId, currentUserId);
+        return ResponseEntity.ok(response);
+    }
+
+    // API 2: Lấy hợp đồng "Của tôi" (Chỉ Khách thuê)
+    @GetMapping("/current")
+    @PreAuthorize("hasRole('TENANT')")
+    public ResponseEntity<ContractDetailResponse> getMyCurrentContract(
+            @AuthenticationPrincipal Jwt jwt) {
+
+        UUID tenantId = UUID.fromString(jwt.getClaimAsString("userId"));
+        ContractDetailResponse response = contractService.getMyCurrentContract(tenantId);
+        return ResponseEntity.ok(response);
+    }
+
+    // API Xem danh sách toàn bộ Hợp đồng của Chủ trọ
+    @GetMapping
+    @PreAuthorize("hasRole('LANDLORD')")
+    public ResponseEntity<List<ContractDetailResponse>> getMyContracts(
+            @AuthenticationPrincipal Jwt jwt) {
+
+        UUID landlordId = UUID.fromString(jwt.getClaimAsString("userId"));
+        List<ContractDetailResponse> responses = contractService.getContractsByLandlord(landlordId);
+
+        return ResponseEntity.ok(responses);
     }
 }

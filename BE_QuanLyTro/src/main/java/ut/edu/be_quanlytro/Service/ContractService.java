@@ -284,6 +284,48 @@ public class ContractService {
                 .message("Tạo hợp đồng nhập tay thành công!")
                 .build();
     }
+    // ================= 3. LẤY CHI TIẾT HỢP ĐỒNG (CHỈ DÀNH CHO CHỦ TRỌ) =================
+    @Transactional(readOnly = true)
+    public ContractDetailResponse getContractByIdForLandlord(UUID contractId, UUID currentUserId) {
+        // 1. Tìm hợp đồng dưới DB
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng với ID cung cấp!"));
+
+        // 2. Chốt chặn bảo mật (Chỉ Chủ trọ của khu trọ đó mới được xem)
+        boolean isLandlord = contract.getRoom().getArea().getLandlord().getId().equals(currentUserId);
+
+        if (!isLandlord) {
+            throw new RuntimeException("Bạn không có quyền quản lý, không thể xem thông tin của hợp đồng này!");
+        }
+
+        return mapToDetailResponse(contract);
+    }
+
+    // ================= 4. LẤY HỢP ĐỒNG HIỆN TẠI (CHỈ DÀNH CHO KHÁCH THUÊ) =================
+    @Transactional(readOnly = true)
+    public ContractDetailResponse getMyCurrentContract(UUID tenantId) {
+
+        // Chỉ quét tìm các hợp đồng đang là BẢN NHÁP (chờ ký) hoặc ĐANG HOẠT ĐỘNG
+        List<ContractStatus> validStatuses = List.of(ContractStatus.DRAFT, ContractStatus.SIGNED);
+
+        // Tìm hợp đồng thỏa mãn điều kiện
+        Contract currentContract = contractRepository.findFirstByTenantIdAndStatusInOrderByCreatedAtDesc(tenantId, validStatuses)
+                .orElseThrow(() -> new RuntimeException("Bạn hiện tại chưa có hợp đồng nào đang chờ ký hoặc đang hoạt động trong hệ thống!"));
+
+        return mapToDetailResponse(currentContract);
+    }
+
+    // ================= 5. LẤY DANH SÁCH HỢP ĐỒNG (CHO CHỦ TRỌ) =================
+    @Transactional(readOnly = true)
+    public List<ContractDetailResponse> getContractsByLandlord(UUID landlordId) {
+        // 1. Lấy toàn bộ danh sách hợp đồng liên quan đến các phòng của chủ trọ
+        List<Contract> contracts = contractRepository.findByRoomAreaLandlordIdOrderByCreatedAtDesc(landlordId);
+
+        // 2. Dùng Stream API và hàm Mapper để chuyển đổi List<Entity> sang List<DTO>
+        return contracts.stream()
+                .map(this::mapToDetailResponse)
+                .toList();
+    }
 
     // ================= MAPPER =================
     private ContractDetailResponse mapToDetailResponse(Contract contract) {
