@@ -7,6 +7,21 @@ import '../models/response/meter_reading_response.dart';
 class MeterReadingProvider {
   final ApiClient _apiClient = ApiClient();
 
+
+  Future<List<MeterReadingResponse>> getMeterReadings(String roomId, DateTime month) async {
+    final String formattedDate = "${month.year}-${month.month.toString().padLeft(2, '0')}-01";
+    final String endpoint = '/api/meter-readings?roomId=$roomId&month=$formattedDate';
+
+    final response = await _apiClient.get(endpoint);
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+      return data.map((json) => MeterReadingResponse.fromJson(json)).toList();
+    }
+
+    throw Exception('Không thể tải chỉ số điện nước: ${response.body}');
+  }
+
   Future<List<MeterReadingResponse>> createBulkMeterReadings(
       List<MeterReadingCreateRequest> requests) async {
     const String endpoint = '/api/meter-readings/bulk';

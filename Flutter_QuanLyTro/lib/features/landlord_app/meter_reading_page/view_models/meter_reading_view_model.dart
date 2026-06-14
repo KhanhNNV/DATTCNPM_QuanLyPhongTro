@@ -1,10 +1,26 @@
 import 'package:flutter/material.dart';
-import 'room_reading_ui_model.dart';
+import 'package:flutter_quanlytro/data/providers/area_provider.dart';
+import 'package:flutter_quanlytro/data/providers/room_provider.dart';
+
+import '../../../../data/models/request/meter_reading_bulk_update_request.dart';
+import '../../../../data/models/request/meter_reading_create_request.dart';
+import '../../../../data/models/response/room_model.dart';
+import '../../../../data/providers/area_config_provider.dart';
+import '../../../../data/providers/meter_reading_provider.dart';
+import '../room_reading_ui_model.dart';
 
 class MeterReadingViewModel extends ChangeNotifier {
+  final MeterReadingProvider _provider = MeterReadingProvider();
+  final RoomProvider _roomProvider = RoomProvider();
+  final AreaConfigProvider _areaConfigProvider = AreaConfigProvider();
+
   bool isLoading = false;
   DateTime selectedMonth = DateTime.now();
   List<RoomReadingUiModel> roomList = [];
+
+  final String areaId;
+
+  MeterReadingViewModel({required this.areaId});
 
   void changeMonth(DateTime newMonth) {
     selectedMonth = newMonth;
@@ -15,60 +31,137 @@ class MeterReadingViewModel extends ChangeNotifier {
     isLoading = true;
     notifyListeners();
 
-    await Future.delayed(const Duration(milliseconds: 500));
+    try {
+      // Lấy danh sách các phòng và dịch vụ trong khu trọ
+      final results = await Future.wait([
+        _roomProvider.getRoomsByArea(areaId, status: 'RENTED'),
+        _areaConfigProvider.getServicesByArea(areaId),
+      ]);
 
-    // MOCK DATA ĐƯỢC CẬP NHẬT THEO ENUM CỦA BACKEND
-    roomList = [
-      RoomReadingUiModel(
-        roomId: 'uuid-room-101',
-        roomNumber: '101',
-        elecCalcType: ServiceCalculationType.byIndex,  // BY_INDEX
-        waterCalcType: ServiceCalculationType.byIndex, // BY_INDEX
-        elecOldIndex: 1250,
-        waterOldIndex: 430,
-      ),
-      RoomReadingUiModel(
-        roomId: 'uuid-room-102',
-        roomNumber: '102',
-        elecCalcType: ServiceCalculationType.byIndex,
-        waterCalcType: ServiceCalculationType.byIndex,
-        elecOldIndex: 2100,
-        waterOldIndex: 520,
-        elecNewIndex: 2250,   // Đã chốt trước đó
-        waterNewIndex: 535,
-        elecReadingId: 'uuid-elec-reading-102',
-        waterReadingId: 'uuid-water-reading-102',
-      ),
-      RoomReadingUiModel(
-        roomId: 'uuid-room-103',
-        roomNumber: '103',
-        elecCalcType: ServiceCalculationType.byIndex,
-        waterCalcType: ServiceCalculationType.perPerson, // PER_PERSON -> Sẽ tự động ẩn Nước
-        elecOldIndex: 940,
-        waterOldIndex: 0,
-      ),
-      RoomReadingUiModel(
-        roomId: 'uuid-room-104',
-        roomNumber: '104',
-        elecCalcType: ServiceCalculationType.perRoom,  // PER_ROOM -> Tự ẩn
-        waterCalcType: ServiceCalculationType.perRoom, // PER_ROOM -> Tự ẩn
-        elecOldIndex: 0,
-        waterOldIndex: 0,
-      ),
-    ];
+      final rooms = results[0] as List<RoomModel>;
+      final services = results[1] as List<dynamic>;
 
-    isLoading = false;
-    notifyListeners();
+      String? elecServiceId;
+      String? waterServiceId;
+
+      for (var service in services) {
+        final String serviceName = (service['name'] ?? '').toString().toLowerCase();
+
+        if (serviceName.contains('điện')) {
+          elecServiceId = service['id'];
+        } else if (serviceName.contains('nước')) {
+          waterServiceId = service['id'];
+        }
+      }
+
+      List<RoomReadingUiModel> newRoomList = [];
+
+      // Lấy chỉ số điện nước cho từng phòng
+      for (var room in rooms) {
+        final readings = await _provider.getMeterReadings(room.id, selectedMonth);
+
+        String? elecReadingId;
+        String? waterReadingId;
+        int elecOldIndex = 0;
+        int waterOldIndex = 0;
+        int? elecNewIndex;
+        int? waterNewIndex;
+
+
+        for (var reading in readings) {
+          if (reading.serviceName.toLowerCase().contains('điện')) {
+            elecReadingId = reading.id;
+            elecOldIndex = reading.oldIndex;
+            elecNewIndex = reading.newIndex;
+          } else if (reading.serviceName.toLowerCase().contains('nước')) {
+            waterReadingId = reading.id;
+            waterOldIndex = reading.oldIndex;
+            waterNewIndex = reading.newIndex;
+          }
+        }
+
+        newRoomList.add(
+          RoomReadingUiModel(
+            roomId: room.id,
+            roomNumber: room.roomNumber,
+            elecCalcType: ServiceCalculationType.byIndex,
+            waterCalcType: ServiceCalculationType.byIndex,
+            elecServiceId: elecServiceId,
+            waterServiceId: waterServiceId,
+            elecOldIndex: elecOldIndex,
+            waterOldIndex: waterOldIndex,
+            elecNewIndex: elecNewIndex,
+            waterNewIndex: waterNewIndex,
+            elecReadingId: elecReadingId,
+            waterReadingId: waterReadingId,
+          ),
+        );
+      }
+
+      roomList = newRoomList;
+    } catch (e) {
+      print("Error loading meter readings: $e");
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
   }
 
-  Future<bool> saveSingleRoom(RoomReadingUiModel room) async {
-    if (room.isElecByIndex && room.elecController.text.isEmpty) return false;
-    if (room.isWaterByIndex && room.waterController.text.isEmpty) return false;
+  // --- TRẢ VỀ STRING? ĐỂ CHỨA THÔNG BÁO LỖI (NẾU CÓ) ---
+  Future<String?> saveSingleRoom(RoomReadingUiModel room) async {
+    if (room.isElecByIndex && room.elecController.text.isEmpty) {
+      return 'Vui lòng nhập chỉ số điện!';
+    }
+    if (room.isWaterByIndex && room.waterController.text.isEmpty) {
+      return 'Vui lòng nhập chỉ số nước!';
+    }
 
-    // TODO: Bổ sung logic gọi Provider gọi API tại đây
+    isLoading = true;
+    notifyListeners();
 
-    await Future.delayed(const Duration(milliseconds: 300));
-    return true;
+    try {
+      List<MeterReadingCreateRequest> createRequests = [];
+      List<MeterReadingBulkUpdateRequest> updateRequests = [];
+
+      final formattedDate = "${selectedMonth.year}-${selectedMonth.month.toString().padLeft(2, '0')}-01";
+
+      // Chỉ số Điện
+      if (room.isElecByIndex) {
+        int elecNew = int.parse(room.elecController.text.trim());
+        if (elecNew < room.elecOldIndex) throw Exception('Chỉ số điện mới không được nhỏ hơn số cũ!');
+
+        if (room.elecReadingId == null) {
+          createRequests.add(MeterReadingCreateRequest(roomId: room.roomId, serviceId: room.elecServiceId!, newIndex: elecNew, readingDate: formattedDate));
+        } else {
+          updateRequests.add(MeterReadingBulkUpdateRequest(id: room.elecReadingId!, newIndex: elecNew));
+        }
+      }
+
+      // Chỉ số Nước
+      if (room.isWaterByIndex) {
+        int waterNew = int.parse(room.waterController.text.trim());
+        if (waterNew < room.waterOldIndex) throw Exception('Chỉ số nước mới không được nhỏ hơn số cũ!');
+
+        if (room.waterReadingId == null) {
+          createRequests.add(MeterReadingCreateRequest(roomId: room.roomId, serviceId: room.waterServiceId!, newIndex: waterNew, readingDate: formattedDate));
+        } else {
+          updateRequests.add(MeterReadingBulkUpdateRequest(id: room.waterReadingId!, newIndex: waterNew));
+        }
+      }
+
+      // Gửi API
+      if (createRequests.isNotEmpty) await _provider.createBulkMeterReadings(createRequests);
+      if (updateRequests.isNotEmpty) await _provider.updateBulkMeterReadings(updateRequests);
+
+      // Reload lại dữ liệu mới
+      await loadMeterReadings();
+
+      return null; // THÀNH CÔNG -> Trả về null
+    } catch (e) {
+      isLoading = false;
+      notifyListeners();
+      return e.toString().replaceAll('Exception: ', ''); // LỖI -> Trả về thông báo lỗi
+    }
   }
 
   @override

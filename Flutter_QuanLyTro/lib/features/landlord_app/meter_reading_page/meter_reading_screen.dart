@@ -1,24 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_quanlytro/features/landlord_app/meter_reading_page/view_models/meter_reading_view_model.dart';
-import 'package:flutter_quanlytro/features/landlord_app/meter_reading_page/view_models/room_reading_ui_model.dart';
+import 'package:flutter_quanlytro/features/landlord_app/meter_reading_page/room_reading_ui_model.dart';
 import 'package:month_picker_dialog/month_picker_dialog.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_app_bar.dart';
 import '../../../core/widgets/custom_button.dart';
 
 class MeterReadingScreen extends StatefulWidget {
-  const MeterReadingScreen({super.key});
+  final String areaId;
+
+  const MeterReadingScreen({super.key, required this.areaId});
 
   @override
   State<MeterReadingScreen> createState() => _MeterReadingScreenState();
 }
 
 class _MeterReadingScreenState extends State<MeterReadingScreen> {
-  final MeterReadingViewModel _viewModel = MeterReadingViewModel();
+  late final MeterReadingViewModel _viewModel;
 
   @override
   void initState() {
     super.initState();
+    _viewModel = MeterReadingViewModel(areaId: widget.areaId);
     _viewModel.loadMeterReadings();
   }
 
@@ -175,9 +178,12 @@ class _MeterReadingScreenState extends State<MeterReadingScreen> {
                 onPressed: () async {
                   FocusScope.of(context).unfocus();
 
-                  final success = await _viewModel.saveSingleRoom(room);
+                  // SỬA ĐỔI: Nhận về String? thay vì bool
+                  final errorMessage = await _viewModel.saveSingleRoom(room);
+
                   if (mounted) {
-                    if (success) {
+                    if (errorMessage == null) {
+                      // null = Không có lỗi = Thành công
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Đã lưu chỉ số phòng ${room.roomNumber} thành công!'),
@@ -187,9 +193,10 @@ class _MeterReadingScreenState extends State<MeterReadingScreen> {
                         ),
                       );
                     } else {
+                      // Có chuỗi = Lỗi -> Hiển thị lỗi đó
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Vui lòng nhập đầy đủ chỉ số mới!'),
+                        SnackBar(
+                          content: Text(errorMessage), // In ra thông báo lỗi cụ thể
                           backgroundColor: Colors.redAccent,
                           behavior: SnackBarBehavior.floating,
                         ),

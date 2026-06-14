@@ -19,15 +19,12 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
 
   // --- DANH SÁCH CHỨC NĂNG: THAO TÁC THƯỜNG DÙNG ---
-  List<QuickActionItem> _getQuickActions(BuildContext context) {
+  List<QuickActionItem> _getQuickActions(BuildContext context, String? currentAreaId) {
     return [
       QuickActionItem(
         title: 'Cọc giữ chỗ',
         icon: Icons.handshake_outlined,
         onTap: () {
-          // Lấy areaId từ Global Provider
-          final currentAreaId = context.read<MainLayoutViewModel>().selectedAreaId;
-
           if (currentAreaId == null || currentAreaId.isEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Vui lòng chọn khu trọ trước!')),
@@ -57,10 +54,22 @@ class _HomeScreenState extends State<HomeScreen> {
       QuickActionItem(
         title: 'Chốt điện/nước',
         icon: Icons.receipt_long_outlined,
-        onTap: () => Navigator.push(
-          context,
-          MaterialPageRoute(builder: (context) => const MeterReadingScreen()),
-        ),
+        onTap: () {
+          if (currentAreaId == null || currentAreaId.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Vui lòng chọn khu trọ trước!')),
+            );
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MeterReadingScreen(
+                areaId: currentAreaId,
+              ),
+            ),
+          );
+        },
       ),
       QuickActionItem(
         title: 'Xem hóa đơn',
@@ -144,7 +153,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final quickActions = _getQuickActions(context);
+
+    final currentAreaId = context.watch<MainLayoutViewModel>().selectedAreaId;
+
+    final quickActions = _getQuickActions(context,currentAreaId);
     final managementItems = _getManagementMenu(context);
 
     return Scaffold(
