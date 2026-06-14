@@ -6,6 +6,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import ut.edu.be_quanlytro.Dto.Request.ContractCreateManualRequest;
 import ut.edu.be_quanlytro.Dto.Request.ContractCreateRequest;
+import ut.edu.be_quanlytro.Dto.Request.ContractMemberAddRequest;
 import ut.edu.be_quanlytro.Dto.Request.UserCreateRequest;
 import ut.edu.be_quanlytro.Dto.Response.*;
 import ut.edu.be_quanlytro.Entity.*;
@@ -325,6 +326,59 @@ public class ContractService {
         return contracts.stream()
                 .map(this::mapToDetailResponse)
                 .toList();
+    }
+    // ================= 6. THÊM THÀNH VIÊN VÀO HỢP ĐỒNG =================
+    @Transactional
+    public ContractDetailResponse addContractMember(ContractMemberAddRequest request, UUID currentUserId) {
+
+        // 1. Tìm hợp đồng dưới Database
+        Contract contract = contractRepository.findById(request.getContractId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng với ID đã cung cấp!"));
+
+        // 2. Chốt chặn bảo mật (Chỉ Chủ trọ quản lý phòng này mới được thêm người)
+        boolean isLandlord = contract.getRoom().getArea().getLandlord().getId().equals(currentUserId);
+        if (!isLandlord) {
+            throw new RuntimeException("Bạn không có quyền thêm thành viên vào hợp đồng của khu trọ khác!");
+        }
+
+        // 3. Chốt chặn nghiệp vụ (Chỉ cho phép thêm khi hợp đồng đang DRAFT hoặc ACTIVE)
+        if (contract.getStatus() != ContractStatus.DRAFT && contract.getStatus() != ContractStatus.SIGNED) {
+            throw new RuntimeException("Chỉ có thể thêm thành viên khi hợp đồng đang ở trạng thái Nháp hoặc Đang hoạt động!");
+        }
+
+        // 4. Kiểm tra trùng lặp (Ngăn chặn thêm 1 người 2 lần)
+        boolean isExist = contract.getMembers().stream()
+                .anyMatch(member -> member.getIdCardNumber().equals(request.getIdCardNumber())
+                        || member.getPhone().equals(request.getPhone()));
+        if (isExist) {
+            throw new RuntimeException("Thành viên với Số điện thoại hoặc CCCD này đã tồn tại trong hợp đồng!");
+        }
+
+        // 5. Khởi tạo đối tượng Thành viên mới
+        ContractMember newMember = ContractMember.builder()
+                .contract(contract)
+                .fullName(request.getFullName())
+                .phone(request.getPhone())
+                .dob(request.getDob())
+                .hometown(request.getHometown())
+                .idCardNumber(request.getIdCardNumber())
+                .joinedAt(LocalDate.now())
+                .build();
+
+        // 6. Gắn vào danh sách của Hợp đồng
+        contract.getMembers().add(newMember);
+
+        // 7. Lưu xuống Database
+        // Nhờ thuộc tính cascade = CascadeType.ALL ở Entity Contract, ta chỉ cần save Contract là Member sẽ tự động được lưu theo!
+        Contract savedContract = contractRepository.save(contract);
+
+        // 8. Ghi Log hệ thống
+        String description = String.format("Thêm khách ở ghép: %s vào phòng %s",
+                request.getFullName(), contract.getRoom().getRoomNumber());
+        activityLog.createLog(contract.getRoom().getArea().getLandlord(), "ADD_MEMBER", "contracts", savedContract.getId(), description);
+
+        // 9. Trả về chi tiết hợp đồng mới nhất (để Frontend tự động cập nhật danh sách)
+        return mapToDetailResponse(savedContract);
     }
 
     // ================= MAPPER =================

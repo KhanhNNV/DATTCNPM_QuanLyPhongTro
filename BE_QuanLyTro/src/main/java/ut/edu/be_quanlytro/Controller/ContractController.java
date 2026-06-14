@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import ut.edu.be_quanlytro.Dto.Request.ContractCreateManualRequest;
 import ut.edu.be_quanlytro.Dto.Request.ContractCreateRequest;
+import ut.edu.be_quanlytro.Dto.Request.ContractMemberAddRequest;
 import ut.edu.be_quanlytro.Dto.Response.ContractCreateResponse;
 import ut.edu.be_quanlytro.Dto.Response.ContractDetailResponse;
 import ut.edu.be_quanlytro.Service.ContractService;
@@ -98,5 +99,18 @@ public class ContractController {
         List<ContractDetailResponse> responses = contractService.getContractsByLandlord(landlordId);
 
         return ResponseEntity.ok(responses);
+    }
+
+    // API 4: Thêm thành viên ở ghép vào hợp đồng
+    @PostMapping("/add/member")
+    @PreAuthorize("hasRole('LANDLORD')") // Nghiệp vụ mặc định: Chỉ chủ trọ mới có quyền khai báo người mới
+    public ResponseEntity<ContractDetailResponse> addContractMember(
+            @RequestBody ContractMemberAddRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+        ContractDetailResponse response = contractService.addContractMember(request, currentUserId);
+
+        return ResponseEntity.ok(response);
     }
 }
