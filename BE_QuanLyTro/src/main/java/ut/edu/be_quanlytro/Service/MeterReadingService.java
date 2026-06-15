@@ -7,6 +7,7 @@ import ut.edu.be_quanlytro.Dto.Request.MeterReadingBulkUpdateRequest;
 import ut.edu.be_quanlytro.Dto.Request.MeterReadingCreateRequest;
 import ut.edu.be_quanlytro.Dto.Response.MeterReadingResponse;
 import ut.edu.be_quanlytro.Entity.AreaService;
+import ut.edu.be_quanlytro.Entity.Enum.ServiceCalculationType;
 import ut.edu.be_quanlytro.Entity.MeterReading;
 import ut.edu.be_quanlytro.Entity.Room;
 import ut.edu.be_quanlytro.Entity.User;
@@ -110,19 +111,56 @@ public class MeterReadingService {
 
         return updatedReadings;
     }
+    // NHỚ THÊM DÒNG IMPORT NÀY LÊN ĐẦU FILE NHÉ:
+// import ut.edu.be_quanlytro.Entity.Enum.ServiceCalculationType;
+
     @Transactional(readOnly = true)
     public List<MeterReadingResponse> getReadingsByRoomAndMonth(UUID roomId, LocalDate month) {
+        // 1. Kiểm tra xem tháng này đã có dữ liệu chưa
         List<MeterReading> readings = meterReadingRepository.findByRoomIdAndReadingMonth(roomId, month);
 
-        return readings.stream().map(r -> MeterReadingResponse.builder()
-                .id(r.getId())
-                .roomNumber(r.getRoom().getRoomNumber())
-                .serviceName(r.getService().getName())
-                .oldIndex(r.getOldIndex())
-                .newIndex(r.getNewIndex())
-                .readingDate(r.getReadingMonth())
-                .isInvoiced(r.getIsInvoiced())
-                .build()
-        ).toList();
+        //  Đã có dữ liệu (Tháng cũ đã chốt số xong) -> Trả về bình thường
+        if (!readings.isEmpty()) {
+            return readings.stream().map(r -> MeterReadingResponse.builder()
+                    .id(r.getId())
+                    .roomNumber(r.getRoom().getRoomNumber())
+                    .serviceName(r.getService().getName())
+                    .oldIndex(r.getOldIndex())
+                    .newIndex(r.getNewIndex())
+                    .readingDate(r.getReadingMonth())
+                    .isInvoiced(r.getIsInvoiced())
+                    .build()
+            ).toList();
+        }
+
+        //  Chưa có dữ liệu (Tháng mới) -> Dựng Form Ảo
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng!"));
+
+
+        List<AreaService> indexServices = areaServiceRepository.findByAreaIdAndIsActiveTrue(room.getArea().getId())
+                .stream()
+                .filter(s -> s.getCalcType() == ServiceCalculationType.BY_INDEX)
+                .toList();
+
+        // Map danh sách dịch vụ này thành các Form Ảo để gửi về FE
+        return indexServices.stream().map(service -> {
+            // Tận dụng luôn hàm tìm chốt số gần nhất mà team ông đã viết
+            Integer lastMonthNewIndex = meterReadingRepository
+                    .findTopByRoomIdAndServiceIdAndReadingMonthBeforeOrderByReadingMonthDesc(roomId, service.getId(), month)
+                    .map(MeterReading::getNewIndex)
+                    .orElse(0); // Nếu trọ mới tinh chưa từng chốt, mặc định lấy số 0
+
+            return MeterReadingResponse.builder()
+                    .id(null) // BÁO HIỆU CHO FE BIẾT ĐÂY LÀ FORM ẢO (CẦN GỌI HÀM POST)
+                    .serviceId(service.getId())
+                    .roomNumber(room.getRoomNumber())
+                    .serviceName(service.getName())
+                    .oldIndex(lastMonthNewIndex) // Biến số MỚI của tháng trước thành số CŨ của tháng này
+                    .newIndex(0) // Để sẵn số 0 cho chủ trọ nhập
+                    .readingDate(month)
+                    .isInvoiced(false)
+                    .build();
+        }).toList();
     }
 }
