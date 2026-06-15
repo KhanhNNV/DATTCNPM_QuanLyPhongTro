@@ -32,7 +32,7 @@ class MeterReadingViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Lấy danh sách các phòng và dịch vụ trong khu trọ
+      // 1. Lấy danh sách các phòng và dịch vụ trong khu trọ
       final results = await Future.wait([
         _roomProvider.getRoomsByArea(areaId, status: 'RENTED'),
         _areaConfigProvider.getServicesByArea(areaId),
@@ -46,7 +46,6 @@ class MeterReadingViewModel extends ChangeNotifier {
 
       for (var service in services) {
         final String serviceName = (service['name'] ?? '').toString().toLowerCase();
-
         if (serviceName.contains('điện')) {
           elecServiceId = service['id'];
         } else if (serviceName.contains('nước')) {
@@ -56,7 +55,7 @@ class MeterReadingViewModel extends ChangeNotifier {
 
       List<RoomReadingUiModel> newRoomList = [];
 
-      // Lấy chỉ số điện nước cho từng phòng
+      // 2. Lấy chỉ số điện nước cho từng phòng
       for (var room in rooms) {
         final readings = await _provider.getMeterReadings(room.id, selectedMonth);
 
@@ -67,16 +66,19 @@ class MeterReadingViewModel extends ChangeNotifier {
         int? elecNewIndex;
         int? waterNewIndex;
 
-
         for (var reading in readings) {
+          final isVirtualForm = reading.id == null; // <--- CHECK XEM CÓ PHẢI FORM ẢO KHÔNG
+
           if (reading.serviceName.toLowerCase().contains('điện')) {
             elecReadingId = reading.id;
             elecOldIndex = reading.oldIndex;
-            elecNewIndex = reading.newIndex;
+            // NẾU LÀ FORM ẢO THÌ ĐỂ NULL ĐỂ Ô NHẬP LIỆU TRỐNG, KHÔNG HIỂN THỊ SỐ 0
+            elecNewIndex = isVirtualForm ? null : reading.newIndex;
           } else if (reading.serviceName.toLowerCase().contains('nước')) {
             waterReadingId = reading.id;
             waterOldIndex = reading.oldIndex;
-            waterNewIndex = reading.newIndex;
+            // TƯƠNG TỰ VỚI NƯỚC
+            waterNewIndex = isVirtualForm ? null : reading.newIndex;
           }
         }
 
