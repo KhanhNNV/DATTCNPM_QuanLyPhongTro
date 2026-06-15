@@ -10,6 +10,7 @@ import java.util.UUID;
 @Builder
 public class MeterReadingResponse {
     private UUID id;
+    private UUID serviceId;
     private String roomNumber;
     private String serviceName;
     private Integer oldIndex;
