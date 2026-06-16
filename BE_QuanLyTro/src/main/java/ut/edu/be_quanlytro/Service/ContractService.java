@@ -4,10 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import ut.edu.be_quanlytro.Dto.Request.ContractCreateManualRequest;
-import ut.edu.be_quanlytro.Dto.Request.ContractCreateRequest;
-import ut.edu.be_quanlytro.Dto.Request.ContractMemberAddRequest;
-import ut.edu.be_quanlytro.Dto.Request.UserCreateRequest;
+import ut.edu.be_quanlytro.Dto.Request.*;
 import ut.edu.be_quanlytro.Dto.Response.*;
 import ut.edu.be_quanlytro.Entity.*;
 import ut.edu.be_quanlytro.Entity.Enum.ContractStatus;
@@ -19,11 +16,9 @@ import ut.edu.be_quanlytro.Repository.DepositRepository;
 import ut.edu.be_quanlytro.Repository.RoomRepository;
 import ut.edu.be_quanlytro.Repository.UserRepository;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.UUID;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +33,7 @@ public class ContractService {
     private final ActivityLogService activityLog;
     private final DepositRepository depositRepository;
     private final OcrService  ocrService;
+    private final CloudinaryService cloudinaryService;
 
     // ================= 1. KHỞI TẠO HỢP ĐỒNG (Quét CCCD)=================
     @Transactional
@@ -380,6 +376,210 @@ public class ContractService {
         // 9. Trả về chi tiết hợp đồng mới nhất (để Frontend tự động cập nhật danh sách)
         return mapToDetailResponse(savedContract);
     }
+    // ================= 7. THANH LÝ HỢP ĐỒNG=================
+    @Transactional
+    public ContractTerminationResponse terminateContract(ContractTerminationRequest request, UUID currentUserId) {
+
+        // 1. Tìm hợp đồng
+        Contract contract = contractRepository.findById(request.getContractId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng!"));
+
+        // 2. Chốt chặn bảo mật
+        if (!contract.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
+            throw new RuntimeException("Bạn không có quyền thanh lý hợp đồng này!");
+        }
+
+        // 3. Kiểm tra trạng thái hợp đồng
+        if (contract.getStatus() != ContractStatus.SIGNED) {
+            throw new RuntimeException("Chỉ có thể thanh lý hợp đồng đang ở trạng thái SIGNED");
+        }
+
+        // 4. TÍNH TOÁN BÙ TRỪ CỌC
+        // a. Tính tổng tiền điện nước tháng cuối
+        BigDecimal electricityCost = request.getElectricityPrice().multiply(new BigDecimal(request.getElectricityUsage()));
+        BigDecimal waterCost = request.getWaterPrice().multiply(new BigDecimal(request.getWaterUsage()));
+
+        // b. Tổng tiền bị trừ = Điện + Nước + Hư hỏng/Phạt (Nếu có)
+        BigDecimal damages = request.getOtherDamagesFee() != null ? request.getOtherDamagesFee() : BigDecimal.ZERO;
+        BigDecimal totalDeduction = electricityCost.add(waterCost).add(damages);
+
+        // c. Tính toán chênh lệch với tiền cọc
+        BigDecimal depositAmount = contract.getDepositAmount() != null ? contract.getDepositAmount() : BigDecimal.ZERO;
+        BigDecimal offsetAmount = depositAmount.subtract(totalDeduction);
+
+        String action;
+        BigDecimal finalAmountToShow;
+
+        if (offsetAmount.compareTo(BigDecimal.ZERO) > 0) {
+            action = "HOÀN_TRẢ_KHÁCH"; // Cọc > Nợ -> Trả lại tiền dư cho khách
+            finalAmountToShow = offsetAmount;
+        } else if (offsetAmount.compareTo(BigDecimal.ZERO) < 0) {
+            action = "THU_THÊM_TỪ_KHÁCH"; // Cọc < Nợ -> Bắt khách đóng thêm tiền
+            finalAmountToShow = offsetAmount.abs(); // Lấy trị tuyệt đối cho dễ nhìn
+        } else {
+            action = "HÒA_CÔNG_NỢ"; // Cọc = Nợ
+            finalAmountToShow = BigDecimal.ZERO;
+        }
+
+        // 5. CẬP NHẬT TRẠNG THÁI (Đóng băng dữ liệu)
+        contract.setStatus(ContractStatus.TERMINATED);
+        Room room = contract.getRoom();
+        room.setStatus(RoomStatus.AVAILABLE);
+
+        contractRepository.save(contract);
+        roomRepository.save(room);
+
+        // 6. Ghi Log hệ thống
+        String logDesc = String.format("Thanh lý hợp đồng phòng %s. %s: %s VNĐ",
+                room.getRoomNumber(), action, finalAmountToShow);
+        activityLog.createLog(contract.getRoom().getArea().getLandlord(), "TERMINATE_CONTRACT", "contracts", contract.getId(), logDesc);
+
+        // 7. Trả về kết quả
+        return ContractTerminationResponse.builder()
+                .contractId(contract.getId())
+                .roomNumber(room.getRoomNumber())
+                .depositAmount(depositAmount)
+                .totalDeduction(totalDeduction)
+                .finalAmount(finalAmountToShow)
+                .settlementAction(action)
+                .message("Thanh lý hợp đồng thành công")
+                .build();
+    }
+    // ================= 8. CẬP NHẬT HỢP ĐỒNG (CHỈ ÁP DỤNG KHI LÀ BẢN NHÁP) =================
+    @Transactional
+    public ContractDetailResponse updateContract(UUID contractId, ContractUpdateRequest request, UUID currentUserId) {
+
+        // 1. Tìm hợp đồng dưới DB
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng!"));
+
+        // 2. Chốt chặn bảo mật
+        if (!contract.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
+            throw new RuntimeException("Bạn không có quyền chỉnh sửa hợp đồng này!");
+        }
+
+        // 3. Chốt chặn Nghiệp vụ pháp lý (CỰC KỲ QUAN TRỌNG)
+        if (contract.getStatus() != ContractStatus.DRAFT) {
+            throw new RuntimeException("Lỗi: Chỉ có thể chỉnh sửa điều khoản khi hợp đồng đang là Bản Nháp. Hợp đồng đã ký không được phép thay đổi!");
+        }
+
+        // 4. Cập nhật các trường dữ liệu (Chỉ cập nhật nếu có truyền lên từ Request)
+        if (request.getStartDate() != null) {
+            contract.setStartDate(request.getStartDate());
+        }
+        if (request.getEndDate() != null) {
+            contract.setEndDate(request.getEndDate());
+        }
+
+        if (request.getDepositAmount() != null) {
+            contract.setDepositAmount(request.getDepositAmount());
+        }
+
+        // 5. Lưu xuống DB
+        Contract updatedContract = contractRepository.save(contract);
+
+        // 6. Ghi log hoạt động
+        String logDesc = String.format("Cập nhật thông tin bản nháp hợp đồng phòng %s", contract.getRoom().getRoomNumber());
+        activityLog.createLog(contract.getRoom().getArea().getLandlord(), "UPDATE_CONTRACT", "contracts", updatedContract.getId(), logDesc);
+
+        // 7. Trả về chi tiết mới nhất
+        return mapToDetailResponse(updatedContract);
+    }
+    // ================= 9. XÓA HỢP ĐỒNG NHÁP (ĐÃ TỐI ƯU DỌN USER RÁC) =================
+    @Transactional
+    public void deleteContract(UUID contractId, UUID currentUserId) {
+
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng!"));
+
+        if (!contract.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
+            throw new RuntimeException("Bạn không có quyền xóa hợp đồng của khu trọ khác!");
+        }
+
+        if (contract.getStatus() != ContractStatus.DRAFT) {
+            throw new RuntimeException("Chỉ được phép xóa hợp đồng Nháp!");
+        }
+
+        //KHÁCH THUÊ TRƯỚC KHI XÓA HỢP ĐỒNG
+        UUID tenantId = contract.getTenant().getId();
+        Room room = contract.getRoom();
+
+
+        Optional<Deposit> linkedDeposit = depositRepository.findByContractId(contractId);
+        if (linkedDeposit.isPresent()) {
+            Deposit deposit = linkedDeposit.get();
+            deposit.setStatus(DepositStatus.PENDING);
+            deposit.setContract(null);
+            depositRepository.save(deposit);
+            room.setStatus(RoomStatus.DEPOSITED);
+        } else {
+            room.setStatus(RoomStatus.AVAILABLE);
+        }
+        roomRepository.save(room);
+
+        // Ghi log hoạt động
+        String logDesc = String.format("Xóa bản nháp hợp đồng của phòng %s", room.getRoomNumber());
+        activityLog.createLog(contract.getRoom().getArea().getLandlord(), "DELETE_CONTRACT", "contracts", contract.getId(), logDesc);
+
+        // Thực hiện xóa hợp đồng
+        contractRepository.delete(contract);
+
+        // Sau khi tờ hợp đồng này bay màu, ta đếm xem người khách này còn tờ hợp đồng nào khác không?
+        long remainingContracts = contractRepository.countByTenantId(tenantId);
+
+        if (remainingContracts == 0) {
+            // Nếu bằng 0, chứng tỏ tài khoản User này được sinh ra chỉ cho cái hợp đồng nháp vừa bị hủy.
+            // Tiến hành kích hoạt hàm deleteUser tinh gọn bên UserService để quét sạch tài khoản rác này!
+            System.out.println("Phát hiện tài khoản khách vãng lai không có hợp đồng thực tế. Tiến hành dọn dẹp...");
+            userService.deleteUser(tenantId);
+        }
+    }
+    // ================= 10. KHÁCH THUÊ KÝ HỢP ĐỒNG ĐIỆN TỬ =================
+    @Transactional
+    public ContractDetailResponse signContract(UUID contractId, MultipartFile signatureImage, UUID currentUserId) {
+
+        // 1. Kiểm tra file chữ ký
+        if (signatureImage == null || signatureImage.isEmpty()) {
+            throw new RuntimeException("Vui lòng cung cấp hình ảnh chữ ký hợp lệ!");
+        }
+
+        // 2. Lấy thông tin hợp đồng
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng!"));
+
+        // 3. Chốt chặn bảo mật: Chỉ người đứng tên hợp đồng mới được quyền ký
+        if (!contract.getTenant().getId().equals(currentUserId)) {
+            throw new RuntimeException("Truy cập bị từ chối! Bạn không phải là người đứng tên trên hợp đồng này.");
+        }
+
+        // 4. Chốt chặn trạng thái: Chỉ hợp đồng Nháp mới được ký
+        if (contract.getStatus() != ContractStatus.DRAFT) {
+            throw new RuntimeException("Hợp đồng này đã được ký hoặc không còn ở trạng thái chờ xác nhận!");
+        }
+
+        // 5. Upload chữ ký của khách thuê lên Cloudinary
+        String signatureUrl = cloudinaryService.uploadFile(signatureImage, "tenant_signatures");
+
+        // 6. Cập nhật dữ liệu Hợp đồng
+        contract.setTenantSignature(signatureUrl);
+        contract.setStatus(ContractStatus.SIGNED);
+
+        // 7. Cập nhật dữ liệu Phòng
+        Room room = contract.getRoom();
+        room.setStatus(RoomStatus.RENTED);
+
+        // 8. Lưu xuống DB
+        contractRepository.save(contract);
+        roomRepository.save(room);
+
+        // 9. Ghi log hệ thống
+        String logDesc = String.format("Khách thuê xác nhận ký hợp đồng điện tử. Phòng %s chính thức chuyển sang trạng thái Đang thuê.",
+                room.getRoomNumber());
+        activityLog.createLog(contract.getTenant(), "SIGN_CONTRACT", "contracts", contract.getId(), logDesc);
+
+        // 10. Trả về hợp đồng đã cập nhật
+        return mapToDetailResponse(contract);
+    }
 
     // ================= MAPPER =================
     private ContractDetailResponse mapToDetailResponse(Contract contract) {
@@ -408,6 +608,7 @@ public class ContractService {
                 .startDate(contract.getStartDate())
                 .endDate(contract.getEndDate())
                 .depositAmount(contract.getDepositAmount())
+                .rentPrice(contract.getRoom().getRentPrice())
                 .status(contract.getStatus())
                 .contractFileUrl(contract.getContractFileUrl())
                 .members(memberResponses) // Nhúng danh sách thành viên vào đây

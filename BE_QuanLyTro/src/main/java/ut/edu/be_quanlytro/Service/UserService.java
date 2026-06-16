@@ -198,6 +198,14 @@ public class UserService {
         return mapToResponse(updatedUser);
     }
 
+    // ================= DELETE (TỐI ƯU GỌI NỘI BỘ THANH LÝ/XÓA HỢP ĐỒNG) =================
+    @Transactional
+    public void deleteUser(UUID id) {
+        User targetUser = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản cần xóa!"));
+        userRepository.delete(targetUser);
+    }
+
 
 
     @Transactional

@@ -27,6 +27,7 @@ public class ContractDetailResponse {
     private BigDecimal depositAmount;
     private ContractStatus status;
     private String contractFileUrl;
+    private BigDecimal rentPrice;
 
     // Danh sách toàn bộ những người đang ở trong phòng (bao gồm cả đại diện)
     private List<ContractMemberResponse> members;
