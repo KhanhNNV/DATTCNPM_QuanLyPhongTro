@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../data/models/response/area_model.dart';
 import '../../../../data/models/response/user_model.dart';
 import '../../onboarding/onboarding_screen.dart';
 import '../../area_management/edit_area_screen.dart';
+import '../../setting_page/settings_screen.dart';
+import '../../setting_page/view_models/settings_viewmodel.dart';
 
 class MainDrawer extends StatelessWidget {
   final UserModel? currentUser;
@@ -83,6 +86,15 @@ class MainDrawer extends StatelessWidget {
             title: const Text('Cài đặt'),
             onTap: () {
               Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ChangeNotifierProvider(
+                    create: (_) => SettingsViewModel(),
+                    child: const SettingsScreen(),
+                  ),
+                ),
+              );
             },
           ),
         ],
