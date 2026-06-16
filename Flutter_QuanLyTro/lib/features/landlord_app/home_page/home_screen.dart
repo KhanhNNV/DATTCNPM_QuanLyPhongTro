@@ -10,6 +10,7 @@ import 'package:flutter_quanlytro/features/landlord_app/main_layout/view_models/
 import '../deposit_page/view_models/deposit_view_model.dart';
 import '../meter_reading_page/view_models/meter_reading_view_model.dart';
 import '../signature/signature_screen.dart';
+import '../signature/view_models/signature_view_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -132,9 +133,13 @@ class _HomeScreenState extends State<HomeScreen> {
           final isUpdated = await Navigator.push<bool>(
             context,
             MaterialPageRoute(
-              builder: (_) => const SignatureScreen(),
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => SignatureViewModel(),
+                child: const SignatureScreen(),
+              ),
             ),
           );
+
           if (isUpdated == true && context.mounted) {
             context.read<MainLayoutViewModel>().fetchInitialData();
           }

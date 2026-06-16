@@ -90,7 +90,7 @@ class MainDrawer extends StatelessWidget {
                 context,
                 MaterialPageRoute(
                   builder: (_) => ChangeNotifierProvider(
-                    create: (_) => SettingsViewModel(),
+                    create: (_) => SettingsViewModel()..fetchCurrentUser(),
                     child: const SettingsScreen(),
                   ),
                 ),
