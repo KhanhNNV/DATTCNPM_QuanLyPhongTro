@@ -26,4 +26,6 @@ public interface ContractRepository extends JpaRepository<Contract, UUID> {
 
     // Tìm hợp đồng mới nhất của khách thuê thuộc 1 trong các trạng thái truyền vào (DRAFT, ACTIVE)
     Optional<Contract> findFirstByTenantIdAndStatusInOrderByCreatedAtDesc(UUID tenantId, List<ContractStatus> statuses);
+
+    long countByTenantId(UUID tenantId);
 }

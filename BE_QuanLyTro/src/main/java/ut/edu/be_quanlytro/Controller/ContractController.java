@@ -9,11 +9,10 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import ut.edu.be_quanlytro.Dto.Request.ContractCreateManualRequest;
-import ut.edu.be_quanlytro.Dto.Request.ContractCreateRequest;
-import ut.edu.be_quanlytro.Dto.Request.ContractMemberAddRequest;
+import ut.edu.be_quanlytro.Dto.Request.*;
 import ut.edu.be_quanlytro.Dto.Response.ContractCreateResponse;
 import ut.edu.be_quanlytro.Dto.Response.ContractDetailResponse;
+import ut.edu.be_quanlytro.Dto.Response.ContractTerminationResponse;
 import ut.edu.be_quanlytro.Service.ContractService;
 
 import java.util.List;
@@ -110,6 +109,63 @@ public class ContractController {
 
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
         ContractDetailResponse response = contractService.addContractMember(request, currentUserId);
+
+        return ResponseEntity.ok(response);
+    }
+    // API 5: Thanh lý hợp đồng & Bù trừ cọc
+    @PutMapping("/terminate")
+    @PreAuthorize("hasRole('LANDLORD')") // Chỉ Chủ trọ được quyền thanh lý
+    public ResponseEntity<ContractTerminationResponse> terminateContract(
+            @RequestBody ContractTerminationRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+        ContractTerminationResponse response = contractService.terminateContract(request, currentUserId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    // API 6: Cập nhật thông tin hợp đồng (Nháp)
+    @PutMapping("/update/{contractId}")
+    @PreAuthorize("hasRole('LANDLORD')") // Chỉ chủ trọ mới có quyền sửa
+    public ResponseEntity<ContractDetailResponse> updateContract(
+            @PathVariable UUID contractId,
+            @RequestBody ContractUpdateRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+        ContractDetailResponse response = contractService.updateContract(contractId, request, currentUserId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    // ================= XÓA HỢP ĐỒNG (BẢN NHÁP) =================
+    @DeleteMapping("/{contractId}")
+    @PreAuthorize("hasRole('LANDLORD')") // Chỉ chủ trọ mới có quyền xóa
+    public ResponseEntity<String> deleteContract(
+            @PathVariable UUID contractId,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        // 1. Trích xuất ID của chủ trọ đang đăng nhập từ Token
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+
+        // 2. Gọi Service để thực hiện xóa hợp đồng và tự động dọn rác tài khoản
+        contractService.deleteContract(contractId, currentUserId);
+
+        // 3. Trả về thông báo thành công cho Frontend
+        return ResponseEntity.ok("Xóa bản nháp hợp đồng thành công! Căn phòng đã được giải phóng và dữ liệu đã được dọn dẹp.");
+    }
+
+    // ================= KHÁCH THUÊ KÝ HỢP ĐỒNG =================
+    @PutMapping("/sign/{contractId}")
+    @PreAuthorize("hasRole('TENANT')") // Khóa chặt: Chỉ có Khách thuê mới được ký
+    public ResponseEntity<ContractDetailResponse> signContract(
+            @PathVariable UUID contractId,
+            @RequestParam("signature") MultipartFile signatureImage,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+        ContractDetailResponse response = contractService.signContract(contractId, signatureImage, currentUserId);
 
         return ResponseEntity.ok(response);
     }
