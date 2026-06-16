@@ -1,37 +1,31 @@
 import 'package:flutter/material.dart';
-
 import '../../../../data/models/request/deposit_create_request.dart';
 import '../../../../data/models/response/room_model.dart';
 import '../../../../data/providers/deposit_provider.dart';
 import '../../../../data/providers/room_provider.dart';
 
-
-
 class DepositViewModel extends ChangeNotifier {
+  final RoomProvider roomProvider = RoomProvider();
+  final DepositProvider depositProvider = DepositProvider();
 
-  final RoomProvider roomProvider =
-  RoomProvider();
-
-  final DepositProvider depositProvider =
-  DepositProvider();
+  // --- QUẢN LÝ FORM STATE ---
+  final formKey = GlobalKey<FormState>();
+  final tenantController = TextEditingController();
+  final phoneController = TextEditingController();
+  final depositController = TextEditingController();
+  final noteController = TextEditingController();
+  DateTime? expectedMoveInDate;
 
   bool isLoading = false;
-
   List<RoomModel> rooms = [];
-
   RoomModel? selectedRoom;
 
-  Future<void> loadRooms(
-      String areaId) async {
-
+  Future<void> loadRooms(String areaId) async {
     try {
       isLoading = true;
       notifyListeners();
-
-      rooms = await roomProvider.getRoomsByArea(
-        areaId,
-        status: "AVAILABLE",
-      );
+      rooms = await roomProvider.getRoomsByArea(areaId, status: "AVAILABLE");
+    } catch (e) {
     } finally {
       isLoading = false;
       notifyListeners();
@@ -40,14 +34,53 @@ class DepositViewModel extends ChangeNotifier {
 
   void selectRoom(RoomModel room) {
     selectedRoom = room;
+    depositController.text = room.depositAmount.toStringAsFixed(0);
     notifyListeners();
   }
 
-  Future<void> createDeposit(
-      DepositCreateRequest request) async {
+  void changeExpectedDate(DateTime date) {
+    expectedMoveInDate = date;
+    notifyListeners();
+  }
 
-    await depositProvider.createDeposit(
-      request,
-    );
+  // --- HÀM LƯU PHIẾU ĐẶT CỌC ---
+  Future<void> saveDeposit() async {
+    if (!formKey.currentState!.validate()) {
+      throw Exception('Vui lòng điền đầy đủ thông tin hợp lệ!');
+    }
+    if (selectedRoom == null) {
+      throw Exception('Vui lòng chọn phòng!');
+    }
+    if (expectedMoveInDate == null) {
+      throw Exception('Vui lòng chọn ngày dự kiến vào ở!');
+    }
+
+    try {
+      isLoading = true;
+      notifyListeners();
+
+      final request = DepositCreateRequest(
+        roomId: selectedRoom!.id,
+        phone: phoneController.text.trim(),
+        tenantFullName: tenantController.text.trim(),
+        depositAmount: double.parse(depositController.text.trim()),
+        expectedMoveInDate: expectedMoveInDate!.toIso8601String().split('T').first,
+        note: noteController.text.trim(),
+      );
+
+      await depositProvider.createDeposit(request);
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  @override
+  void dispose() {
+    tenantController.dispose();
+    phoneController.dispose();
+    depositController.dispose();
+    noteController.dispose();
+    super.dispose();
   }
 }

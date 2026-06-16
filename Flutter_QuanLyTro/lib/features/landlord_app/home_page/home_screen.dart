@@ -7,6 +7,8 @@ import '../deposit_page/deposit_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_quanlytro/features/landlord_app/main_layout/view_models/main_layout_view_model.dart';
 
+import '../deposit_page/view_models/deposit_view_model.dart';
+import '../meter_reading_page/view_models/meter_reading_view_model.dart';
 import '../signature/signature_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -34,8 +36,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => DepositScreen(
-                areaId: currentAreaId,
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => DepositViewModel()..loadRooms(currentAreaId),
+                child: const DepositScreen(),
               ),
             ),
           );
@@ -64,8 +67,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => MeterReadingScreen(
-                areaId: currentAreaId,
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => MeterReadingViewModel(areaId: currentAreaId)..loadMeterReadings(),
+                child: const MeterReadingScreen(),
               ),
             ),
           );
