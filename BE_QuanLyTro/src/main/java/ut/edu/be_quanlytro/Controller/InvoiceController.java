@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import ut.edu.be_quanlytro.Dto.Request.InvoiceCreateRequest;
 import ut.edu.be_quanlytro.Dto.Response.InvoiceDetailResponse;
 import ut.edu.be_quanlytro.Dto.Response.InvoiceResponse;
+import ut.edu.be_quanlytro.Dto.Response.PaymentQrResponse;
 import ut.edu.be_quanlytro.Service.InvoiceService;
 
 import jakarta.validation.Valid;
@@ -39,6 +40,21 @@ public class InvoiceController {
     public ResponseEntity<?> getInvoiceDetail(@PathVariable UUID id) {
         try {
             InvoiceDetailResponse response = invoiceService.getInvoiceDetail(id);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    /**
+     * API Tạo mã VietQR để thanh toán hóa đơn
+     * Chỉ KHÁCH THUÊ (TENANT) hoặc CHỦ TRỌ (LANDLORD) mới được xem
+     */
+    @GetMapping("/{id}/qr-code")
+    @PreAuthorize("hasAnyRole('LANDLORD', 'TENANT')")
+    public ResponseEntity<?> getPaymentQrCode(@PathVariable UUID id) {
+        try {
+            PaymentQrResponse response = invoiceService.generateVietQR(id);
             return ResponseEntity.ok(response);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());

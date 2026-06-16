@@ -7,6 +7,7 @@ import ut.edu.be_quanlytro.Dto.Request.InvoiceCreateRequest;
 import ut.edu.be_quanlytro.Dto.Response.InvoiceDetailResponse;
 import ut.edu.be_quanlytro.Dto.Response.InvoiceItemResponse;
 import ut.edu.be_quanlytro.Dto.Response.InvoiceResponse;
+import ut.edu.be_quanlytro.Dto.Response.PaymentQrResponse;
 import ut.edu.be_quanlytro.Entity.*;
 import ut.edu.be_quanlytro.Entity.Enum.ContractStatus;
 import ut.edu.be_quanlytro.Entity.Enum.InvoiceStatus;
@@ -131,6 +132,46 @@ public class InvoiceService {
                 .totalAmount(invoice.getTotalAmount())
                 .status(invoice.getStatus().name())
                 .items(itemResponses)
+                .build();
+    }
+
+    @Transactional(readOnly = true)
+    public PaymentQrResponse generateVietQR(UUID invoiceId) {
+        // 1. Tìm hóa đơn
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn!"));
+
+        // 2. Lấy thông tin ngân hàng của chủ trọ (Giả lập cứng để test)
+        String bankId = "MB"; // Ngân hàng Quân Đội
+        String accountNo = "0901234567";
+        String accountName = "TRAN VAN CHU";
+
+        // 3. Chuẩn bị dữ liệu động
+        BigDecimal amount = invoice.getTotalAmount();
+
+        // Tạo nội dung chuyển khoản (Không dấu, ghi rõ Phòng và Tháng)
+        // Ví dụ: "P101 THANH TOAN T6"
+        String content = String.format("P%s THANH TOAN T%d",
+                invoice.getRoom().getRoomNumber(),
+                invoice.getInvoicePeriod().getMonthValue());
+
+        // 4. Lắp ráp thành đường link VietQR chuẩn (Quick Link)
+        // Nhớ replace khoảng trắng thành %20 để đường link không bị gãy
+        String qrUrl = String.format("https://img.vietqr.io/image/%s-%s-compact2.png?amount=%.0f&addInfo=%s&accountName=%s",
+                bankId,
+                accountNo,
+                amount,
+                content.replace(" ", "%20"),
+                accountName.replace(" ", "%20"));
+
+        // 5. Trả về cho Frontend
+        return PaymentQrResponse.builder()
+                .bankId(bankId)
+                .accountNo(accountNo)
+                .accountName(accountName)
+                .amount(amount)
+                .content(content)
+                .qrImageUrl(qrUrl)
                 .build();
     }
 }
