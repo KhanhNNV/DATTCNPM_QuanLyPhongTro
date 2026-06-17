@@ -32,12 +32,18 @@ public class MeterReadingService {
     private final UserRepository userRepository;
     @Transactional
     public MeterReading createMeterReading(MeterReadingCreateRequest request, UUID currentUserId){
-
         Room room = roomRepository.findById(request.getRoomId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng!"));
+
+        // VÁ LỖ HỔNG: Kiểm tra xem phòng này có thuộc quyền sở hữu của Chủ trọ đang gọi API không
+        if (!room.getArea().getLandlord().getId().equals(currentUserId)) {
+            throw new RuntimeException("Bạn không có quyền chốt số cho phòng của khu trọ khác!");
+        }
+
         AreaService service = areaServiceRepository.findById(request.getServiceId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy dịch vụ!"));
-        LocalDate exactReadingDate = request.getReadingDate();
+
+        LocalDate exactReadingDate = request.getReadingDate().withDayOfMonth(1);
         Integer oldIndex = 0;
         Optional<MeterReading> lastReading = meterReadingRepository.
                 findTopByRoomIdAndServiceIdAndReadingMonthBeforeOrderByReadingMonthDesc
@@ -76,21 +82,22 @@ public class MeterReadingService {
     }
 
     @Transactional
-    public MeterReading updateMeterReading(UUID readingId, Integer newIndex) {
+    public MeterReading updateMeterReading(UUID readingId, Integer newIndex, UUID currentUserId) {
         MeterReading existingReading = meterReadingRepository.findById(readingId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy phiếu chốt số!"));
 
-        // 1. Chặn nếu đã lên hóa đơn
+        if (!existingReading.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
+            throw new RuntimeException("Bạn không có quyền sửa chốt số của khu trọ khác!");
+        }
+
         if (existingReading.getIsInvoiced()) {
             throw new RuntimeException("Phiếu này đã được lập hóa đơn, không thể sửa!");
         }
 
-        // 2. Chặn nếu số mới sửa lại nhỏ hơn số cũ
         if (newIndex < existingReading.getOldIndex()) {
             throw new RuntimeException(String.format("Lỗi: Số mới (%d) không được nhỏ hơn số cũ (%d)!", newIndex, existingReading.getOldIndex()));
         }
 
-        // 3. Cập nhật số mới và lưu lại
         existingReading.setNewIndex(newIndex);
         MeterReading savedReading = meterReadingRepository.save(existingReading);
 
@@ -100,29 +107,34 @@ public class MeterReadingService {
         return savedReading;
     }
     @Transactional
-    public List<MeterReading> updateBulkMeterReadings(List<MeterReadingBulkUpdateRequest> requests) {
+    public List<MeterReading> updateBulkMeterReadings(List<MeterReadingBulkUpdateRequest> requests, UUID currentUserId) { // THÊM THAM SỐ ID
         List<MeterReading> updatedReadings = new ArrayList<>();
 
         for (MeterReadingBulkUpdateRequest request : requests) {
-            // Tái sử dụng lại hàm update lẻ để nó tự check logic (isInvoiced, lớn hơn số cũ...)
-            MeterReading updated = this.updateMeterReading(request.getId(), request.getNewIndex());
+            MeterReading updated = this.updateMeterReading(request.getId(), request.getNewIndex(), currentUserId); // Truyền ID vào
             updatedReadings.add(updated);
         }
 
         return updatedReadings;
     }
-    // NHỚ THÊM DÒNG IMPORT NÀY LÊN ĐẦU FILE NHÉ:
-// import ut.edu.be_quanlytro.Entity.Enum.ServiceCalculationType;
 
     @Transactional(readOnly = true)
-    public List<MeterReadingResponse> getReadingsByRoomAndMonth(UUID roomId, LocalDate month) {
-        // 1. Kiểm tra xem tháng này đã có dữ liệu chưa
+    public List<MeterReadingResponse> getReadingsByRoomAndMonth(UUID roomId, LocalDate month, UUID currentUserId) { // THÊM THAM SỐ ID
+        Room room = roomRepository.findById(roomId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng!"));
+
+
+        if (!room.getArea().getLandlord().getId().equals(currentUserId)) {
+            throw new RuntimeException("Bạn không có quyền xem dữ liệu của khu trọ khác!");
+        }
+
+        LocalDate normalizedMonth = month.withDayOfMonth(1);
         List<MeterReading> readings = meterReadingRepository.findByRoomIdAndReadingMonth(roomId, month);
 
-        //  Đã có dữ liệu (Tháng cũ đã chốt số xong) -> Trả về bình thường
         if (!readings.isEmpty()) {
             return readings.stream().map(r -> MeterReadingResponse.builder()
                     .id(r.getId())
+                    .serviceId(r.getService().getId())
                     .roomNumber(r.getRoom().getRoomNumber())
                     .serviceName(r.getService().getName())
                     .oldIndex(r.getOldIndex())
@@ -133,32 +145,25 @@ public class MeterReadingService {
             ).toList();
         }
 
-        //  Chưa có dữ liệu (Tháng mới) -> Dựng Form Ảo
-        Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng!"));
-
-
         List<AreaService> indexServices = areaServiceRepository.findByAreaIdAndIsActiveTrue(room.getArea().getId())
                 .stream()
                 .filter(s -> s.getCalcType() == ServiceCalculationType.BY_INDEX)
                 .toList();
 
-        // Map danh sách dịch vụ này thành các Form Ảo để gửi về FE
         return indexServices.stream().map(service -> {
-            // Tận dụng luôn hàm tìm chốt số gần nhất mà team ông đã viết
             Integer lastMonthNewIndex = meterReadingRepository
                     .findTopByRoomIdAndServiceIdAndReadingMonthBeforeOrderByReadingMonthDesc(roomId, service.getId(), month)
                     .map(MeterReading::getNewIndex)
-                    .orElse(0); // Nếu trọ mới tinh chưa từng chốt, mặc định lấy số 0
+                    .orElse(0);
 
             return MeterReadingResponse.builder()
-                    .id(null) // BÁO HIỆU CHO FE BIẾT ĐÂY LÀ FORM ẢO (CẦN GỌI HÀM POST)
+                    .id(null)
                     .serviceId(service.getId())
                     .roomNumber(room.getRoomNumber())
                     .serviceName(service.getName())
-                    .oldIndex(lastMonthNewIndex) // Biến số MỚI của tháng trước thành số CŨ của tháng này
-                    .newIndex(0) // Để sẵn số 0 cho chủ trọ nhập
-                    .readingDate(month)
+                    .oldIndex(lastMonthNewIndex)
+                    .newIndex(0)
+                    .readingDate(normalizedMonth)
                     .isInvoiced(false)
                     .build();
         }).toList();

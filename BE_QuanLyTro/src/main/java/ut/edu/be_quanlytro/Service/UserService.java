@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
+import ut.edu.be_quanlytro.Dto.Request.BankInfoUpdateRequest;
 import ut.edu.be_quanlytro.Dto.Request.UserCreateRequest;
 import ut.edu.be_quanlytro.Dto.Request.UserUpdateRequest;
 import ut.edu.be_quanlytro.Dto.Response.UserResponse;
@@ -264,4 +265,24 @@ public class UserService {
                 .isFirstLogin(user.getIsFirstLogin())
                 .build();
     }
+
+    @Transactional
+    public void updateBankInfo(UUID currentUserId, BankInfoUpdateRequest request) {
+
+        User user = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
+
+
+        if (user.getRole() != RoleType.LANDLORD) {
+            throw new RuntimeException("Chỉ Chủ trọ mới được cấu hình tài khoản ngân hàng!");
+        }
+
+        user.setBankId(request.getBankId());
+        user.setAccountNo(request.getAccountNo());
+        user.setAccountName(request.getAccountName().toUpperCase());
+
+        userRepository.save(user);
+    }
+
+
 }

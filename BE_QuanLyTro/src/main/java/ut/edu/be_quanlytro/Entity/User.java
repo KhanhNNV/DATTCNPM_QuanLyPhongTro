@@ -56,6 +56,15 @@ public class User implements UserDetails {
     @Column(name = "landlord_signature", columnDefinition = "TEXT")
     private String landlordSignature;
 
+    @Column(name = "bank_id")
+    private String bankId;
+
+    @Column(name = "account_no")
+    private String accountNo;
+
+    @Column(name = "account_name")
+    private String accountName;
+
     @CreatedDate
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
