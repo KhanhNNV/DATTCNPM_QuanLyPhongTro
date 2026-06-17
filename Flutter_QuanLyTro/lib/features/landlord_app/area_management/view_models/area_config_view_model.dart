@@ -16,9 +16,40 @@ class AreaConfigViewModel extends ChangeNotifier {
   List<dynamic> _rooms = [];
   List<dynamic> get rooms => _rooms;
 
+  // --- QUẢN LÝ TEXT CONTROLLERS CHO FORM PHÒNG ---
+  final floorController = TextEditingController();
+  final numberController = TextEditingController();
+  final sizeController = TextEditingController();
+  final priceController = TextEditingController();
+  final depositController = TextEditingController();
+  final maxController = TextEditingController();
+
+  // --- QUẢN LÝ TEXT CONTROLLERS CHO DỊCH VỤ ---
+  // Dùng Map để lưu controller theo ID dịch vụ, tránh mất chữ khi cuộn ListView
+  final Map<String, TextEditingController> servicePriceControllers = {};
+
   void clearError() {
     _errorMessage = null;
     notifyListeners();
+  }
+
+  // --- HELPER DỌN/ĐIỀN FORM ---
+  void resetRoomForm() {
+    floorController.text = '1';
+    numberController.clear();
+    sizeController.clear();
+    priceController.clear();
+    depositController.clear();
+    maxController.text = '4';
+  }
+
+  void fillRoomForm(dynamic room) {
+    floorController.text = room['floor'].toString();
+    numberController.text = room['roomNumber'];
+    sizeController.text = room['areaSize'].toString().replaceAll(RegExp(r'\.0$'), '');
+    priceController.text = room['rentPrice'].toString().replaceAll(RegExp(r'\.0$'), '');
+    depositController.text = room['depositAmount'].toString().replaceAll(RegExp(r'\.0$'), '');
+    maxController.text = room['maxOccupants'].toString();
   }
 
   Future<void> loadAreaDetails(String areaId) async {
@@ -29,6 +60,15 @@ class AreaConfigViewModel extends ChangeNotifier {
       _services = await _provider.getServicesByArea(areaId);
       _rooms = await _provider.getRoomsByArea(areaId);
       _rooms.sort((a, b) => (a['roomNumber'] ?? '').compareTo(b['roomNumber'] ?? ''));
+
+      // Khởi tạo giá trị mặc định cho các controller Dịch vụ
+      for (var service in _services) {
+        final id = service['id'].toString();
+        if (!servicePriceControllers.containsKey(id)) {
+          final priceStr = service['price'].toString().replaceAll(RegExp(r'\.0$'), '');
+          servicePriceControllers[id] = TextEditingController(text: priceStr);
+        }
+      }
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
     } finally {
@@ -57,7 +97,6 @@ class AreaConfigViewModel extends ChangeNotifier {
     }
   }
 
-  // Xử lý tạo hoặc cập nhật phòng lẻ
   Future<bool> saveRoom(String areaId, String? roomId, Map<String, dynamic> payload) async {
     _isLoading = true;
     notifyListeners();
@@ -78,7 +117,6 @@ class AreaConfigViewModel extends ChangeNotifier {
     }
   }
 
-  // Xóa phòng
   Future<bool> deleteRoom(String areaId, String roomId) async {
     _isLoading = true;
     notifyListeners();
@@ -93,5 +131,19 @@ class AreaConfigViewModel extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  @override
+  void dispose() {
+    floorController.dispose();
+    numberController.dispose();
+    sizeController.dispose();
+    priceController.dispose();
+    depositController.dispose();
+    maxController.dispose();
+    for (var controller in servicePriceControllers.values) {
+      controller.dispose();
+    }
+    super.dispose();
   }
 }

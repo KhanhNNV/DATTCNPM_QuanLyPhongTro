@@ -3,6 +3,7 @@ import 'package:flutter_quanlytro/features/landlord_app/home_page/quick_action_i
 import 'package:flutter_quanlytro/features/landlord_app/meter_reading_page/meter_reading_screen.dart';
 import '../../../core/constants/app_colors.dart';
 import '../area_management/area_config_screen.dart';
+import '../area_management/view_models/area_config_view_model.dart';
 import '../deposit_page/deposit_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_quanlytro/features/landlord_app/main_layout/view_models/main_layout_view_model.dart';
@@ -116,14 +117,12 @@ class _HomeScreenState extends State<HomeScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => AreaConfigScreen(areaId: currentAreaId),
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => AreaConfigViewModel()..loadAreaDetails(currentAreaId),
+                child: AreaConfigScreen(areaId: currentAreaId),
+              ),
             ),
-          ).then((_) {
-            // Tự động làm mới lại màn hình chính khi quay trở về
-            if (context.mounted) {
-              context.read<MainLayoutViewModel>().fetchInitialData();
-            }
-          });
+          );
         },
       ),
       QuickActionItem(
