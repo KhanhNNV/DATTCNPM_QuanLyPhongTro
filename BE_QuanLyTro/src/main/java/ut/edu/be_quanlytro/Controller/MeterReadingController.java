@@ -26,7 +26,7 @@ import java.util.UUID;
 public class MeterReadingController {
 
     private final MeterReadingService meterReadingService;
-    
+
     @PostMapping
     @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<?> createMeterReading(
@@ -34,10 +34,11 @@ public class MeterReadingController {
             @AuthenticationPrincipal Jwt jwt) {
         try {
             UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
-            MeterReading savedReading = meterReadingService.createMeterReading(request,currentUserId);
+            MeterReading savedReading = meterReadingService.createMeterReading(request, currentUserId);
 
             MeterReadingResponse response = MeterReadingResponse.builder()
                     .id(savedReading.getId())
+                    .serviceId(savedReading.getService().getId()) // Trả về ID dịch vụ
                     .roomNumber(savedReading.getRoom().getRoomNumber())
                     .serviceName(savedReading.getService().getName())
                     .oldIndex(savedReading.getOldIndex())
@@ -46,15 +47,10 @@ public class MeterReadingController {
                     .isInvoiced(savedReading.getIsInvoiced())
                     .build();
             return new ResponseEntity<>(response, HttpStatus.CREATED);
-        }
-        catch (RuntimeException e) {
+        } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
-
-
-
-     //API: Chốt số điện/nước ĐỒNG LOẠT (Gộp chung 1 phát)
 
     @PostMapping("/bulk")
     @PreAuthorize("hasRole('LANDLORD')")
@@ -63,14 +59,12 @@ public class MeterReadingController {
             @AuthenticationPrincipal Jwt jwt) {
         try {
             UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
-
-            // Gọi Service để xử lý cả 1 mảng dữ liệu (Điện + Nước)
             List<MeterReading> savedReadings = meterReadingService.createBulkMeterReading(requests, currentUserId);
 
-            // Ép toàn bộ Entity trong mảng sang DTO Response để trả về an toàn
             List<MeterReadingResponse> responses = savedReadings.stream().map(reading ->
                     MeterReadingResponse.builder()
                             .id(reading.getId())
+                            .serviceId(reading.getService().getId()) // Trả về ID dịch vụ
                             .roomNumber(reading.getRoom().getRoomNumber())
                             .serviceName(reading.getService().getName())
                             .oldIndex(reading.getOldIndex())
@@ -86,20 +80,20 @@ public class MeterReadingController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
-    /**
-     * API Sửa chỉ số điện/nước khi nhập sai
-     */
+
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<?> updateMeterReading(
             @PathVariable UUID id,
-            @Valid @RequestBody MeterReadingUpdateRequest request) { // <-- SỬA Ở ĐÂY
+            @Valid @RequestBody MeterReadingUpdateRequest request,
+            @AuthenticationPrincipal Jwt jwt) { // ĐÃ VÁ JWT
         try {
-            // Truyền request.getNewIndex() vào Service
-            MeterReading updatedReading = meterReadingService.updateMeterReading(id, request.getNewIndex());
+            UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+            MeterReading updatedReading = meterReadingService.updateMeterReading(id, request.getNewIndex(), currentUserId);
 
             MeterReadingResponse response = MeterReadingResponse.builder()
                     .id(updatedReading.getId())
+                    .serviceId(updatedReading.getService().getId()) // Trả về ID dịch vụ
                     .roomNumber(updatedReading.getRoom().getRoomNumber())
                     .serviceName(updatedReading.getService().getName())
                     .oldIndex(updatedReading.getOldIndex())
@@ -114,19 +108,19 @@ public class MeterReadingController {
         }
     }
 
-    /**
-     * API Cập nhật ĐỒNG LOẠT nhiều chỉ số (Điện, Nước...)
-     */
     @PutMapping("/bulk")
     @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<?> updateBulkMeterReadings(
-            @Valid @RequestBody List<MeterReadingBulkUpdateRequest> requests) {
+            @Valid @RequestBody List<MeterReadingBulkUpdateRequest> requests,
+            @AuthenticationPrincipal Jwt jwt) { // ĐÃ VÁ JWT
         try {
-            List<MeterReading> updatedReadings = meterReadingService.updateBulkMeterReadings(requests);
+            UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+            List<MeterReading> updatedReadings = meterReadingService.updateBulkMeterReadings(requests, currentUserId);
 
             List<MeterReadingResponse> responses = updatedReadings.stream().map(reading ->
                     MeterReadingResponse.builder()
                             .id(reading.getId())
+                            .serviceId(reading.getService().getId()) // Trả về ID dịch vụ
                             .roomNumber(reading.getRoom().getRoomNumber())
                             .serviceName(reading.getService().getName())
                             .oldIndex(reading.getOldIndex())
@@ -141,17 +135,19 @@ public class MeterReadingController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+
     @GetMapping
     @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<?> getMeterReadings(
             @RequestParam UUID roomId,
-            @RequestParam LocalDate month) {
+            @RequestParam LocalDate month,
+            @AuthenticationPrincipal Jwt jwt) {
         try {
-            List<MeterReadingResponse> responses = meterReadingService.getReadingsByRoomAndMonth(roomId, month);
+            UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+            List<MeterReadingResponse> responses = meterReadingService.getReadingsByRoomAndMonth(roomId, month, currentUserId);
             return ResponseEntity.ok(responses);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
-
 }

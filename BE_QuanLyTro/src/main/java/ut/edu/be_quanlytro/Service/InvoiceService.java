@@ -12,6 +12,8 @@ import ut.edu.be_quanlytro.Entity.*;
 import ut.edu.be_quanlytro.Entity.Enum.ContractStatus;
 import ut.edu.be_quanlytro.Entity.Enum.InvoiceStatus;
 import ut.edu.be_quanlytro.Repository.*;
+
+import java.time.LocalDate;
 import java.util.UUID;
 
 import java.math.BigDecimal;
@@ -27,10 +29,14 @@ public class InvoiceService {
     private final AreaServiceRepository areaServiceRepository;
 
     @Transactional
-    public InvoiceResponse createInvoice(InvoiceCreateRequest request) {
-        if (invoiceRepository.existsByRoomIdAndInvoicePeriod(request.getRoomId(), request.getInvoicePeriod())) {
-            throw new RuntimeException("Phòng này đã được tạo hóa đơn cho kỳ " + request.getInvoicePeriod());
+    public InvoiceResponse createInvoice(InvoiceCreateRequest request, UUID currentUserId) {
+
+        LocalDate normalizedPeriod = request.getInvoicePeriod().withDayOfMonth(1);
+
+        if (invoiceRepository.existsByRoomIdAndInvoicePeriod(request.getRoomId(), normalizedPeriod)) {
+            throw new RuntimeException("Phòng này đã được tạo hóa đơn cho kỳ " + normalizedPeriod);
         }
+
         Contract contract = contractRepository.findByRoomId(request.getRoomId()).stream()
                 .filter(c -> c.getStatus() == ContractStatus.SIGNED)
                 .findFirst()
@@ -38,13 +44,22 @@ public class InvoiceService {
 
         Room room = contract.getRoom();
         Area area = room.getArea();
-        BigDecimal totalAmount = contract.getRoom().getRentPrice(); // lay gia phong goc
+
+        if (!area.getLandlord().getId().equals(currentUserId)) {
+            throw new RuntimeException("Bạn không có quyền tạo hóa đơn cho khu trọ khác!");
+        }
+
+        BigDecimal totalAmount = contract.getRoom().getRentPrice();
+
+
+        LocalDate today = LocalDate.now();
+        int daysToPay = area.getDueDate() != null ? area.getDueDate() : 5;
 
         Invoice invoice = Invoice.builder()
                 .contract(contract)
                 .room(room)
-                .invoicePeriod(request.getInvoicePeriod())
-                .dueDate(request.getInvoicePeriod().plusDays(area.getDueDate() != null ? area.getDueDate() : 5))
+                .invoicePeriod(normalizedPeriod)
+                .dueDate(today.plusDays(daysToPay))
                 .roomPrice(contract.getRoom().getRentPrice())
                 .status(InvoiceStatus.UNPAID)
                 .build();
@@ -102,15 +117,19 @@ public class InvoiceService {
 
 
     @Transactional(readOnly = true)
-    public InvoiceDetailResponse getInvoiceDetail(UUID invoiceId) {
-        // 1. Tìm hóa đơn gốc
+    public InvoiceDetailResponse getInvoiceDetail(UUID invoiceId, UUID currentUserId) {
         Invoice invoice = invoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn yêu cầu!"));
 
-        // 2. Tìm danh sách chi tiết dịch vụ đi kèm hóa đơn đó
+        boolean isLandlord = invoice.getRoom().getArea().getLandlord().getId().equals(currentUserId);
+        boolean isTenant = invoice.getContract().getTenant().getId().equals(currentUserId);
+
+        if (!isLandlord && !isTenant) {
+            throw new RuntimeException("Bạn không có quyền xem hóa đơn của phòng này!");
+        }
+
         List<InvoiceDetail> details = invoiceDetailRepository.findByInvoiceId(invoiceId);
 
-        // 3. Map từ Entity sang DTO dòng chi tiết
         List<InvoiceItemResponse> itemResponses = details.stream().map(d ->
                 InvoiceItemResponse.builder()
                         .serviceName(d.getServiceName())
@@ -135,28 +154,33 @@ public class InvoiceService {
                 .build();
     }
 
-    @Transactional(readOnly = true)
-    public PaymentQrResponse generateVietQR(UUID invoiceId) {
-        // 1. Tìm hóa đơn
+    @Transactional
+    public PaymentQrResponse generateVietQR(UUID invoiceId, UUID currentUserId) {
+
         Invoice invoice = invoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn!"));
 
-        // 2. Lấy thông tin ngân hàng của chủ trọ (Giả lập cứng để test)
-        String bankId = "MB"; // Ngân hàng Quân Đội
-        String accountNo = "0901234567";
-        String accountName = "TRAN VAN CHU";
+        boolean isLandlord = invoice.getRoom().getArea().getLandlord().getId().equals(currentUserId);
+        boolean isTenant = invoice.getContract().getTenant().getId().equals(currentUserId);
 
-        // 3. Chuẩn bị dữ liệu động
+        if (!isLandlord && !isTenant) {
+            throw new RuntimeException("Bạn không có quyền lấy mã QR thanh toán của phòng này!");
+        }
+
+        User landlord = invoice.getRoom().getArea().getLandlord();
+
+        if (landlord.getBankId() == null || landlord.getAccountNo() == null || landlord.getAccountName() == null) {
+            throw new RuntimeException("Chủ trọ chưa cấu hình thông tin tài khoản ngân hàng để nhận thanh toán!");
+        }
+        String bankId = landlord.getBankId();
+        String accountNo = landlord.getAccountNo();
+        String accountName = landlord.getAccountName();
         BigDecimal amount = invoice.getTotalAmount();
 
-        // Tạo nội dung chuyển khoản (Không dấu, ghi rõ Phòng và Tháng)
-        // Ví dụ: "P101 THANH TOAN T6"
         String content = String.format("P%s THANH TOAN T%d",
                 invoice.getRoom().getRoomNumber(),
                 invoice.getInvoicePeriod().getMonthValue());
 
-        // 4. Lắp ráp thành đường link VietQR chuẩn (Quick Link)
-        // Nhớ replace khoảng trắng thành %20 để đường link không bị gãy
         String qrUrl = String.format("https://img.vietqr.io/image/%s-%s-compact2.png?amount=%.0f&addInfo=%s&accountName=%s",
                 bankId,
                 accountNo,
@@ -164,7 +188,9 @@ public class InvoiceService {
                 content.replace(" ", "%20"),
                 accountName.replace(" ", "%20"));
 
-        // 5. Trả về cho Frontend
+        invoice.setVietqrUrl(qrUrl);
+        invoiceRepository.save(invoice);
+
         return PaymentQrResponse.builder()
                 .bankId(bankId)
                 .accountNo(accountNo)
@@ -175,5 +201,3 @@ public class InvoiceService {
                 .build();
     }
 }
-
-
