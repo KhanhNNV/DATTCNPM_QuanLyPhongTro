@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_quanlytro/features/landlord_app/onboarding/onboarding_screen.dart';
+import 'package:flutter_quanlytro/features/landlord_app/onboarding/view_models/onboarding_view_model.dart';
 import '../../../core/constants/app_colors.dart';
+import 'package:provider/provider.dart';
 
 class SetupIntroScreen extends StatelessWidget {
   const SetupIntroScreen({super.key});
@@ -62,8 +64,13 @@ class SetupIntroScreen extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => const OnboardingScreen())
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChangeNotifierProvider(
+                            create: (_) => OnboardingViewModel(),
+                            child: const OnboardingScreen(isAddingNewArea: true),
+                          ),
+                        ),
                       );
                     },
                     style: ElevatedButton.styleFrom(

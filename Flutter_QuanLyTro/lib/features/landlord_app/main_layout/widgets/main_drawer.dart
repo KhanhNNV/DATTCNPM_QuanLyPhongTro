@@ -6,6 +6,7 @@ import '../../../../data/models/response/user_model.dart';
 import '../../area_management/view_models/edit_area_view_model.dart';
 import '../../onboarding/onboarding_screen.dart';
 import '../../area_management/edit_area_screen.dart';
+import '../../onboarding/view_models/onboarding_view_model.dart';
 import '../../setting_page/settings_screen.dart';
 import '../../setting_page/view_models/settings_viewmodel.dart';
 
@@ -70,9 +71,12 @@ class MainDrawer extends StatelessWidget {
 
               final AreaModel? newArea = await Navigator.push<AreaModel>(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const OnboardingScreen(isAddingNewArea: true),
-                  )
+                MaterialPageRoute(
+                  builder: (_) => ChangeNotifierProvider(
+                    create: (_) => OnboardingViewModel(),
+                    child: const OnboardingScreen(isAddingNewArea: true),
+                  ),
+                ),
               );
 
               if (newArea != null) {
