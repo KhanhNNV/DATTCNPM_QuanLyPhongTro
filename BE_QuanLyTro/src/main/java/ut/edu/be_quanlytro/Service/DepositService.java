@@ -1,6 +1,7 @@
 package ut.edu.be_quanlytro.Service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ut.edu.be_quanlytro.Dto.Request.DepositCreateRequest;
@@ -9,6 +10,7 @@ import ut.edu.be_quanlytro.Dto.Response.DepositResponse;
 import ut.edu.be_quanlytro.Entity.Area;
 import ut.edu.be_quanlytro.Entity.Deposit;
 import ut.edu.be_quanlytro.Entity.Enum.DepositStatus;
+import ut.edu.be_quanlytro.Entity.Enum.NotificationType;
 import ut.edu.be_quanlytro.Entity.Enum.RoomStatus;
 import ut.edu.be_quanlytro.Entity.Room;
 import ut.edu.be_quanlytro.Entity.User;
@@ -30,6 +32,7 @@ public class DepositService {
     private final UserRepository userRepository;
     private final ActivityLogService activityLog;
     private final AreaRepository areaRepository;
+    private final NotificationService notificationService;
 
     // ================= CREATE =================
     @Transactional
@@ -193,12 +196,27 @@ public class DepositService {
             }
 
             depositRepository.save(deposit);
-            System.out.println("-> Đã hủy phiếu cọc ID: " + deposit.getId() + " của phòng: " + room.getRoomNumber());
+
+            // 4. BẮN THÔNG BÁO CHO CHỦ TRỌ
+            User landlord = room.getArea().getLandlord();
+            String roomNum = room.getRoomNumber();
+            String tenantName = deposit.getTenantFullName();
+
+            String title = "Hủy phiếu cọc quá hạn";
+            String content = String.format("Hệ thống đã tự động hủy phiếu cọc của khách %s tại phòng %s do quá hạn ngày hẹn dọn vào (%s). Căn phòng đã được tự động mở khóa về trạng thái Trống.",
+                    tenantName, roomNum, deposit.getExpectedMoveInDate().toString());
+
+            notificationService.createNotification(landlord, title, content, NotificationType.DEPOSIT_CANCELLED);
+
+            // Đồng thời ghi Log hệ thống để lưu vết
+            activityLog.createLog(landlord, "AUTO_CANCEL_DEPOSIT", "deposits", deposit.getId(), content);
+            // =========================================================================
+
+            System.out.println(" Đã hủy phiếu cọc ID: " + deposit.getId() + " của phòng: " + room.getRoomNumber());
         }
 
         System.out.println("Hoàn tất tiến trình quét dọn phiếu cọc quá hạn");
     }
-
     // ================= MAPPER =================
     private DepositResponse mapToResponse(Deposit deposit) {
         return DepositResponse.builder()

@@ -29,7 +29,8 @@ public class ContractService {
     private final DepositRepository depositRepository;
     private final OcrService  ocrService;
     private final CloudinaryService cloudinaryService;
-    private final NotificationRepository notificationRepository;
+    private final NotificationService notificationService;
+
 
     // ================= 1. KHỞI TẠO HỢP ĐỒNG (Quét CCCD)=================
     @Transactional
@@ -573,14 +574,25 @@ public class ContractService {
                 room.getRoomNumber());
         activityLog.createLog(contract.getTenant(), "SIGN_CONTRACT", "contracts", contract.getId(), logDesc);
 
-        // 10. Trả về hợp đồng đã cập nhật
+
+        // 10. BẮN THÔNG BÁO CHO CHỦ TRỌ
+
+        User landlord = room.getArea().getLandlord();
+        String tenantName = contract.getTenant().getFullName();
+        String roomNumber = room.getRoomNumber();
+
+        String title = "Hợp đồng đã được ký";
+        String content = String.format("Khách thuê %s đã xác nhận chữ ký điện tử cho phòng %s. Hợp đồng đã chính thức có hiệu lực!", tenantName, roomNumber);
+
+        // Chỉ cần gọi duy nhất 1 dòng này!
+        notificationService.createNotification(landlord, title, content, NotificationType.CONTRACT_SIGNED);
+
+        // 11. Trả về hợp đồng đã cập nhật
         return mapToDetailResponse(contract);
     }
     // ================= 11. TỰ ĐỘNG QUÉT HỢP ĐỒNG HẾT HẠN VÀ GỬI THÔNG BÁO =================
 
     @Transactional
-    //@Scheduled(cron = "0 0 0 * * ?")
-    @Scheduled(fixedRate = 10000)
     public void autoCheckAndExpireContracts() {
 
         LocalDate today = LocalDate.now();
@@ -601,22 +613,16 @@ public class ContractService {
             // Bước A: Cập nhật trạng thái hợp đồng thành HẾT HẠN
             contract.setStatus(ContractStatus.EXPIRED);
             contractRepository.save(contract);
-            // (Lưu ý: Ta KHÔNG đổi trạng thái phòng, phòng vẫn đang có người ở chờ xử lý)
 
-            // Bước B: Tạo Thông Báo gửi đến điện thoại/web của Chủ trọ
+            // Bước B: Tạo Thông Báo gửi đến Chủ trọ
             User landlord = contract.getRoom().getArea().getLandlord();
             String roomNum = contract.getRoom().getRoomNumber();
 
-            Notification notification = Notification.builder()
-                    .user(landlord)
-                    .title("Hợp đồng hết hạn")
-                    .content(String.format("Hợp đồng thuê phòng %s đã chính thức hết hạn vào ngày %s. Vui lòng liên hệ khách thuê để tiến hành Thanh lý hợp đồng hoặc Gia hạn.",
-                            roomNum, contract.getEndDate().toString()))
-                    .type(NotificationType.CONTRACT_EXPIRED)
-                    .isRead(false)
-                    .build();
+            String title = "Hợp đồng hết hạn";
+            String content = String.format("Hợp đồng thuê phòng %s đã chính thức hết hạn vào ngày %s. Vui lòng liên hệ khách thuê để tiến hành Thanh lý hợp đồng hoặc Gia hạn.", roomNum, contract.getEndDate().toString());
 
-            notificationRepository.save(notification);
+            // Chỉ cần gọi duy nhất 1 dòng này!
+            notificationService.createNotification(landlord, title, content, NotificationType.CONTRACT_EXPIRED);
 
             // Bước C: Ghi log hệ thống
             String logDesc = String.format("Hệ thống tự động khóa hợp đồng phòng %s do quá hạn. Đã gửi thông báo cho chủ trọ.", roomNum);
@@ -624,6 +630,59 @@ public class ContractService {
         }
 
         System.out.println("Hoàn tất quét hợp đồng và gửi thông báo!");
+    }
+
+    // ================= 12. GIA HẠN HỢP ĐỒNG =================
+    @Transactional
+    public ContractDetailResponse extendContract(UUID contractId, ContractExtendRequest request, UUID currentUserId) {
+
+        // 1. Tìm hợp đồng
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng!"));
+
+        // 2. Chốt chặn bảo mật
+        if (!contract.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
+            throw new RuntimeException("Bạn không có quyền gia hạn hợp đồng của khu trọ khác!");
+        }
+
+        // 3. Chốt chặn nghiệp vụ
+        if (contract.getStatus() != ContractStatus.SIGNED && contract.getStatus() != ContractStatus.EXPIRED) {
+            throw new RuntimeException("Chỉ có thể gia hạn hợp đồng đang có hiệu lực (SIGNED) hoặc vừa hết hạn (EXPIRED)!");
+        }
+
+        if (request.getNewEndDate() == null || !request.getNewEndDate().isAfter(contract.getEndDate())) {
+            throw new RuntimeException("Ngày gia hạn mới bắt buộc phải nằm sau ngày kết thúc cũ!");
+        }
+
+        // 4. Cập nhật dữ liệu
+        contract.setEndDate(request.getNewEndDate());
+
+        // Nếu hợp đồng trước đó đã bị Cron Job quét và chuyển thành EXPIRED -> Hồi sinh nó
+        if (contract.getStatus() == ContractStatus.EXPIRED) {
+            contract.setStatus(ContractStatus.SIGNED);
+
+            Room room = contract.getRoom();
+            room.setStatus(RoomStatus.RENTED); // Đóng phòng lại để không ai thuê được
+            roomRepository.save(room);
+        }
+
+        contractRepository.save(contract);
+
+        // 5. Ghi log hoạt động
+        String logDesc = String.format("Chủ trọ gia hạn hợp đồng phòng %s đến ngày %s",
+                contract.getRoom().getRoomNumber(), request.getNewEndDate().toString());
+        activityLog.createLog(contract.getRoom().getArea().getLandlord(), "EXTEND_CONTRACT", "contracts", contract.getId(), logDesc);
+
+        // 6. Bắn thông báo báo hỉ cho Khách thuê
+        String title = "Hợp đồng đã được gia hạn";
+        String content = String.format("Chủ trọ đã gia hạn thời gian thuê phòng %s của bạn đến ngày %s. Chúc bạn có trải nghiệm lưu trú tuyệt vời!",
+                contract.getRoom().getRoomNumber(), request.getNewEndDate().toString());
+
+        // (Lưu ý: Bạn có thể tạo thêm enum NotificationType.SYSTEM hoặc tái sử dụng CONTRACT_SIGNED)
+        notificationService.createNotification(contract.getTenant(), title, content, NotificationType.CONTRACT_EXTEND);
+
+        // 7. Trả về dữ liệu mới
+        return mapToDetailResponse(contract);
     }
 
     // ================= MAPPER =================
