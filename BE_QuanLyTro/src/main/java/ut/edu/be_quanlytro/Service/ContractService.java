@@ -1,20 +1,15 @@
 package ut.edu.be_quanlytro.Service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import ut.edu.be_quanlytro.Dto.Request.*;
 import ut.edu.be_quanlytro.Dto.Response.*;
 import ut.edu.be_quanlytro.Entity.*;
-import ut.edu.be_quanlytro.Entity.Enum.ContractStatus;
-import ut.edu.be_quanlytro.Entity.Enum.DepositStatus;
-import ut.edu.be_quanlytro.Entity.Enum.RoleType;
-import ut.edu.be_quanlytro.Entity.Enum.RoomStatus;
-import ut.edu.be_quanlytro.Repository.ContractRepository;
-import ut.edu.be_quanlytro.Repository.DepositRepository;
-import ut.edu.be_quanlytro.Repository.RoomRepository;
-import ut.edu.be_quanlytro.Repository.UserRepository;
+import ut.edu.be_quanlytro.Entity.Enum.*;
+import ut.edu.be_quanlytro.Repository.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -34,6 +29,7 @@ public class ContractService {
     private final DepositRepository depositRepository;
     private final OcrService  ocrService;
     private final CloudinaryService cloudinaryService;
+    private final NotificationRepository notificationRepository;
 
     // ================= 1. KHỞI TẠO HỢP ĐỒNG (Quét CCCD)=================
     @Transactional
@@ -579,6 +575,55 @@ public class ContractService {
 
         // 10. Trả về hợp đồng đã cập nhật
         return mapToDetailResponse(contract);
+    }
+    // ================= 11. TỰ ĐỘNG QUÉT HỢP ĐỒNG HẾT HẠN VÀ GỬI THÔNG BÁO =================
+
+    @Transactional
+    //@Scheduled(cron = "0 0 0 * * ?")
+    @Scheduled(fixedRate = 10000)
+    public void autoCheckAndExpireContracts() {
+
+        LocalDate today = LocalDate.now();
+
+        // 1. Tìm tất cả hợp đồng đang ký (SIGNED) mà hạn chót đã trôi qua
+        List<Contract> expiredContracts = contractRepository.findByStatusAndEndDateBefore(ContractStatus.SIGNED, today);
+
+        if (expiredContracts.isEmpty()) {
+            System.out.println("Hôm nay không có hợp đồng nào hết hạn.");
+            return;
+        }
+
+        System.out.println("Bắt đầu xử lý " + expiredContracts.size() + " hợp đồng hết hạn...");
+
+        // 2. Xử lý từng hợp đồng
+        for (Contract contract : expiredContracts) {
+
+            // Bước A: Cập nhật trạng thái hợp đồng thành HẾT HẠN
+            contract.setStatus(ContractStatus.EXPIRED);
+            contractRepository.save(contract);
+            // (Lưu ý: Ta KHÔNG đổi trạng thái phòng, phòng vẫn đang có người ở chờ xử lý)
+
+            // Bước B: Tạo Thông Báo gửi đến điện thoại/web của Chủ trọ
+            User landlord = contract.getRoom().getArea().getLandlord();
+            String roomNum = contract.getRoom().getRoomNumber();
+
+            Notification notification = Notification.builder()
+                    .user(landlord)
+                    .title("Hợp đồng hết hạn")
+                    .content(String.format("Hợp đồng thuê phòng %s đã chính thức hết hạn vào ngày %s. Vui lòng liên hệ khách thuê để tiến hành Thanh lý hợp đồng hoặc Gia hạn.",
+                            roomNum, contract.getEndDate().toString()))
+                    .type(NotificationType.CONTRACT_EXPIRED)
+                    .isRead(false)
+                    .build();
+
+            notificationRepository.save(notification);
+
+            // Bước C: Ghi log hệ thống
+            String logDesc = String.format("Hệ thống tự động khóa hợp đồng phòng %s do quá hạn. Đã gửi thông báo cho chủ trọ.", roomNum);
+            activityLog.createLog(landlord, "AUTO_EXPIRE_CONTRACT", "contracts", contract.getId(), logDesc);
+        }
+
+        System.out.println("Hoàn tất quét hợp đồng và gửi thông báo!");
     }
 
     // ================= MAPPER =================
