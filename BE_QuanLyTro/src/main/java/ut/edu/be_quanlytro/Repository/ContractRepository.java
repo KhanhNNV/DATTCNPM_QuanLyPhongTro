@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import ut.edu.be_quanlytro.Entity.Contract;
 import ut.edu.be_quanlytro.Entity.Enum.ContractStatus;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -28,4 +29,7 @@ public interface ContractRepository extends JpaRepository<Contract, UUID> {
     Optional<Contract> findFirstByTenantIdAndStatusInOrderByCreatedAtDesc(UUID tenantId, List<ContractStatus> statuses);
 
     long countByTenantId(UUID tenantId);
+
+    // Tìm các hợp đồng đang CÓ HIỆU LỰC (SIGNED) nhưng ngày kết thúc (endDate) đã nhỏ hơn ngày hôm nay
+    List<Contract> findByStatusAndEndDateBefore(ContractStatus status, LocalDate date);
 }

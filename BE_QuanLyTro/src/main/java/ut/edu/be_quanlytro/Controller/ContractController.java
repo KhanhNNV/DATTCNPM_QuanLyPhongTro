@@ -169,4 +169,18 @@ public class ContractController {
 
         return ResponseEntity.ok(response);
     }
+
+    // ================= GIA HẠN HỢP ĐỒNG =================
+    @PutMapping("/extend/{contractId}")
+    @PreAuthorize("hasRole('LANDLORD')") // Chỉ chủ trọ mới có quyền gia hạn
+    public ResponseEntity<ContractDetailResponse> extendContract(
+            @PathVariable UUID contractId,
+            @RequestBody ContractExtendRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+        ContractDetailResponse response = contractService.extendContract(contractId, request, currentUserId);
+
+        return ResponseEntity.ok(response);
+    }
 }

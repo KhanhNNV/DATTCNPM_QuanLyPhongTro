@@ -45,6 +45,15 @@ public class AreaManagementService {
         if(landlord.getRole() != RoleType.LANDLORD) {
             throw new RuntimeException("Bạn không có quyền thực hiện chức năng này vì không phải là chủ trọ");
         }
+        // Kiểm tra xem request có gửi thông tin ngân hàng lên không
+        if (request.getBankId() != null && !request.getBankId().trim().isEmpty()) {
+            landlord.setBankId(request.getBankId());
+            landlord.setAccountNo(request.getAccountNo());
+            landlord.setAccountName(request.getAccountName());
+
+            // Lưu cập nhật thông tin user xuống Database
+            userRepository.save(landlord);
+        }
 
         // ==========================================
         // BƯỚC 1: KHỞI TẠO VÀ LƯU KHU TRỌ

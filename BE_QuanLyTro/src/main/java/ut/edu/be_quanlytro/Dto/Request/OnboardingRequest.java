@@ -25,4 +25,7 @@ public class OnboardingRequest {
     private BigDecimal defaultRentPrice;
     private BigDecimal defaultDepositAmount;
     private Integer defaultMaxOccupants;
+    private String bankId;
+    private String accountNo;
+    private String accountName;
 }

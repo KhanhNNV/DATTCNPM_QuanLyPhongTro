@@ -134,7 +134,7 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
 
-        // 🔒 KIỂM TRA BẢO MẬT: Xác nhận quyền chỉnh sửa thông tin
+        // KIỂM TRA BẢO MẬT: Xác nhận quyền chỉnh sửa thông tin
         if (!id.equals(currentUserId)) { // Nếu không phải hành vi tự sửa hồ sơ của chính mình
 
             // Lấy thông tin của người đang thực hiện cuộc gọi từ hệ thống
