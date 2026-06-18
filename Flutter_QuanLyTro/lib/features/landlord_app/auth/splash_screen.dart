@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_quanlytro/features/landlord_app/welcome/welcome_screen.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/token_manager.dart';
-import '../../../../data/providers/user_provider.dart';
+import '../../../../data/repository/user_repository.dart';
 import '../home_page/home_page_screen.dart';
 import '../main_layout/main_layout_screen.dart';
 import 'login_screen.dart';
@@ -15,7 +15,7 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-  final UserProvider _userProvider = UserProvider();
+  final UserRepository _userProvider = UserRepository();
 
   @override
   void initState() {

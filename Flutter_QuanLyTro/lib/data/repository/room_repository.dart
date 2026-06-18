@@ -3,7 +3,7 @@ import 'dart:convert';
 import '../../../core/network/api_client.dart';
 import '../models/response/room_model.dart';
 
-class RoomProvider {
+class RoomRepository {
   final ApiClient _apiClient = ApiClient();
 
   Future<List<RoomModel>> getRoomsByArea(

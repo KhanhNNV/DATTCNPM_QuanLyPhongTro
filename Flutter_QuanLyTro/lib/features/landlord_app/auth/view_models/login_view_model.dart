@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../../../data/providers/auth_provider.dart';
-import '../../../../data/providers/user_provider.dart';
+import '../../../../data/repository/auth_repository.dart';
+import '../../../../data/repository/user_repository.dart';
 import '../../../../data/models/response/user_model.dart';
 
 class LoginViewModel extends ChangeNotifier {
-  final AuthProvider _authProvider = AuthProvider();
+  final AuthRepository _authProvider = AuthRepository();
 
   // Trạng thái Loading
   bool _isLoading = false;

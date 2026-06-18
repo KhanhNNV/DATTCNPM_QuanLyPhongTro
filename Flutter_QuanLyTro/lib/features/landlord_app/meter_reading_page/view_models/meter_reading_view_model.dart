@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_quanlytro/data/providers/area_provider.dart';
-import 'package:flutter_quanlytro/data/providers/room_provider.dart';
+import 'package:flutter_quanlytro/data/repository/area_repository.dart';
+import 'package:flutter_quanlytro/data/repository/room_repository.dart';
 
 import '../../../../data/models/request/meter_reading_bulk_update_request.dart';
 import '../../../../data/models/request/meter_reading_create_request.dart';
 import '../../../../data/models/response/room_model.dart';
-import '../../../../data/providers/area_config_provider.dart';
-import '../../../../data/providers/meter_reading_provider.dart';
+import '../../../../data/repository/area_config_repository.dart';
+import '../../../../data/repository/meter_reading_repository.dart';
 import '../room_reading_ui_model.dart';
 
 class MeterReadingViewModel extends ChangeNotifier {
-  final MeterReadingProvider _provider = MeterReadingProvider();
-  final RoomProvider _roomProvider = RoomProvider();
-  final AreaConfigProvider _areaConfigProvider = AreaConfigProvider();
+  final MeterReadingRepository _provider = MeterReadingRepository();
+  final RoomRepository _roomProvider = RoomRepository();
+  final AreaConfigRepository _areaConfigProvider = AreaConfigRepository();
 
   bool isLoading = false;
   DateTime selectedMonth = DateTime.now();

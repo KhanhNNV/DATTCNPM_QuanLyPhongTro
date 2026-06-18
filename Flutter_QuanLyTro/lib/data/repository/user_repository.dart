@@ -5,7 +5,7 @@ import '../models/request/user_update_request.dart';
 import '../models/response/user_model.dart';
 import 'package:http/http.dart' as http;
 
-class UserProvider {
+class UserRepository {
   final ApiClient _apiClient = ApiClient();
 
   Future<UserModel> getCurrentUser() async {

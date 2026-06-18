@@ -2,7 +2,7 @@ import 'dart:convert';
 import '../../../core/network/api_client.dart';
 import '../models/response/area_model.dart';
 
-class AreaProvider {
+class AreaRepository {
   final ApiClient _apiClient = ApiClient();
 
   Future<AreaModel> onboardNewLandlord(Map<String, dynamic> requestData) async {

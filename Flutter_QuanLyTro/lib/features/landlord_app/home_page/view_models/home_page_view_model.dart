@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../../data/models/response/room_model.dart';
-import '../../../../data/providers/room_provider.dart';
+import '../../../../data/repository/room_repository.dart';
 
 class HomePageViewModel extends ChangeNotifier {
-  final RoomProvider _roomProvider = RoomProvider();
+  final RoomRepository _roomProvider = RoomRepository();
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;

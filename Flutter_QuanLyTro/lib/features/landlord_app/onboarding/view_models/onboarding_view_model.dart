@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../../data/models/response/area_model.dart';
-import '../../../../data/providers/area_provider.dart';
+import '../../../../data/repository/area_repository.dart';
 import '../models/onboarding_models.dart';
 
 class OnboardingViewModel extends ChangeNotifier {
-  final AreaProvider _areaProvider = AreaProvider();
+  final AreaRepository _areaProvider = AreaRepository();
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import '../../../../data/models/request/deposit_create_request.dart';
 import '../../../../data/models/response/room_model.dart';
-import '../../../../data/providers/deposit_provider.dart';
-import '../../../../data/providers/room_provider.dart';
+import '../../../../data/repository/deposit_repository.dart';
+import '../../../../data/repository/room_repository.dart';
 
 class DepositViewModel extends ChangeNotifier {
-  final RoomProvider roomProvider = RoomProvider();
-  final DepositProvider depositProvider = DepositProvider();
+  final RoomRepository roomProvider = RoomRepository();
+  final DepositRepository depositProvider = DepositRepository();
 
   // --- QUẢN LÝ FORM STATE ---
   final formKey = GlobalKey<FormState>();

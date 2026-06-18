@@ -1,10 +1,10 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:signature/signature.dart';
-import '../../../../data/providers/user_provider.dart';
+import '../../../../data/repository/user_repository.dart';
 
 class SignatureViewModel extends ChangeNotifier {
-  final UserProvider _userProvider = UserProvider();
+  final UserRepository _userProvider = UserRepository();
 
   final SignatureController signatureController = SignatureController(
     penStrokeWidth: 4,

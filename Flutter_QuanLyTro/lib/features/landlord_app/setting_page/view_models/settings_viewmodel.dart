@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../../data/models/request/user_update_request.dart';
 import '../../../../data/models/response/user_model.dart';
-import '../../../../data/providers/user_provider.dart';
+import '../../../../data/repository/user_repository.dart';
 
 class SettingsViewModel extends ChangeNotifier {
-  final UserProvider _userProvider = UserProvider();
+  final UserRepository _userProvider = UserRepository();
 
   final fullNameController = TextEditingController();
   final phoneController = TextEditingController();

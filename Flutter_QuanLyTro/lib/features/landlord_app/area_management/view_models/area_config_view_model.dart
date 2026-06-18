@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../../data/providers/area_config_provider.dart';
+import '../../../../data/repository/area_config_repository.dart';
 
 class AreaConfigViewModel extends ChangeNotifier {
-  final AreaConfigProvider _provider = AreaConfigProvider();
+  final AreaConfigRepository _provider = AreaConfigRepository();
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;

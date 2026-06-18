@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import '../../../../data/providers/auth_provider.dart';
+import '../../../../data/repository/auth_repository.dart';
 
 class RegisterViewModel extends ChangeNotifier {
-  final AuthProvider _authProvider = AuthProvider();
+  final AuthRepository _authProvider = AuthRepository();
 
   // Trạng thái Loading
   bool _isLoading = false;

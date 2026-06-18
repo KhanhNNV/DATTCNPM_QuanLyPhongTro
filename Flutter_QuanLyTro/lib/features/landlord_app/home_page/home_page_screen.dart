@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_quanlytro/features/landlord_app/home_page/view_models/home_page_view_model.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../../data/providers/user_provider.dart';
+import '../../../../data/repository/user_repository.dart';
 import '../../../data/models/response/user_model.dart';
 import '../auth/login_screen.dart';
 
@@ -19,7 +19,7 @@ class HomePageScreen extends StatefulWidget {
 }
 
 class _HomePageScreenState extends State<HomePageScreen> {
-  final UserProvider _userProvider = UserProvider();
+  final UserRepository _userProvider = UserRepository();
   final HomePageViewModel _viewModel = HomePageViewModel();
 
   UserModel? _currentUser;

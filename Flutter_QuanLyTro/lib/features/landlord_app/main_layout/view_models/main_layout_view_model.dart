@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_quanlytro/data/models/response/user_model.dart';
-import 'package:flutter_quanlytro/data/providers/user_provider.dart';
+import 'package:flutter_quanlytro/data/repository/user_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../data/models/response/area_model.dart';
-import '../../../../data/providers/area_provider.dart';
+import '../../../../data/repository/area_repository.dart';
 
 class MainLayoutViewModel extends ChangeNotifier {
-  final AreaProvider _areaProvider = AreaProvider();
-  final UserProvider _userProvider = UserProvider();
+  final AreaRepository _areaProvider = AreaRepository();
+  final UserRepository _userProvider = UserRepository();
 
   // Key dùng để lưu và đọc ID khu trọ dưới bộ nhớ máy
   static const String _selectedAreaKey = 'SELECTED_AREA_ID';
