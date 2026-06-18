@@ -3,11 +3,15 @@ import 'package:flutter_quanlytro/features/landlord_app/home_page/quick_action_i
 import 'package:flutter_quanlytro/features/landlord_app/meter_reading_page/meter_reading_screen.dart';
 import '../../../core/constants/app_colors.dart';
 import '../area_management/area_config_screen.dart';
+import '../area_management/view_models/area_config_view_model.dart';
 import '../deposit_page/deposit_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_quanlytro/features/landlord_app/main_layout/view_models/main_layout_view_model.dart';
 
+import '../deposit_page/view_models/deposit_view_model.dart';
+import '../meter_reading_page/view_models/meter_reading_view_model.dart';
 import '../signature/signature_screen.dart';
+import '../signature/view_models/signature_view_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -34,8 +38,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => DepositScreen(
-                areaId: currentAreaId,
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => DepositViewModel()..loadRooms(currentAreaId),
+                child: const DepositScreen(),
               ),
             ),
           );
@@ -64,8 +69,9 @@ class _HomeScreenState extends State<HomeScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => MeterReadingScreen(
-                areaId: currentAreaId,
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => MeterReadingViewModel(areaId: currentAreaId)..loadMeterReadings(),
+                child: const MeterReadingScreen(),
               ),
             ),
           );
@@ -111,14 +117,12 @@ class _HomeScreenState extends State<HomeScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => AreaConfigScreen(areaId: currentAreaId),
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => AreaConfigViewModel()..loadAreaDetails(currentAreaId),
+                child: AreaConfigScreen(areaId: currentAreaId),
+              ),
             ),
-          ).then((_) {
-            // Tự động làm mới lại màn hình chính khi quay trở về
-            if (context.mounted) {
-              context.read<MainLayoutViewModel>().fetchInitialData();
-            }
-          });
+          );
         },
       ),
       QuickActionItem(
@@ -128,9 +132,13 @@ class _HomeScreenState extends State<HomeScreen> {
           final isUpdated = await Navigator.push<bool>(
             context,
             MaterialPageRoute(
-              builder: (_) => const SignatureScreen(),
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => SignatureViewModel(),
+                child: const SignatureScreen(),
+              ),
             ),
           );
+
           if (isUpdated == true && context.mounted) {
             context.read<MainLayoutViewModel>().fetchInitialData();
           }

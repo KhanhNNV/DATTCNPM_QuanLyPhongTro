@@ -1,159 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../data/models/response/area_model.dart';
 import '../main_layout/main_layout_screen.dart';
-import 'models/onboarding_models.dart';
 import 'view_models/onboarding_view_model.dart';
 import 'widgets/general_info_card.dart';
 import 'widgets/services_card.dart';
 import 'widgets/default_room_card.dart';
 import 'widgets/dynamic_floor_card.dart';
 
-class OnboardingScreen extends StatefulWidget {
+class OnboardingScreen extends StatelessWidget {
   final bool isAddingNewArea;
 
   const OnboardingScreen({
     super.key,
     this.isAddingNewArea = false,
   });
-
-  @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
-}
-
-class _OnboardingScreenState extends State<OnboardingScreen> {
-  final OnboardingViewModel _viewModel = OnboardingViewModel();
-
-  // --- 1. STATE THÔNG TIN KHU TRỌ ---
-  final TextEditingController _nameController = TextEditingController();
-  final TextEditingController _addressController = TextEditingController();
-  int _invoiceDay = 1;
-  int _dueDate = 5;
-
-  // --- 2. STATE PHÒNG MẪU ---
-  final TextEditingController _areaSizeController = TextEditingController();
-  final TextEditingController _rentPriceController = TextEditingController();
-  final TextEditingController _depositController = TextEditingController();
-  final TextEditingController _maxOccupantsController = TextEditingController();
-
-  // --- 3. STATE DỊCH VỤ ---
-  final List<AppServiceItem> _services = [
-    AppServiceItem(name: 'Điện', calcType: ServiceCalculationType.byIndex),
-    AppServiceItem(name: 'Nước', calcType: ServiceCalculationType.byIndex),
-    AppServiceItem(name: 'Rác', calcType: ServiceCalculationType.perPerson),
-    AppServiceItem(name: 'Wifi', calcType: ServiceCalculationType.perRoom),
-  ];
-
-  // --- 4. STATE TẦNG ĐỘNG ---
-  final TextEditingController _floorCountController = TextEditingController();
-  int _floorCount = 0;
-  final List<TextEditingController> _roomsPerFloorControllers = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _viewModel.addListener(_onViewModelChanged);
-  }
-
-  void _onViewModelChanged() {
-    if (_viewModel.errorMessage != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_viewModel.errorMessage!),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      _viewModel.clearError();
-    }
-  }
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _addressController.dispose();
-    _areaSizeController.dispose();
-    _rentPriceController.dispose();
-    _depositController.dispose();
-    _maxOccupantsController.dispose();
-    _floorCountController.dispose();
-    for (var controller in _roomsPerFloorControllers) {
-      controller.dispose();
-    }
-    for (var service in _services) {
-      service.priceController.dispose();
-    }
-    super.dispose();
-  }
-
-  void _updateFloorCount(String value) {
-    int? newCount = int.tryParse(value);
-    if (newCount == null || newCount < 0) newCount = 0;
-    if (newCount > 50) newCount = 50;
-
-    setState(() {
-      _floorCount = newCount!;
-      if (_roomsPerFloorControllers.length < _floorCount) {
-        for (int i = _roomsPerFloorControllers.length; i < _floorCount; i++) {
-          _roomsPerFloorControllers.add(TextEditingController(text: '10'));
-        }
-      } else if (_roomsPerFloorControllers.length > _floorCount) {
-        for (int i = _roomsPerFloorControllers.length - 1; i >= _floorCount; i--) {
-          _roomsPerFloorControllers[i].dispose();
-          _roomsPerFloorControllers.removeAt(i);
-        }
-      }
-    });
-  }
-
-  void _submitData() {
-    List<int> roomsPerFloor = _roomsPerFloorControllers
-        .map((controller) => int.tryParse(controller.text) ?? 0)
-        .toList();
-
-    List<Map<String, dynamic>> servicesPayload = _services.map((s) {
-      return {
-        'name': s.name,
-        'calcType': s.calcType.backendValue,
-        'price': num.tryParse(s.priceController.text) ?? 0,
-      };
-    }).toList();
-
-    final payload = {
-      "name": _nameController.text.trim(),
-      "address": _addressController.text.trim(),
-      "invoiceDay": _invoiceDay,
-      "dueDate": _dueDate,
-      "services": servicesPayload,
-      "roomsPerFloor": roomsPerFloor,
-      "defaultAreaSize": double.tryParse(_areaSizeController.text) ?? 0.0,
-      "defaultRentPrice": double.tryParse(_rentPriceController.text) ?? 0.0,
-      "defaultDepositAmount": double.tryParse(_depositController.text) ?? 0.0,
-      "defaultMaxOccupants": int.tryParse(_maxOccupantsController.text) ?? 1,
-    };
-
-    _viewModel.submitOnboarding(
-      payload: payload,
-      onSuccess: (newArea) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Khởi tạo Khu trọ thành công!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        if (widget.isAddingNewArea) {
-          Navigator.pop(context, newArea);
-        } else {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(
-              builder: (_) => const MainLayoutScreen(),
-            ),
-                (route) => false,
-          );
-        }
-      },
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -166,58 +27,118 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         elevation: 0,
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildSectionTitle('1. Thông tin chung'),
-            GeneralInfoCard(
-              nameController: _nameController,
-              addressController: _addressController,
-              invoiceDay: _invoiceDay,
-              dueDate: _dueDate,
-              onInvoiceDayChanged: (val) => setState(() => _invoiceDay = val!),
-              onDueDateChanged: (val) => setState(() => _dueDate = val!),
+      // --- Lắng nghe trạng thái từ ViewModel ---
+      body: Consumer<OnboardingViewModel>(
+        builder: (context, vm, child) {
+          return SingleChildScrollView(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildSectionTitle('1. Thông tin chung'),
+                GeneralInfoCard(
+                  nameController: vm.nameController,
+                  addressController: vm.addressController,
+                  invoiceDay: vm.invoiceDay,
+                  dueDate: vm.dueDate,
+                  onInvoiceDayChanged: (val) {
+                    if (val != null) vm.updateInvoiceDay(val);
+                  },
+                  onDueDateChanged: (val) {
+                    if (val != null) vm.updateDueDate(val);
+                  },
+                ),
+                const SizedBox(height: 20),
+
+                _buildSectionTitle('2. Cấu hình dịch vụ cơ bản'),
+                ServicesCard(
+                  services: vm.services,
+                  onServiceTypeChanged: () => vm.updateServiceType(),
+                ),
+                const SizedBox(height: 20),
+
+                _buildSectionTitle('3. Cấu hình phòng mẫu'),
+                DefaultRoomCard(
+                  rentPriceController: vm.rentPriceController,
+                  depositController: vm.depositController,
+                  areaSizeController: vm.areaSizeController,
+                  maxOccupantsController: vm.maxOccupantsController,
+                ),
+                const SizedBox(height: 20),
+
+                _buildSectionTitle('4. Cấu hình số lượng phòng'),
+                DynamicFloorCard(
+                  floorCountController: vm.floorCountController,
+                  floorCount: vm.floorCount,
+                  roomsPerFloorControllers: vm.roomsPerFloorControllers,
+                  onFloorCountChanged: vm.updateFloorCount,
+                ),
+                const SizedBox(height: 32),
+
+                ElevatedButton(
+                  onPressed: vm.isLoading
+                      ? null
+                      : () async {
+                    // Lấy kết quả từ ViewModel thay vì truyền Callback
+                    final newArea = await vm.submitOnboarding();
+
+                    if (!context.mounted) return;
+
+                    if (newArea != null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Khởi tạo Khu trọ thành công!'),
+                          backgroundColor: Colors.green,
+                        ),
+                      );
+
+                      if (isAddingNewArea) {
+                        Navigator.pop(context, newArea);
+                      } else {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const MainLayoutScreen(),
+                          ),
+                              (route) => false,
+                        );
+                      }
+                    } else if (vm.errorMessage != null) {
+                      // Xử lý báo lỗi ngay tại UI
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(vm.errorMessage!),
+                          backgroundColor: Colors.redAccent,
+                        ),
+                      );
+                      vm.clearError();
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: vm.isLoading
+                      ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                        color: Colors.white, strokeWidth: 2.5),
+                  )
+                      : const Text(
+                    'Hoàn tất khởi tạo',
+                    style: TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                const SizedBox(height: 32),
+              ],
             ),
-            const SizedBox(height: 20),
-            _buildSectionTitle('2. Cấu hình dịch vụ cơ bản'),
-            ServicesCard(
-              services: _services,
-              onServiceTypeChanged: () => setState(() {}),
-            ),
-            const SizedBox(height: 20),
-            _buildSectionTitle('3. Cấu hình phòng mẫu'),
-            DefaultRoomCard(
-              rentPriceController: _rentPriceController,
-              depositController: _depositController,
-              areaSizeController: _areaSizeController,
-              maxOccupantsController: _maxOccupantsController,
-            ),
-            const SizedBox(height: 20),
-            _buildSectionTitle('4. Cấu hình số lượng phòng'),
-            DynamicFloorCard(
-              floorCountController: _floorCountController,
-              floorCount: _floorCount,
-              roomsPerFloorControllers: _roomsPerFloorControllers,
-              onFloorCountChanged: _updateFloorCount,
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton(
-              onPressed: _viewModel.isLoading ? null : _submitData,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: _viewModel.isLoading
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text('Hoàn tất khởi tạo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ),
-            const SizedBox(height: 32),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -227,7 +148,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       padding: const EdgeInsets.only(bottom: 8.0, left: 4.0),
       child: Text(
         title,
-        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+        style: const TextStyle(
+            fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
       ),
     );
   }

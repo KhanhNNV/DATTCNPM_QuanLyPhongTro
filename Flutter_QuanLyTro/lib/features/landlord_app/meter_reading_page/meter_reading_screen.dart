@@ -5,42 +5,22 @@ import 'package:month_picker_dialog/month_picker_dialog.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_app_bar.dart';
 import '../../../core/widgets/custom_button.dart';
+import 'package:provider/provider.dart';
 
-class MeterReadingScreen extends StatefulWidget {
-  final String areaId;
+class MeterReadingScreen extends StatelessWidget {
 
-  const MeterReadingScreen({super.key, required this.areaId});
-
-  @override
-  State<MeterReadingScreen> createState() => _MeterReadingScreenState();
-}
-
-class _MeterReadingScreenState extends State<MeterReadingScreen> {
-  late final MeterReadingViewModel _viewModel;
-
-  @override
-  void initState() {
-    super.initState();
-    _viewModel = MeterReadingViewModel(areaId: widget.areaId);
-    _viewModel.loadMeterReadings();
-  }
-
-  @override
-  void dispose() {
-    _viewModel.dispose();
-    super.dispose();
-  }
-
+  const MeterReadingScreen({super.key});
   Future<void> _selectMonth(BuildContext context) async {
+    final viewModel = context.read<MeterReadingViewModel>();
     final DateTime? picked = await showMonthPicker(
       context: context,
-      initialDate: _viewModel.selectedMonth,
+      initialDate: viewModel.selectedMonth,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
     );
 
     if (picked != null) {
-      _viewModel.changeMonth(picked);
+      viewModel.changeMonth(picked);
     }
   }
 
@@ -49,9 +29,8 @@ class _MeterReadingScreenState extends State<MeterReadingScreen> {
     return Scaffold(
       backgroundColor: Colors.grey[100],
       appBar: const CustomAppBar(title: 'Chốt điện nước'),
-      body: ListenableBuilder(
-        listenable: _viewModel,
-        builder: (context, _) {
+      body: Consumer<MeterReadingViewModel>(
+        builder: (context, viewModel, _) {
           return Column(
             children: [
               // --- Header chọn Tháng/Năm ---
@@ -66,7 +45,7 @@ class _MeterReadingScreenState extends State<MeterReadingScreen> {
                         const Icon(Icons.calendar_month_outlined, color: AppColors.primary, size: 22),
                         const SizedBox(width: 8),
                         Text(
-                          'Kỳ hóa đơn: Tháng ${_viewModel.selectedMonth.month}/${_viewModel.selectedMonth.year}',
+                          'Kỳ hóa đơn: Tháng ${viewModel.selectedMonth.month}/${viewModel.selectedMonth.year}',
                           style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       ],
@@ -86,16 +65,16 @@ class _MeterReadingScreenState extends State<MeterReadingScreen> {
 
               // --- Danh sách phòng ---
               Expanded(
-                child: _viewModel.isLoading && _viewModel.roomList.isEmpty
+                child: viewModel.isLoading && viewModel.roomList.isEmpty
                     ? const Center(child: CircularProgressIndicator(color: Colors.blue))
-                    : _viewModel.roomList.isEmpty
+                    : viewModel.roomList.isEmpty
                     ? const Center(child: Text('Không có dữ liệu phòng cho kỳ này.', style: TextStyle(color: Colors.grey)))
                     : ListView.builder(
                   padding: const EdgeInsets.all(12),
-                  itemCount: _viewModel.roomList.length,
+                  itemCount: viewModel.roomList.length,
                   itemBuilder: (context, index) {
-                    final room = _viewModel.roomList[index];
-                    return _buildRoomCard(room);
+                    final room = viewModel.roomList[index];
+                    return _buildRoomCard(context, viewModel, room);
                   },
                 ),
               ),
@@ -106,7 +85,8 @@ class _MeterReadingScreenState extends State<MeterReadingScreen> {
     );
   }
 
-  Widget _buildRoomCard(RoomReadingUiModel room) {
+
+  Widget _buildRoomCard(BuildContext context, MeterReadingViewModel viewModel, RoomReadingUiModel room) {
     if (!room.isElecByIndex && !room.isWaterByIndex) {
       return const SizedBox.shrink();
     }
@@ -174,16 +154,14 @@ class _MeterReadingScreenState extends State<MeterReadingScreen> {
               alignment: Alignment.centerRight,
               child: CustomButton(
                 text: 'Lưu',
-                isLoading: _viewModel.isLoading,
+                isLoading: viewModel.isLoading,
                 onPressed: () async {
                   FocusScope.of(context).unfocus();
 
-                  // SỬA ĐỔI: Nhận về String? thay vì bool
-                  final errorMessage = await _viewModel.saveSingleRoom(room);
+                  final errorMessage = await viewModel.saveSingleRoom(room);
 
-                  if (mounted) {
+                  if (context.mounted) {
                     if (errorMessage == null) {
-                      // null = Không có lỗi = Thành công
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text('Đã lưu chỉ số phòng ${room.roomNumber} thành công!'),
@@ -193,10 +171,9 @@ class _MeterReadingScreenState extends State<MeterReadingScreen> {
                         ),
                       );
                     } else {
-                      // Có chuỗi = Lỗi -> Hiển thị lỗi đó
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text(errorMessage), // In ra thông báo lỗi cụ thể
+                          content: Text(errorMessage),
                           backgroundColor: Colors.redAccent,
                           behavior: SnackBarBehavior.floating,
                         ),
@@ -267,4 +244,5 @@ class _MeterReadingScreenState extends State<MeterReadingScreen> {
       ],
     );
   }
+
 }
