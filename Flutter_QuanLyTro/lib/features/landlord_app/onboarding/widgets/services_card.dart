@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../../../../core/utils/currency_input_formatter.dart';
 import '../models/onboarding_models.dart';
 
 class ServicesCard extends StatelessWidget {
@@ -61,6 +63,10 @@ class ServicesCard extends StatelessWidget {
                         child: TextField(
                           controller: service.priceController,
                           keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            CurrencyInputFormatter(),
+                          ],
                           decoration: InputDecoration(
                             labelText: 'Đơn giá',
                             suffixText: service.calcType.getUnit(service.name),

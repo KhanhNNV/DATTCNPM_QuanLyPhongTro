@@ -81,7 +81,7 @@ class OnboardingViewModel extends ChangeNotifier {
       return null;
     }
 
-    final defaultRentPrice = double.tryParse(rentPriceController.text) ?? 0.0;
+    final defaultRentPrice = double.tryParse( rentPriceController.text.replaceAll('.', ''),) ?? 0.0;
     if (defaultRentPrice == 0) {
       _errorMessage = 'Vui lòng nhập giá phòng mặc định.';
       notifyListeners();
@@ -102,7 +102,7 @@ class OnboardingViewModel extends ChangeNotifier {
       return {
         'name': s.name,
         'calcType': s.calcType.backendValue,
-        'price': num.tryParse(s.priceController.text) ?? 0,
+        'price': num.tryParse(s.priceController.text.replaceAll('.', '')) ?? 0,
       };
     }).toList();
 
@@ -115,7 +115,7 @@ class OnboardingViewModel extends ChangeNotifier {
       "roomsPerFloor": floors,
       "defaultAreaSize": double.tryParse(areaSizeController.text) ?? 0.0,
       "defaultRentPrice": defaultRentPrice,
-      "defaultDepositAmount": double.tryParse(depositController.text) ?? 0.0,
+      "defaultDepositAmount": double.tryParse(depositController.text.replaceAll('.', '')) ?? 0.0,
       "defaultMaxOccupants": int.tryParse(maxOccupantsController.text) ?? 1,
     };
 

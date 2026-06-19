@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../../../../core/utils/currency_input_formatter.dart';
 
 class DefaultRoomCard extends StatelessWidget {
   final TextEditingController rentPriceController;
@@ -25,17 +28,61 @@ class DefaultRoomCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Expanded(child: TextField(controller: rentPriceController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Giá thuê (VNĐ)', border: OutlineInputBorder()))),
+                Expanded(
+                  child: TextField(
+                    controller: rentPriceController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      CurrencyInputFormatter(),
+                    ],
+                    decoration: const InputDecoration(
+                      labelText: 'Giá thuê (VNĐ)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 16),
-                Expanded(child: TextField(controller: depositController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Tiền cọc (VNĐ)', border: OutlineInputBorder()))),
+                Expanded(
+                  child: TextField(
+                    controller: depositController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                      CurrencyInputFormatter(),
+                    ],
+                    decoration: const InputDecoration(
+                      labelText: 'Tiền cọc (VNĐ)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 16),
             Row(
               children: [
-                Expanded(child: TextField(controller: areaSizeController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Diện tích (m2)', border: OutlineInputBorder()))),
+                Expanded(
+                  child: TextField(
+                    controller: areaSizeController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Diện tích (m2)',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
                 const SizedBox(width: 16),
-                Expanded(child: TextField(controller: maxOccupantsController, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Số người tối đa', border: OutlineInputBorder()))),
+                Expanded(
+                  child: TextField(
+                    controller: maxOccupantsController,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Số người tối đa',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                ),
               ],
             ),
           ],
