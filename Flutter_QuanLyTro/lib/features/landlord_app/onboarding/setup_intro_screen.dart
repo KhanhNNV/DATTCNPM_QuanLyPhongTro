@@ -68,7 +68,7 @@ class SetupIntroScreen extends StatelessWidget {
                         MaterialPageRoute(
                           builder: (_) => ChangeNotifierProvider(
                             create: (_) => OnboardingViewModel(),
-                            child: const OnboardingScreen(isAddingNewArea: true),
+                            child: const OnboardingScreen(isAddingNewArea: false),
                           ),
                         ),
                       );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_quanlytro/features/landlord_app/main_layout/view_models/main_layout_view_model.dart'; // <-- ĐẢM BẢO IMPORT VIEWMODEL NÀY
 import '../../../core/constants/app_colors.dart';
 import '../main_layout/main_layout_screen.dart';
 import 'view_models/onboarding_view_model.dart';
@@ -27,9 +28,8 @@ class OnboardingScreen extends StatelessWidget {
         elevation: 0,
         centerTitle: true,
       ),
-      // --- Lắng nghe trạng thái từ ViewModel ---
       body: Consumer<OnboardingViewModel>(
-        builder: (context, vm, child) {
+        builder: (builderContext, vm, child) {
           return SingleChildScrollView(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -79,8 +79,9 @@ class OnboardingScreen extends StatelessWidget {
                   onPressed: vm.isLoading
                       ? null
                       : () async {
-                    // Lấy kết quả từ ViewModel thay vì truyền Callback
+
                     final newArea = await vm.submitOnboarding();
+
 
                     if (!context.mounted) return;
 
@@ -95,6 +96,9 @@ class OnboardingScreen extends StatelessWidget {
                       if (isAddingNewArea) {
                         Navigator.pop(context, newArea);
                       } else {
+
+                        context.read<MainLayoutViewModel>().addAndSelectArea(newArea);
+
                         Navigator.pushAndRemoveUntil(
                           context,
                           MaterialPageRoute(
@@ -104,7 +108,6 @@ class OnboardingScreen extends StatelessWidget {
                         );
                       }
                     } else if (vm.errorMessage != null) {
-                      // Xử lý báo lỗi ngay tại UI
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(vm.errorMessage!),
