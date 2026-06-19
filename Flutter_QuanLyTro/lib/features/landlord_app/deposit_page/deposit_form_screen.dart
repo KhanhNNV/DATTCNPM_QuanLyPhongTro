@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_quanlytro/features/landlord_app/deposit_page/view_models/deposit_view_model.dart';
 import '../../../data/models/response/room_model.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/custom_button.dart';
 import '../../../../core/constants/app_colors.dart';
+import 'view_models/deposit_form_view_model.dart';
 
-class DepositScreen extends StatelessWidget {
-  const DepositScreen({super.key});
+class DepositFormScreen extends StatelessWidget {
+  const DepositFormScreen({super.key});
 
-  Future<void> _pickDate(BuildContext context, DepositViewModel vm) async {
+  Future<void> _pickDate(BuildContext context, DepositFormViewModel vm) async {
     final date = await showDatePicker(
       context: context,
       firstDate: DateTime.now(),
@@ -20,7 +20,7 @@ class DepositScreen extends StatelessWidget {
           data: Theme.of(context).copyWith(
             colorScheme: const ColorScheme.light(
               primary: AppColors.primary,
-              onPrimary: Colors.black87,
+              onPrimary: Colors.white,
               onSurface: Colors.black,
             ),
           ),
@@ -34,7 +34,7 @@ class DepositScreen extends StatelessWidget {
     }
   }
 
-  void _showRoomSelectionDialog(BuildContext context, DepositViewModel vm) {
+  void _showRoomSelectionDialog(BuildContext context, DepositFormViewModel vm) {
     showDialog(
       context: context,
       builder: (context) {
@@ -117,7 +117,7 @@ class DepositScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _handleSave(BuildContext context, DepositViewModel vm) async {
+  Future<void> _handleSave(BuildContext context, DepositFormViewModel vm) async {
     FocusScope.of(context).unfocus();
     try {
       await vm.saveDeposit();
@@ -126,7 +126,7 @@ class DepositScreen extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Tạo phiếu đặt cọc thành công'), backgroundColor: Colors.green),
       );
-      Navigator.pop(context, true);
+      Navigator.pop(context, true); // Trả về true để màn hình danh sách tải lại
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.redAccent),
@@ -136,15 +136,16 @@ class DepositScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final vm = context.watch<DepositViewModel>();
+    // Lắng nghe State được cung cấp từ màn hình cha qua Navigator.push
+    final vm = context.watch<DepositFormViewModel>();
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      appBar: const CustomAppBar(title: 'Cọc giữ chỗ'),
+      appBar: const CustomAppBar(title: 'Tạo phiếu cọc'),
       body: vm.isLoading && vm.rooms.isEmpty
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : Form(
-        key: vm.formKey, // Dùng formKey từ ViewModel
+        key: vm.formKey,
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 28, 16, 16),
           children: [
@@ -170,7 +171,7 @@ class DepositScreen extends StatelessWidget {
                   suffixIcon: const Icon(Icons.arrow_drop_down),
                 ),
                 child: Text(
-                  vm.selectedRoom != null ? 'Phòng ${vm.selectedRoom!.roomNumber}' : 'Vui lòng chọn phòng',
+                  vm.selectedRoom != null ? 'Phòng ${vm.selectedRoom!.roomNumber}' : 'Vui lòng chọn phòng trống',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: vm.selectedRoom != null ? FontWeight.bold : FontWeight.normal,
@@ -266,7 +267,7 @@ class DepositScreen extends StatelessWidget {
               height: 50,
               width: double.infinity,
               child: CustomButton(
-                text: 'TẠO PHIẾU ĐẶT CỌC',
+                text: 'XÁC NHẬN TẠO PHIẾU',
                 isLoading: vm.isLoading,
                 onPressed: () => _handleSave(context, vm),
               ),

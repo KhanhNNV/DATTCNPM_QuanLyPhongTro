@@ -4,7 +4,7 @@ import '../../../../data/models/response/room_model.dart';
 import '../../../../data/repository/deposit_repository.dart';
 import '../../../../data/repository/room_repository.dart';
 
-class DepositViewModel extends ChangeNotifier {
+class DepositFormViewModel extends ChangeNotifier {
   final RoomRepository roomProvider = RoomRepository();
   final DepositRepository depositProvider = DepositRepository();
 
