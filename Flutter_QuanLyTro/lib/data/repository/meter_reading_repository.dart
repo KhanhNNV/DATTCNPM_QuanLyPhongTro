@@ -4,7 +4,7 @@ import '../models/request/meter_reading_create_request.dart';
 import '../models/request/meter_reading_bulk_update_request.dart';
 import '../models/response/meter_reading_response.dart';
 
-class MeterReadingProvider {
+class MeterReadingRepository {
   final ApiClient _apiClient = ApiClient();
 
 

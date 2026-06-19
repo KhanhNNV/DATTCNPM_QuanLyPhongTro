@@ -5,7 +5,7 @@ import '../models/request/deposit_create_request.dart';
 import '../models/response/deposit_response.dart';
 
 
-class DepositProvider {
+class DepositRepository {
   final ApiClient _apiClient = ApiClient();
 
   Future<DepositResponse> createDeposit(

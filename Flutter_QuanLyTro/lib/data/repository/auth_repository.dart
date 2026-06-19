@@ -3,7 +3,7 @@ import 'package:http/http.dart' as http;
 import '../../../core/network/api_client.dart';
 import '../../../core/utils/token_manager.dart';
 
-class AuthProvider {
+class AuthRepository {
   Future<String> login(String phone, String password) async {
     final response = await http.post(
       Uri.parse('${ApiClient.baseUrl}/auth/login'),

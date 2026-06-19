@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../core/network/api_client.dart';
 
-class AreaConfigProvider {
+class AreaConfigRepository {
   final ApiClient _apiClient = ApiClient();
 
   // API QUẢN LÝ DỊCH VỤ
