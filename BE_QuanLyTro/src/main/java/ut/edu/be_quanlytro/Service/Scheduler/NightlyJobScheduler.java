@@ -18,7 +18,7 @@ public class NightlyJobScheduler {
      * Đồng hồ báo thức duy nhất của hệ thống: Chạy vào lúc 00:00:00 mỗi đêm.
      * Quản lý tập trung toàn bộ các tiến trình quét tự động.
      */
-//    @Scheduled(cron = "0 0 0 * * ?")
+    @Scheduled(cron = "0 0 0 * * ?")
     public void executeAllNightlyJobs() {
 
         System.out.println("BẮT ĐẦU CHẠY CÁC TIẾN TRÌNH NỬA ĐÊM...");
@@ -51,6 +51,6 @@ public class NightlyJobScheduler {
      * 🧪 Dùng để test (Chạy liên tục mỗi 10 giây).
      * Khi nào code xong tính năng mới cần test thì mở comment dòng dưới ra.
      */
-     @Scheduled(fixedRate = 10000)
-     public void testRun() { executeAllNightlyJobs(); }
+//     @Scheduled(fixedRate = 10000)
+//     public void testRun() { executeAllNightlyJobs(); }
 }

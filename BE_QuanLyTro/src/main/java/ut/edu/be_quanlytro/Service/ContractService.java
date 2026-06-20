@@ -30,6 +30,8 @@ public class ContractService {
     private final OcrService  ocrService;
     private final CloudinaryService cloudinaryService;
     private final NotificationService notificationService;
+    private final ContractTemplateRepository templateRepository;
+    private final PdfExportService pdfExportService;
 
 
     // ================= 1. KHỞI TẠO HỢP ĐỒNG (Quét CCCD)=================
@@ -115,10 +117,17 @@ public class ContractService {
             rawPassword = "Khách đã có tài khoản (Dùng mật khẩu cũ)";
         }
 
-        // 5. KHỞI TẠO HỢP ĐỒNG
+
+        // 5. LẤY MẪU HỢP ĐỒNG VÀ KHỞI TẠO
+
+        ContractTemplate template = templateRepository.findById(request.getTemplateId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy mẫu hợp đồng yêu cầu!"));
+
+        // Khởi tạo đối tượng Hợp đồng
         Contract contract = Contract.builder()
                 .room(room)
                 .tenant(tenant)
+                .template(template)
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
                 .landlordSignature(landlord.getLandlordSignature())
@@ -126,6 +135,9 @@ public class ContractService {
                 .status(ContractStatus.DRAFT)
                 .members(new ArrayList<>())
                 .build();
+
+        String compiledHtml = compileContractTerms(template, contract, landlord, tenant, room);
+        contract.setContractTerms(compiledHtml);
 
         // 6. KHỞI TẠO THÀNH VIÊN ĐẠI DIỆN VỚI DỮ LIỆU TỪ AI
         ContractMember mainMember = ContractMember.builder()
@@ -229,10 +241,17 @@ public class ContractService {
             rawPassword = "Khách đã có tài khoản (Dùng mật khẩu cũ)";
         }
 
-        // 4. KHỞI TẠO HỢP ĐỒNG
+
+        // 5. LẤY MẪU HỢP ĐỒNG VÀ KHỞI TẠO
+
+        ContractTemplate template = templateRepository.findById(request.getTemplateId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy mẫu hợp đồng yêu cầu!"));
+
+        // Khởi tạo đối tượng Hợp đồng
         Contract contract = Contract.builder()
                 .room(room)
                 .tenant(tenant)
+                .template(template)
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
                 .landlordSignature(landlord.getLandlordSignature())
@@ -240,6 +259,10 @@ public class ContractService {
                 .status(ContractStatus.DRAFT)
                 .members(new ArrayList<>())
                 .build();
+
+        // 🌟 Gọi hàm biên dịch HTML và lưu "chết" vào cột contractTerms
+        String compiledHtml = compileContractTerms(template, contract, landlord, tenant, room);
+        contract.setContractTerms(compiledHtml);
 
         // 5. KHỞI TẠO THÀNH VIÊN ĐẠI DIỆN
         ContractMember mainMember = ContractMember.builder()
@@ -560,6 +583,15 @@ public class ContractService {
         // 6. Cập nhật dữ liệu Hợp đồng
         contract.setTenantSignature(signatureUrl);
         contract.setStatus(ContractStatus.SIGNED);
+        String currentTerms = contract.getContractTerms();
+        if (currentTerms != null) {
+            // Thay thế đoạn chữ đỏ chờ ký bằng thẻ <img> chứa chữ ký thật của khách thuê
+            String signedTerms = currentTerms.replace(
+                    "<span style='color:red; font-weight:bold;'>[Chờ khách thuê ký điện tử]</span>",
+                    String.format("<img src='%s' width='150'/>", signatureUrl)
+            );
+            contract.setContractTerms(signedTerms);
+        }
 
         // 7. Cập nhật dữ liệu Phòng
         Room room = contract.getRoom();
@@ -684,6 +716,80 @@ public class ContractService {
         // 7. Trả về dữ liệu mới
         return mapToDetailResponse(contract);
     }
+    // ================= HÀM PHỤ TRỢ: BIÊN DỊCH VĂN BẢN HỢP ĐỒNG =================
+    private String compileContractTerms(ContractTemplate template, Contract contract, User landlord, User tenant, Room room) {
+        String html = template.getContent();
+
+        // 1. Thay thế các biến giữ chỗ bằng dữ liệu thật
+        html = html.replace("{{START_DATE}}", contract.getStartDate() != null ? contract.getStartDate().toString() : "")
+                .replace("{{END_DATE}}", contract.getEndDate() != null ? contract.getEndDate().toString() : "")
+                .replace("{{LANDLORD_NAME}}", landlord.getFullName() != null ? landlord.getFullName() : "")
+                .replace("{{TENANT_NAME}}", tenant.getFullName() != null ? tenant.getFullName() : "")
+                .replace("{{ROOM_NUMBER}}", room.getRoomNumber())
+                .replace("{{RENT_PRICE}}", room.getRentPrice().toString());
+
+        // 2. Chèn chữ ký số của Chủ trọ (Chủ trọ đã cài đặt từ trước)
+        String landlordSig = landlord.getLandlordSignature();
+        if (landlordSig != null && !landlordSig.trim().isEmpty()) {
+            // Chèn ảnh chữ ký với chiều rộng 150px cho đẹp
+            html = html.replace("{{LANDLORD_SIGNATURE_PLACEHOLDER}}",
+                    String.format("<img src='%s' width='150'/>", landlordSig));
+        } else {
+            html = html.replace("{{LANDLORD_SIGNATURE_PLACEHOLDER}}", "[Chưa có chữ ký]");
+        }
+
+        // 3. Khách thuê lúc này chưa ký, nên hiển thị dòng chữ cảnh báo màu đỏ
+        html = html.replace("{{TENANT_SIGNATURE_PLACEHOLDER}}", "<span style='color:red; font-weight:bold;'>[Chờ khách thuê ký điện tử]</span>");
+
+        return html;
+    }
+    @Transactional(readOnly = true)
+    public byte[] downloadContractPdf(UUID contractId, UUID currentUserId) {
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng!"));
+
+        boolean isLandlord = contract.getRoom().getArea().getLandlord().getId().equals(currentUserId);
+        boolean isTenant = contract.getTenant().getId().equals(currentUserId);
+
+        if (!isLandlord && !isTenant) {
+            throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền tải hợp đồng này.");
+        }
+
+        return pdfExportService.generatePdfFromHtml(contract.getContractTerms());
+    }
+    // ================= 13. TẢI LÊN FILE HỢP ĐỒNG (BẢN SCAN / BẢN MỀM) =================
+    @Transactional
+    public ContractDetailResponse uploadContractFile(UUID contractId, MultipartFile file, UUID currentUserId) {
+
+        // 1. Kiểm tra đầu vào
+        if (file == null || file.isEmpty()) {
+            throw new RuntimeException("Vui lòng chọn file để tải lên!");
+        }
+
+        // 2. Tìm hợp đồng dưới DB
+        Contract contract = contractRepository.findById(contractId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng!"));
+
+        // 3. Chốt chặn bảo mật: Chỉ Chủ trọ mới được quyền tải file đính kèm lên
+        if (!contract.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
+            throw new RuntimeException("Truy cập bị từ chối! Chỉ chủ trọ của hợp đồng này " +
+                    "mới có quyền tải lên file cho hợp đồng này.");
+        }
+
+        // 4. Gọi CloudinaryService để đẩy file lên cloud
+        String uploadedUrl = cloudinaryService.uploadFile(file, "contract_files");
+
+        // 5. Cập nhật URL vào Entity và lưu DB
+        contract.setContractFileUrl(uploadedUrl);
+        contractRepository.save(contract);
+
+        // 6. Ghi log hoạt động
+        String logDesc = String.format("Tải lên file đính kèm cho hợp đồng phòng %s", contract.getRoom().getRoomNumber());
+        activityLog.createLog(contract.getRoom().getArea().getLandlord(), "UPLOAD_CONTRACT_FILE", "contracts", contract.getId(), logDesc);
+
+        // 7. Trả về chi tiết hợp đồng đã được cập nhật
+        return mapToDetailResponse(contract);
+    }
 
     // ================= MAPPER =================
     private ContractDetailResponse mapToDetailResponse(Contract contract) {
@@ -715,6 +821,7 @@ public class ContractService {
                 .rentPrice(contract.getRoom().getRentPrice())
                 .status(contract.getStatus())
                 .contractFileUrl(contract.getContractFileUrl())
+                .contractTerms(contract.getContractTerms())
                 .members(memberResponses) // Nhúng danh sách thành viên vào đây
                 .build();
     }

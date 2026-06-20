@@ -21,4 +21,6 @@ public class ContractCreateManualRequest {
     private LocalDate tenantDob;
     private String tenantHometown;
     private String tenantIdCardNumber;
+
+    private UUID templateId;
 }

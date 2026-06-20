@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import ut.edu.be_quanlytro.Dto.Request.DepositCreateRequest;
 import ut.edu.be_quanlytro.Dto.Request.DepositUpdateRequest;
 import ut.edu.be_quanlytro.Dto.Response.DepositResponse;
+import ut.edu.be_quanlytro.Entity.Enum.DepositStatus;
 import ut.edu.be_quanlytro.Service.DepositService;
 
 import java.util.List;
@@ -52,13 +53,22 @@ public class DepositController {
         return ResponseEntity.ok(depositService.getDepositById(id, currentUserId));
     }
 
+    // ================= READ (LIST BY AREA) =================
     @GetMapping("/area/{areaId}")
     @PreAuthorize("hasRole('LANDLORD')")
-    public ResponseEntity<List<DepositResponse>> getDepositsByAreaId(
+    public ResponseEntity<List<DepositResponse>> getDepositsByArea(
             @PathVariable UUID areaId,
+            @RequestParam(required = false) DepositStatus status,
             @AuthenticationPrincipal Jwt jwt) {
 
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+
+        // Nếu Frontend có truyền trạng thái (status), gọi hàm lọc trạng thái
+        if (status != null) {
+            return ResponseEntity.ok(depositService.getDepositsByAreaAndStatus(areaId, status, currentUserId));
+        }
+
+        // Nếu Frontend không truyền trạng thái, lấy tất cả phiếu cọc của khu trọ đó
         return ResponseEntity.ok(depositService.getDepositsByAreaId(areaId, currentUserId));
     }
 }

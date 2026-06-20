@@ -11,6 +11,7 @@ import ut.edu.be_quanlytro.Entity.Area;
 import ut.edu.be_quanlytro.Entity.Deposit;
 import ut.edu.be_quanlytro.Entity.Enum.DepositStatus;
 import ut.edu.be_quanlytro.Entity.Enum.NotificationType;
+import ut.edu.be_quanlytro.Entity.Enum.RoleType;
 import ut.edu.be_quanlytro.Entity.Enum.RoomStatus;
 import ut.edu.be_quanlytro.Entity.Room;
 import ut.edu.be_quanlytro.Entity.User;
@@ -156,7 +157,7 @@ public class DepositService {
         Area area = areaRepository.findById(areaId)
                 .orElseThrow(() -> new RuntimeException("Khu trọ không tồn tại"));
 
-        // 2. 🔒 KIỂM TRA BẢO MẬT: Chặn hành vi truyền ID khu trọ của người khác
+        // 2. KIỂM TRA BẢO MẬT: Chặn hành vi truyền ID khu trọ của người khác
         if (!area.getLandlord().getId().equals(currentUserId)) {
             throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xem danh sách cọc của khu trọ khác.");
         }
@@ -216,6 +217,26 @@ public class DepositService {
         }
 
         System.out.println("Hoàn tất tiến trình quét dọn phiếu cọc quá hạn");
+    }
+
+    // ================= READ (LỌC THEO KHU TRỌ VÀ TRẠNG THÁI) =================
+    @Transactional(readOnly = true)
+    public List<DepositResponse> getDepositsByAreaAndStatus(UUID areaId, DepositStatus status, UUID currentUserId) {
+
+        // 1. Lấy thông tin Khu trọ từ Database
+        Area area = areaRepository.findById(areaId)
+                .orElseThrow(() -> new RuntimeException("Khu trọ không tồn tại"));
+
+        // 2. 🔒 KIỂM TRA BẢO MẬT: Đảm bảo Chủ trọ đang đăng nhập là người sở hữu khu trọ này
+        if (!area.getLandlord().getId().equals(currentUserId)) {
+            throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xem danh sách phiếu cọc của khu trọ khác.");
+        }
+
+        // 3. Sử dụng Query để lọc theo areaId và status
+        return depositRepository.findByAreaIdAndStatus(areaId, status)
+                .stream()
+                .map(this::mapToResponse)
+                .toList();
     }
     // ================= MAPPER =================
     private DepositResponse mapToResponse(Deposit deposit) {

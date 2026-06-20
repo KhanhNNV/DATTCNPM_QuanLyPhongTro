@@ -31,4 +31,6 @@ public class ContractDetailResponse {
 
     // Danh sách toàn bộ những người đang ở trong phòng (bao gồm cả đại diện)
     private List<ContractMemberResponse> members;
+
+    private String contractTerms;
 }
