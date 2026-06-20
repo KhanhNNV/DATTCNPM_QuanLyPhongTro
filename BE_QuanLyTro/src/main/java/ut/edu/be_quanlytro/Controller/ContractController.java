@@ -183,4 +183,35 @@ public class ContractController {
 
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/download/pdf/{id}")
+    public ResponseEntity<byte[]> downloadContractPdf(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+        byte[] pdfBytes = contractService.downloadContractPdf(id, currentUserId);
+
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_PDF);
+        headers.setContentDispositionFormData("attachment", "HopDong_" + id + ".pdf");
+
+        return org.springframework.http.ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
+    }
+
+    // ================= UPLOAD FILE HỢP ĐỒNG =================
+    @PostMapping(value = "/upload/file/{id}", consumes = "multipart/form-data")
+    @PreAuthorize("hasRole('LANDLORD')")
+    public ResponseEntity<ContractDetailResponse> uploadContractFile(
+            @PathVariable UUID id,
+            @RequestParam("file") MultipartFile file,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+
+        // Gọi Service và trả kết quả
+        return ResponseEntity.ok(contractService.uploadContractFile(id, file, currentUserId));
+    }
 }
