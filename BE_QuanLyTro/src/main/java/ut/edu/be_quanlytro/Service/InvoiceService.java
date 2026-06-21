@@ -130,7 +130,27 @@ public class InvoiceService {
             invoiceDetailRepository.save(detail);
             totalAmount = totalAmount.add(detail.getTotalAmount());
         }
+        
         invoice.setTotalAmount(totalAmount);
+        // 2. TỰ ĐỘNG SINH MÃ VIETQR NGAY LÚC NÀY
+        User landlord = area.getLandlord();
+
+        if (landlord.getBankId() != null && landlord.getAccountNo() != null && landlord.getAccountName() != null) {
+            String content = String.format("P%s THANH TOAN T%d",
+                    room.getRoomNumber(),
+                    normalizedPeriod.getMonthValue());
+
+            String qrUrl = String.format("https://img.vietqr.io/image/%s-%s-compact2.png?amount=%.0f&addInfo=%s&accountName=%s",
+                    landlord.getBankId(),
+                    landlord.getAccountNo(),
+                    totalAmount,
+                    content.replace(" ", "%20"),
+                    landlord.getAccountName().replace(" ", "%20"));
+
+            // Gắn link QR vào entity
+            invoice.setVietqrUrl(qrUrl);
+        }
+
         return invoiceRepository.save(invoice);
     }
 
