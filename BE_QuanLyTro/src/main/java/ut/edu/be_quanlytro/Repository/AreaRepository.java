@@ -14,4 +14,6 @@ public interface AreaRepository extends JpaRepository<Area, UUID> {
 
     // Kiểm tra tên khu trọ đã tồn tại với chủ trọ này chưa (chống trùng lặp)
     boolean existsByLandlordIdAndName(UUID landlordId, String name);
+    // Tìm các khu trọ có ngày chốt hóa đơn cố định trong tháng
+    List<Area> findByInvoiceDay(Integer invoiceDay);
 }
