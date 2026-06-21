@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_quanlytro/features/landlord_app/deposit_page/view_models/deposit_detail_view_model.dart';
 import 'package:flutter_quanlytro/features/landlord_app/deposit_page/view_models/deposit_form_view_model.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
+import 'deposit_detail_screen.dart';
 import 'view_models/deposit_list_view_model.dart';
 import 'deposit_form_screen.dart';
 
@@ -80,7 +82,24 @@ class DepositListScreen extends StatelessWidget {
       separatorBuilder: (context, index) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final deposit = vm.deposits[index];
-        return Card(
+        return InkWell(
+            onTap: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ChangeNotifierProvider(
+                    create: (_) => DepositDetailViewModel()..initData(deposit),
+                    child: const DepositDetailScreen(),
+                  ),
+                ),
+              );
+
+              if (result == true && context.mounted) {
+                context.read<DepositListViewModel>().fetchDeposits(areaId);
+              }
+            },
+            borderRadius: BorderRadius.circular(12),
+          child: Card(
           elevation: 2,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           child: Padding(
@@ -117,6 +136,7 @@ class DepositListScreen extends StatelessWidget {
               ],
             ),
           ),
+          )
         );
       },
     );
