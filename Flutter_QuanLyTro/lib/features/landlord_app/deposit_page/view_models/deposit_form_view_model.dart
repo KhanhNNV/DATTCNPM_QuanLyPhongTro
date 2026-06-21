@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../../../data/models/request/deposit_create_request.dart';
+import '../../../../data/models/response/deposit_response.dart';
 import '../../../../data/models/response/room_model.dart';
 import '../../../../data/repository/deposit_repository.dart';
 import '../../../../data/repository/room_repository.dart';
 
 class DepositFormViewModel extends ChangeNotifier {
   final RoomRepository roomProvider = RoomRepository();
-  final DepositRepository depositProvider = DepositRepository();
+  final DepositRepository _depositRepository = DepositRepository();
 
   // --- QUẢN LÝ FORM STATE ---
   final formKey = GlobalKey<FormState>();
@@ -44,7 +45,7 @@ class DepositFormViewModel extends ChangeNotifier {
   }
 
   // --- HÀM LƯU PHIẾU ĐẶT CỌC ---
-  Future<void> saveDeposit() async {
+  Future<DepositResponse> saveDeposit() async {
     if (!formKey.currentState!.validate()) {
       throw Exception('Vui lòng điền đầy đủ thông tin hợp lệ!');
     }
@@ -68,7 +69,12 @@ class DepositFormViewModel extends ChangeNotifier {
         note: noteController.text.trim(),
       );
 
-      await depositProvider.createDeposit(request);
+      final createdDeposit = await _depositRepository.createDeposit(request);
+
+      isLoading = false;
+      notifyListeners();
+
+      return createdDeposit;
     } finally {
       isLoading = false;
       notifyListeners();

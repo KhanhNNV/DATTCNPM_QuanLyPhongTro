@@ -9,8 +9,14 @@ import '../models/response/deposit_response.dart';
 class DepositRepository {
   final ApiClient _apiClient = ApiClient();
 
-  Future<List<DepositResponse>> getDepositsByAreaId(String areaId) async {
-    final response = await _apiClient.get('/api/deposits/area/$areaId');
+  Future<List<DepositResponse>> getDepositsByAreaId(String areaId, {String? status}) async {
+    String url = '/api/deposits/area/$areaId';
+
+    if (status != null && status.isNotEmpty && status != 'ALL') {
+      url += '?status=$status';
+    }
+
+    final response = await _apiClient.get(url);
     if (response.statusCode == 200) {
       final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
       return data.map((json) => DepositResponse.fromJson(json)).toList();

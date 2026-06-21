@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
-import '../../../../data/models/response/deposit_response.dart';
 import 'deposit_edit_screen.dart';
 import 'view_models/deposit_detail_view_model.dart';
 
@@ -25,7 +24,31 @@ class DepositDetailScreen extends StatelessWidget {
     }
   }
 
+  String _getStatusText(String status) {
+    switch (status) {
+      case 'PENDING':
+        return 'Đang giữ chỗ';
+      case 'COMPLETED':
+        return 'Đã hoàn thành';
+      case 'CANCELLED':
+        return 'Đã hủy';
+      default:
+        return 'Không xác định';
+    }
+  }
 
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'PENDING':
+        return Colors.orange;
+      case 'COMPLETED':
+        return Colors.green;
+      case 'CANCELLED':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,105 +57,146 @@ class DepositDetailScreen extends StatelessWidget {
 
     if (deposit == null) return const SizedBox();
 
-    return Scaffold(
-      backgroundColor: Colors.grey[100],
-      appBar: const CustomAppBar(title: 'Chi tiết phiếu cọc'),
-      body: vm.isDeleting
-          ? const Center(child: CircularProgressIndicator())
-          : SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Card(
-          elevation: 3,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Center(
-                  child: Text(
-                    'PHÒNG ${deposit.roomNumber}',
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: AppColors.primary),
+    return PopScope(
+      canPop: false, // Chặn back mặc định để tự xử lý
+      onPopInvoked: (didPop) {
+        if (didPop) return;
+        // Trả object về cho trang Danh sách
+        Navigator.pop(context, deposit);
+      },
+      child: Scaffold(
+        backgroundColor: Colors.grey[100],
+        appBar: const CustomAppBar(title: 'Chi tiết phiếu cọc'),
+        body: vm.isDeleting
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                padding: const EdgeInsets.all(16.0),
+                child: Card(
+                  elevation: 3,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Center(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: deposit.status == 'PENDING' ? Colors.orange.withOpacity(0.1) : Colors.green.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      deposit.status,
-                      style: TextStyle(
-                        color: deposit.status == 'PENDING' ? Colors.orange : Colors.green,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-                const Divider(height: 32, thickness: 1),
-                _buildDetailRow('Khách thuê:', deposit.tenantFullName),
-                _buildDetailRow('Số điện thoại:', deposit.phone),
-                _buildDetailRow('Ngày lập phiếu:', _formatDate(deposit.depositDate)),
-                _buildDetailRow('Dự kiến vào ở:', _formatDate(deposit.expectedMoveInDate)),
-                _buildDetailRow('Ghi chú:', deposit.note ?? 'Không có'),
-                const Divider(height: 32, thickness: 1),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text('Tiền cọc:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                    Text(
-                      '${_formatCurrency(deposit.depositAmount)} VNĐ',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.redAccent),
-                    ),
-                  ],
-                ),
-                if (vm.isDeleting || vm.isReloading)
-                  Container(
-                    color: Colors.black.withOpacity(0.1),
-                    child: const Center(
-                      child: CircularProgressIndicator(),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ),
-      ),
-      bottomNavigationBar: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: () async {
-                    final isUpdated = await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => ChangeNotifierProvider(
-                          create: (_) => DepositEditViewModel()..initData(deposit),
-                          child: const DepositEditScreen(),
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: Text(
+                            'PHÒNG ${deposit.roomNumber}',
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
                         ),
-                      ),
-                    );
-
-                    // Nếu Edit thành công trả về true, gọi load lại
-                    if (isUpdated == true && context.mounted) {
-                      context.read<DepositDetailViewModel>().reloadDepositData();
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
+                        const SizedBox(height: 8),
+                        Center(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _getStatusColor(
+                                deposit.status,
+                              ).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              _getStatusText(deposit.status),
+                              style: TextStyle(
+                                color: _getStatusColor(deposit.status),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const Divider(height: 32, thickness: 1),
+                        _buildDetailRow('Khách thuê:', deposit.tenantFullName),
+                        _buildDetailRow('Số điện thoại:', deposit.phone),
+                        _buildDetailRow(
+                          'Ngày lập phiếu:',
+                          _formatDate(deposit.depositDate),
+                        ),
+                        _buildDetailRow(
+                          'Dự kiến vào ở:',
+                          _formatDate(deposit.expectedMoveInDate),
+                        ),
+                        _buildDetailRow('Ghi chú:', deposit.note ?? 'Không có'),
+                        const Divider(height: 32, thickness: 1),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Tiền cọc:',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              '${_formatCurrency(deposit.depositAmount)} VNĐ',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.redAccent,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (vm.isDeleting || vm.isReloading)
+                          Container(
+                            color: Colors.black.withOpacity(0.1),
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                  icon: const Icon(Icons.edit, color: Colors.white),
-                  label: const Text('Chỉnh sửa', style: TextStyle(color: Colors.white)),
                 ),
               ),
-            ],
+        bottomNavigationBar: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final isUpdated = await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => ChangeNotifierProvider(
+                            create: (_) =>
+                                DepositEditViewModel()..initData(deposit),
+                            child: const DepositEditScreen(),
+                          ),
+                        ),
+                      );
+
+                      // Nếu Edit thành công trả về true, gọi load lại
+                      if (isUpdated == true && context.mounted) {
+                        context
+                            .read<DepositDetailViewModel>()
+                            .reloadDepositData();
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    icon: const Icon(Icons.edit, color: Colors.white),
+                    label: const Text(
+                      'Chỉnh sửa',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -147,10 +211,16 @@ class DepositDetailScreen extends StatelessWidget {
         children: [
           SizedBox(
             width: 120,
-            child: Text(label, style: const TextStyle(color: Colors.grey, fontSize: 15)),
+            child: Text(
+              label,
+              style: const TextStyle(color: Colors.grey, fontSize: 15),
+            ),
           ),
           Expanded(
-            child: Text(value, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+            ),
           ),
         ],
       ),

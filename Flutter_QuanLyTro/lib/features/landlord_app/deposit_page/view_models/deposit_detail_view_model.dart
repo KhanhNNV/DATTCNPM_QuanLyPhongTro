@@ -21,27 +21,12 @@ class DepositDetailViewModel extends ChangeNotifier {
       isReloading = true;
       notifyListeners();
 
-      // Gọi API lấy lại thông tin mới nhất
       currentDeposit = await _repository.getDepositById(currentDeposit!.id);
     } catch (e) {
-      // Xử lý lỗi nếu cần
     } finally {
       isReloading = false;
       notifyListeners();
     }
   }
 
-  Future<bool> deleteDeposit(String id) async {
-    try {
-      isDeleting = true;
-      notifyListeners();
-
-      await _repository.deleteDeposit(id);
-      return true;
-    } catch (e) {
-      isDeleting = false;
-      notifyListeners();
-      throw Exception(e.toString().replaceAll('Exception: ', ''));
-    }
-  }
 }
