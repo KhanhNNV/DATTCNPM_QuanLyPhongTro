@@ -5,7 +5,9 @@ import '../../../core/constants/app_colors.dart';
 import '../area_management/area_config_screen.dart';
 import '../area_management/view_models/area_config_view_model.dart';
 import '../contract/contract_create_ocr_screen.dart';
+import '../contract/contract_list_screen.dart';
 import '../contract/view_models/contract_create_view_model.dart';
+import '../contract/view_models/contract_list_view_model.dart';
 import '../contract_template/contract_template_form_screen.dart';
 import '../contract_template/contract_template_list_screen.dart';
 import '../contract_template/view_models/contract_template_form_view_model.dart';
@@ -179,7 +181,17 @@ class _HomeScreenState extends State<HomeScreen> {
       QuickActionItem(
         title: 'Quản lý hợp đồng',
         icon: Icons.folder_shared_outlined,
-        onTap: () => _navigateTo('Nút: Quản lý danh sách hợp đồng'),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => ContractListViewModel()..fetchContracts(),
+                child: const ContractListScreen(),
+              )
+            ),
+          );
+        },
       ),
       QuickActionItem(
         title: 'Thống kê Doanh thu',
