@@ -7,7 +7,9 @@ import '../area_management/view_models/area_config_view_model.dart';
 import '../contract/contract_create_ocr_screen.dart';
 import '../contract/view_models/contract_create_view_model.dart';
 import '../contract_template/contract_template_form_screen.dart';
+import '../contract_template/contract_template_list_screen.dart';
 import '../contract_template/view_models/contract_template_form_view_model.dart';
+import '../contract_template/view_models/contract_template_list_view_model.dart';
 import '../deposit_page/deposit_list_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_quanlytro/features/landlord_app/main_layout/view_models/main_layout_view_model.dart';
@@ -65,21 +67,7 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         },
       ),
-      QuickActionItem(
-        title: 'Lập mẫu hợp đồng',
-        icon: Icons.note_add_outlined,
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ChangeNotifierProvider(
-                create: (_) => ContractTemplateFormViewModel(),
-                child: const ContractTemplateFormScreen(),
-              ),
-            ),
-          );
-        },
-      ),
+
       QuickActionItem(
         title: 'Trả phòng',
         icon: Icons.gite_outlined,
@@ -172,6 +160,26 @@ class _HomeScreenState extends State<HomeScreen> {
             context.read<MainLayoutViewModel>().fetchInitialData();
           }
         },
+      ),
+      QuickActionItem(
+        title: 'Lập mẫu hợp đồng',
+        icon: Icons.note_add_outlined,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => ContractTemplateListViewModel(),
+                child: const ContractTemplateListScreen(),
+              ),
+            ),
+          );
+        },
+      ),
+      QuickActionItem(
+        title: 'Quản lý hợp đồng',
+        icon: Icons.folder_shared_outlined,
+        onTap: () => _navigateTo('Nút: Quản lý danh sách hợp đồng'),
       ),
       QuickActionItem(
         title: 'Thống kê Doanh thu',
