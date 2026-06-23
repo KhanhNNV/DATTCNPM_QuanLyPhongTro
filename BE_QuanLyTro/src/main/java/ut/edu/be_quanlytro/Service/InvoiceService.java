@@ -272,4 +272,8 @@ public class InvoiceService {
 
         return convertToResponse(invoice);
     }
+    @Transactional
+    public void autoUpdateOverdueInvoices(){
+        
+    }
 }
