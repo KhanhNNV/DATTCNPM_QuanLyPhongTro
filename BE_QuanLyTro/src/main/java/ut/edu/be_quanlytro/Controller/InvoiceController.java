@@ -67,4 +67,17 @@ public class InvoiceController {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
+    @PutMapping("/{id}/confirm-payment")
+    @PreAuthorize("hasRole('LANDLORD')")
+    public ResponseEntity<?> confirmPayment(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwt) {
+        try {
+            UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+            InvoiceResponse response = invoiceService.confirmPayment(id, currentUserId);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

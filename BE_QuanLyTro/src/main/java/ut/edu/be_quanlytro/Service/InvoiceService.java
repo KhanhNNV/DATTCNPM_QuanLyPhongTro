@@ -251,4 +251,25 @@ public class InvoiceService {
                 .qrImageUrl(qrUrl)
                 .build();
     }
+
+    @Transactional
+    public InvoiceResponse confirmPayment(UUID invoiceId, UUID currentUserId) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn!"));
+
+        if (!invoice.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
+            throw new RuntimeException("Bạn không có quyền xác nhận thanh toán cho hóa đơn này!");
+        }
+
+        if (invoice.getStatus() == InvoiceStatus.PAID) {
+            throw new RuntimeException("Hóa đơn này đã được xác nhận thanh toán từ trước!");
+        }
+
+        invoice.setStatus(InvoiceStatus.PAID);
+        invoice.setPaidAt(java.time.LocalDateTime.now());
+
+        invoice = invoiceRepository.save(invoice);
+
+        return convertToResponse(invoice);
+    }
 }
