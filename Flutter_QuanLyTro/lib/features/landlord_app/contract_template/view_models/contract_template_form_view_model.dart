@@ -8,6 +8,8 @@ import 'package:open_file/open_file.dart';
 import '../../../../data/models/request/contract_template_request.dart';
 import '../../../../data/models/response/contract_template_response.dart';
 import '../../../../data/repository/contract_template_repository.dart';
+import 'package:file_saver/file_saver.dart';
+import 'dart:typed_data';
 
 class ContractTemplateFormViewModel extends ChangeNotifier {
   final ContractTemplateRepository _repository = ContractTemplateRepository();
@@ -150,11 +152,20 @@ class ContractTemplateFormViewModel extends ChangeNotifier {
         ),
       );
 
-      final outputDir = await getTemporaryDirectory();
-      final file = File('${outputDir.path}/preview_hop_dong.pdf');
-      await file.writeAsBytes(await pdf.save());
+      final Uint8List pdfBytes = await pdf.save();
 
-      await OpenFile.open(file.path);
+      final String? filePath = await FileSaver.instance.saveAs(
+        // Thêm trực tiếp đuôi .pdf vào cuối tên file ở đây
+        name: 'Hop_Dong_Thue_Phong_${DateTime.now().millisecondsSinceEpoch}.pdf',
+        bytes: pdfBytes,
+        mimeType: MimeType.pdf,
+      );
+
+      if (filePath != null) {
+        print("Lưu lên Google Drive/Bộ nhớ thành công: $filePath");
+      } else {
+        print("User đã bấm Hủy.");
+      }
     } catch (e) {
       rethrow;
     } finally {
