@@ -272,8 +272,33 @@ public class InvoiceService {
 
         return convertToResponse(invoice);
     }
+
     @Transactional
-    public void autoUpdateOverdueInvoices(){
-        
+    public void autoUpdateOverdueInvoices() {
+        LocalDate today = LocalDate.now();
+
+        // Tìm những hóa đơn UNPAID mà dueDate < today
+        List<Invoice> overdueInvoices = invoiceRepository.findByStatusAndDueDateLessThan(InvoiceStatus.UNPAID, today);
+
+        for (Invoice invoice : overdueInvoices) {
+            invoice.setStatus(InvoiceStatus.OVERDUE);
+            invoiceRepository.save(invoice);
+            System.out.println(" Đã chuyển hóa đơn phòng " + invoice.getRoom().getRoomNumber() + " sang trạng thái QUÁ HẠN!");
+        }
+    }
+
+
+    @Transactional(readOnly = true)
+    public void autoRemindMonthlyDebts() {
+        LocalDate today = LocalDate.now();
+
+        List<Invoice> remindInvoices = invoiceRepository.findByStatusAndDueDate(InvoiceStatus.UNPAID, today);
+
+        for (Invoice invoice : remindInvoices) {
+            String tenantPhone = invoice.getContract().getTenant().getPhone();
+            System.out.println(" HỆ THỐNG GỬI THÔNG BÁO: 'Bạn ơi, hôm nay là hạn chót đóng tiền phòng "
+                    + invoice.getRoom().getRoomNumber() + " với tổng số tiền là " + invoice.getTotalAmount()
+                    + "đ rồi nhé!' tới số điện thoại " + tenantPhone);
+        }
     }
 }

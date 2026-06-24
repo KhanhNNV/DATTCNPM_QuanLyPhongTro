@@ -38,6 +38,12 @@ public class NightlyJobScheduler {
            System.out.println("[3/3] Đang xuất hóa đơn tháng mới...");
             invoiceService.autoGenerateMonthlyInvoices();
 
+            System.out.println("[4/5] Đang quét gửi thông báo nhắc nợ...");
+            invoiceService.autoRemindMonthlyDebts();
+
+            System.out.println("[5/5] Đang quét cập nhật trạng thái quá hạn...");
+            invoiceService.autoUpdateOverdueInvoices();
+
         } catch (Exception e) {
             // Bọc Try-Catch để lỡ 1 tiến trình bị lỗi (VD: Đứt kết nối DB) thì không làm sập cả hệ thống
             System.err.println("CÓ LỖI XẢY RA: " + e.getMessage());
@@ -52,6 +58,6 @@ public class NightlyJobScheduler {
      * 🧪 Dùng để test (Chạy liên tục mỗi 10 giây).
      * Khi nào code xong tính năng mới cần test thì mở comment dòng dưới ra.
      */
-//     @Scheduled(fixedRate = 10000)
-//     public void testRun() { executeAllNightlyJobs(); }
+     @Scheduled(fixedRate = 10000)
+     public void testRun() { executeAllNightlyJobs(); }
 }
