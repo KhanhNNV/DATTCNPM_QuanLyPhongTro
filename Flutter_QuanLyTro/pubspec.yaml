@@ -53,6 +53,7 @@ dependencies:
   shared_preferences: ^2.5.5
   provider: ^6.1.5+1
   file_saver: ^0.4.0
+  syncfusion_flutter_pdfviewer: ^33.2.15
 
 dev_dependencies:
   flutter_test:
