@@ -19,5 +19,4 @@ public class ContractCreateRequest {
 
     // Có thể null nếu khách không đặt cọc trước
     private UUID depositId;
-    private UUID templateId;
 }

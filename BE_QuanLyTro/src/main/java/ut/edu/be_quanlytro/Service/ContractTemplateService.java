@@ -7,6 +7,7 @@ import ut.edu.be_quanlytro.Dto.Request.ContractTemplateRequest;
 import ut.edu.be_quanlytro.Dto.Response.ContractTemplateResponse;
 import ut.edu.be_quanlytro.Entity.ContractTemplate;
 import ut.edu.be_quanlytro.Entity.User;
+import ut.edu.be_quanlytro.Repository.ContractRepository;
 import ut.edu.be_quanlytro.Repository.ContractTemplateRepository;
 import ut.edu.be_quanlytro.Repository.UserRepository;
 
@@ -20,38 +21,39 @@ public class ContractTemplateService {
     private final ContractTemplateRepository templateRepository;
     private final UserRepository userRepository;
     private final ActivityLogService activityLog;
+    private final ContractRepository contractRepository;
 
-    // ================= 1. TẠO MẪU MỚI (CHỦ TRỌ TỰ TẠO) =================
+    // ================= 1. TẠO MẪU MỚI =================
     @Transactional
     public ContractTemplateResponse createTemplate(ContractTemplateRequest request, UUID landlordId) {
         User landlord = userRepository.findById(landlordId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin Chủ trọ"));
 
+        // Kiểm tra xem chủ trọ này đã có mẫu nào chưa?
+        // Nếu chưa có, mẫu đầu tiên tạo ra sẽ tự động được gán isActive = true
+        boolean isFirstTemplate = templateRepository.findByLandlordIdOrderByCreatedAtDesc(landlordId).isEmpty();
+
         ContractTemplate template = ContractTemplate.builder()
                 .landlord(landlord)
                 .name(request.getName())
-                .content(request.getContent())
-                .isActive(true)
+                .rentalContent(request.getRentalContent())
+                .landlordDuty(request.getLandlordDuty())
+                .tenantDuty(request.getTenantDuty())
+                .executionTerms(request.getExecutionTerms())
+                .isActive(isFirstTemplate)
                 .build();
 
         ContractTemplate savedTemplate = templateRepository.save(template);
-        activityLog.createLog(landlord, "CREATE_TEMPLATE", "contract_templates", savedTemplate.getId(), "Tạo mẫu hợp đồng mới: " + savedTemplate.getName());
+        activityLog.createLog(landlord, "CREATE_TEMPLATE", "contract_templates", savedTemplate.getId(), "Tạo mẫu hợp đồng: " + savedTemplate.getName());
 
         return mapToResponse(savedTemplate);
     }
 
-    // ================= 2. LẤY DANH SÁCH MẪU =================
+    // ================= 2. LẤY TẤT CẢ MẪU (Cho FE chọn) =================
     @Transactional(readOnly = true)
-    public List<ContractTemplateResponse> getAllAvailableTemplates(UUID landlordId) {
-
-        // Repository đã lo toàn bộ logic lọc (NULL hoặc ID Chủ trọ)
-        List<ContractTemplate> templates = templateRepository.findAvailableTemplatesForLandlord(landlordId);
-
-        if (templates.isEmpty()) {
-            System.out.println("Cảnh báo: Không tìm thấy mẫu hệ thống hay mẫu cá nhân nào!");
-        }
-
-        return templates.stream()
+    public List<ContractTemplateResponse> getAllTemplatesByLandlord(UUID landlordId) {
+        return templateRepository.findByLandlordIdOrderByCreatedAtDesc(landlordId)
+                .stream()
                 .map(this::mapToResponse)
                 .toList();
     }
@@ -59,60 +61,71 @@ public class ContractTemplateService {
     // ================= 3. XEM CHI TIẾT 1 MẪU =================
     @Transactional(readOnly = true)
     public ContractTemplateResponse getTemplateById(UUID id, UUID landlordId) {
-        ContractTemplate template = templateRepository.findActiveById(id);
-        if (template == null) throw new RuntimeException("Không tìm thấy mẫu hợp đồng!");
-
-        // Kiểm tra quyền: Chỉ cho xem nếu là mẫu hệ thống (landlord = null) hoặc mẫu của chính mình
-        if (template.getLandlord() != null && !template.getLandlord().getId().equals(landlordId)) {
-            throw new RuntimeException("Bạn không có quyền xem mẫu hợp đồng của người khác!");
-        }
+        ContractTemplate template = templateRepository.findByIdAndLandlordId(id, landlordId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy mẫu hợp đồng hoặc bạn không có quyền xem!"));
 
         return mapToResponse(template);
     }
 
-    // ================= 4. CẬP NHẬT MẪU =================
+    // ================= 4. CẬP NHẬT NỘI DUNG MẪU =================
     @Transactional
     public ContractTemplateResponse updateTemplate(UUID id, ContractTemplateRequest request, UUID landlordId) {
-        ContractTemplate template = templateRepository.findActiveById(id);
-        if (template == null) throw new RuntimeException("Không tìm thấy mẫu hợp đồng!");
+        ContractTemplate template = templateRepository.findByIdAndLandlordId(id, landlordId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy mẫu hợp đồng!"));
 
-        // Chốt chặn 1: Không cho phép sửa mẫu hệ thống
-        if (template.getLandlord() == null) {
-            throw new RuntimeException("Hành động bị từ chối: Không được phép chỉnh sửa mẫu hợp đồng mặc định của hệ thống!");
-        }
-
-        // Chốt chặn 2: Không cho phép sửa mẫu của người khác
-        if (!template.getLandlord().getId().equals(landlordId)) {
-            throw new RuntimeException("Bạn không có quyền chỉnh sửa mẫu hợp đồng này!");
-        }
-
-        template.setName(request.getName());
-        template.setContent(request.getContent());
+        if (request.getName() != null) template.setName(request.getName());
+        if (request.getRentalContent() != null) template.setRentalContent(request.getRentalContent());
+        if (request.getLandlordDuty() != null) template.setLandlordDuty(request.getLandlordDuty());
+        if (request.getTenantDuty() != null) template.setTenantDuty(request.getTenantDuty());
+        if (request.getExecutionTerms() != null) template.setExecutionTerms(request.getExecutionTerms());
 
         ContractTemplate updatedTemplate = templateRepository.save(template);
-        activityLog.createLog(template.getLandlord(), "UPDATE_TEMPLATE", "contract_templates", updatedTemplate.getId(), "Cập nhật mẫu hợp đồng: " + updatedTemplate.getName());
-
         return mapToResponse(updatedTemplate);
     }
 
-    // ================= 5. XÓA MẪU (SOFT DELETE) =================
+    // ================= 5. CHỌN MẪU MẶC ĐỊNH =================
+    @Transactional
+    public ContractTemplateResponse setActiveTemplate(UUID id, UUID landlordId) {
+        // Lấy tất cả mẫu của chủ trọ
+        List<ContractTemplate> allTemplates = templateRepository.findByLandlordIdOrderByCreatedAtDesc(landlordId);
+        ContractTemplate selectedTemplate = null;
+
+        for (ContractTemplate t : allTemplates) {
+            if (t.getId().equals(id)) {
+                t.setIsActive(true); // Bật mẫu được chọn
+                selectedTemplate = t;
+            } else {
+                t.setIsActive(false); // Tắt tất cả các mẫu còn lại
+            }
+        }
+
+        if (selectedTemplate == null) {
+            throw new RuntimeException("Không tìm thấy mẫu hợp đồng!");
+        }
+
+        // Lưu đồng loạt xuống DB
+        templateRepository.saveAll(allTemplates);
+        return mapToResponse(selectedTemplate);
+    }
+
+    // ================= 6. XÓA MẪU =================
     @Transactional
     public void deleteTemplate(UUID id, UUID landlordId) {
-        ContractTemplate template = templateRepository.findActiveById(id);
-        if (template == null) throw new RuntimeException("Không tìm thấy mẫu hợp đồng!");
+        ContractTemplate template = templateRepository.findByIdAndLandlordId(id, landlordId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy mẫu hợp đồng!"));
 
-        if (template.getLandlord() == null) {
-            throw new RuntimeException("Không được phép xóa mẫu hợp đồng mặc định của hệ thống!");
+        // Chốt chặn 1: Không xóa mẫu đang được chọn làm mặc định
+        if (template.getIsActive()) {
+            throw new RuntimeException("Không thể xóa mẫu đang được thiết lập làm mặc định. Vui lòng chọn mẫu khác làm mặc định trước khi xóa!");
         }
 
-        if (!template.getLandlord().getId().equals(landlordId)) {
-            throw new RuntimeException("Bạn không có quyền xóa mẫu hợp đồng này!");
+        // Chốt chặn 2: Không xóa mẫu đã có hợp đồng sử dụng (Khắc phục lỗi Foreign Key)
+        boolean isUsedInContracts = contractRepository.existsByTemplateId(id);
+        if (isUsedInContracts) {
+            throw new RuntimeException("Không thể xóa mẫu này vì đã có hợp đồng thực tế đang sử dụng. Bạn chỉ có thể ngừng sử dụng nó bằng cách chọn mẫu khác làm mặc định!");
         }
 
-        // Ẩn mẫu đi (Soft Delete) để không làm hỏng dữ liệu thống kê cũ
-        template.setIsActive(false);
-        templateRepository.save(template);
-
+        templateRepository.delete(template);
         activityLog.createLog(template.getLandlord(), "DELETE_TEMPLATE", "contract_templates", template.getId(), "Xóa mẫu hợp đồng: " + template.getName());
     }
 
@@ -121,8 +134,11 @@ public class ContractTemplateService {
         return ContractTemplateResponse.builder()
                 .id(template.getId())
                 .name(template.getName())
-                .content(template.getContent())
-                .isSystemTemplate(template.getLandlord() == null) // Đánh dấu true nếu là mẫu hệ thống
+                .rentalContent(template.getRentalContent())
+                .landlordDuty(template.getLandlordDuty())
+                .tenantDuty(template.getTenantDuty())
+                .executionTerms(template.getExecutionTerms())
+                .isActive(template.getIsActive())
                 .createdAt(template.getCreatedAt())
                 .updatedAt(template.getUpdatedAt())
                 .build();

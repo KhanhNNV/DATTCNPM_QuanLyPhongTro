@@ -34,7 +34,7 @@ public class ContractTemplateController {
     @GetMapping
     @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<List<ContractTemplateResponse>> getAllTemplates(@AuthenticationPrincipal Jwt jwt) {
-        return ResponseEntity.ok(templateService.getAllAvailableTemplates(getCurrentUserId(jwt)));
+        return ResponseEntity.ok(templateService.getAllTemplatesByLandlord(getCurrentUserId(jwt)));
     }
 
     @GetMapping("/{id}")
@@ -57,5 +57,21 @@ public class ContractTemplateController {
     public ResponseEntity<String> deleteTemplate(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         templateService.deleteTemplate(id, getCurrentUserId(jwt));
         return ResponseEntity.ok("Xóa mẫu hợp đồng thành công!");
+    }
+    // ================= CHỌN MẪU MẶC ĐỊNH =================
+    @PutMapping("/active/{id}")
+    @PreAuthorize("hasRole('LANDLORD')")
+    public ResponseEntity<ContractTemplateResponse> setActiveTemplate(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        // 1. Lấy ID của Chủ trọ từ Token
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+
+        // 2. Gọi xuống Service để xử lý logic bật/tắt
+        ContractTemplateResponse response = templateService.setActiveTemplate(id, currentUserId);
+
+        // 3. Trả kết quả về cho Frontend
+        return ResponseEntity.ok(response);
     }
 }
