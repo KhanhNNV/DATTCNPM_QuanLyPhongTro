@@ -4,6 +4,14 @@ import 'package:flutter_quanlytro/features/landlord_app/meter_reading_page/meter
 import '../../../core/constants/app_colors.dart';
 import '../area_management/area_config_screen.dart';
 import '../area_management/view_models/area_config_view_model.dart';
+import '../contract/contract_create_ocr_screen.dart';
+import '../contract/contract_list_screen.dart';
+import '../contract/view_models/contract_create_view_model.dart';
+import '../contract/view_models/contract_list_view_model.dart';
+import '../contract_template/contract_template_form_screen.dart';
+import '../contract_template/contract_template_list_screen.dart';
+import '../contract_template/view_models/contract_template_form_view_model.dart';
+import '../contract_template/view_models/contract_template_list_view_model.dart';
 import '../deposit_page/deposit_list_screen.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_quanlytro/features/landlord_app/main_layout/view_models/main_layout_view_model.dart';
@@ -49,8 +57,19 @@ class _HomeScreenState extends State<HomeScreen> {
       QuickActionItem(
         title: 'Lập hợp đồng mới',
         icon: Icons.assignment_turned_in_outlined,
-        onTap: () => _navigateTo('Nút: Lập hợp đồng mới (OCR CCCD & Tạo tài khoản)'),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => ContractCreateViewModel(),
+                child: const ContractCreateOcrScreen(),
+              ),
+            ),
+          );
+        },
       ),
+
       QuickActionItem(
         title: 'Trả phòng',
         icon: Icons.gite_outlined,
@@ -142,6 +161,36 @@ class _HomeScreenState extends State<HomeScreen> {
           if (isUpdated == true && context.mounted) {
             context.read<MainLayoutViewModel>().fetchInitialData();
           }
+        },
+      ),
+      QuickActionItem(
+        title: 'Lập mẫu hợp đồng',
+        icon: Icons.note_add_outlined,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => ContractTemplateListViewModel(),
+                child: const ContractTemplateListScreen(),
+              ),
+            ),
+          );
+        },
+      ),
+      QuickActionItem(
+        title: 'Quản lý hợp đồng',
+        icon: Icons.folder_shared_outlined,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => ContractListViewModel()..fetchContracts(),
+                child: const ContractListScreen(),
+              )
+            ),
+          );
         },
       ),
       QuickActionItem(

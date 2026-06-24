@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
@@ -217,5 +218,66 @@ class ApiClient {
     }
 
     return streamedResponse;
+  }
+
+  // Hàm xử lý upload nhiều file kèm dữ liệu văn bản (POST Multipart)
+  Future<http.Response> postMultipart(
+      String endpoint, {
+        required Map<String, String> fields,
+        required Map<String, File> files,
+      }) async {
+    final url = Uri.parse('$baseUrl$endpoint');
+    var request = http.MultipartRequest('POST', url);
+
+    // 1. Lấy Token gắn vào header tự động
+    final token = await TokenManager.getAccessToken();
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+
+    // 2. Gắn các trường text (như json string data)
+    request.fields.addAll(fields);
+
+    // 3. Duyệt Map để gắn các file ảnh vào request
+    for (var entry in files.entries) {
+      request.files.add(
+        await http.MultipartFile.fromPath(entry.key, entry.value.path),
+      );
+    }
+
+    var streamedResponse = await request.send();
+    var response = await http.Response.fromStream(streamedResponse);
+
+    // 4. Xử lý logic Auto Refresh Token nếu dính mã lỗi 401/403
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      bool isRefreshed = await _refreshToken();
+
+      if (isRefreshed) {
+        // Tạo lại request mới hoàn toàn sau khi đổi token thành công
+        request = http.MultipartRequest('POST', url);
+        final newToken = await TokenManager.getAccessToken();
+        if (newToken != null) {
+          request.headers['Authorization'] = 'Bearer $newToken';
+        }
+        request.fields.addAll(fields);
+        for (var entry in files.entries) {
+          request.files.add(
+            await http.MultipartFile.fromPath(entry.key, entry.value.path),
+          );
+        }
+        streamedResponse = await request.send();
+        response = await http.Response.fromStream(streamedResponse);
+      } else {
+        // Refresh thất bại -> văng ra màn hình chào
+        await TokenManager.clearAuthData();
+        navigatorKey.currentState?.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+              (route) => false,
+        );
+        throw Exception('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      }
+    }
+
+    return response;
   }
 }
