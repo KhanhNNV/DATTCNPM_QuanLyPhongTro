@@ -22,8 +22,6 @@ public class ContractTemplate {
     @JdbcTypeCode(SqlTypes.VARCHAR)
     private UUID id;
 
-    // Liên kết với bảng users (Chỉ dành cho Role LANDLORD).
-    // Nếu giá trị này = null, đây là mẫu hệ thống (Global) cung cấp sẵn.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "landlord_id")
     private User landlord;
@@ -31,9 +29,19 @@ public class ContractTemplate {
     @Column(nullable = false)
     private String name;
 
-    // Lưu mã HTML của mẫu hợp đồng, dùng LONGTEXT vì văn bản có thể rất dài
-    @Column(columnDefinition = "LONGTEXT", nullable = false)
-    private String content;
+    // ================== CÁC TRƯỜNG NỘI DUNG ĐƯỢC PHÉP TÙY CHỈNH ==================
+    @Column(name = "rental_content", columnDefinition = "LONGTEXT")
+    private String rentalContent;   // Nội dung thuê phòng (Giá cả, diện tích, mục đích...)
+
+    @Column(name = "landlord_duty", columnDefinition = "LONGTEXT")
+    private String landlordDuty;    // Trách nhiệm bên A (Chủ trọ)
+
+    @Column(name = "tenant_duty", columnDefinition = "LONGTEXT")
+    private String tenantDuty;      // Trách nhiệm bên B (Khách thuê)
+
+    @Column(name = "execution_terms", columnDefinition = "LONGTEXT")
+    private String executionTerms;  // Điều khoản thực hiện (Chấm dứt hợp đồng, giải quyết tranh chấp...)
+    // =============================================================================
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default

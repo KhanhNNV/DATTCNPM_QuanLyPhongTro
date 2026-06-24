@@ -32,6 +32,7 @@ public class ContractService {
     private final NotificationService notificationService;
     private final ContractTemplateRepository templateRepository;
     private final PdfExportService pdfExportService;
+    private final ContractHtmlCompiler contractHtmlCompiler;
 
 
     // ================= 1. KHỞI TẠO HỢP ĐỒNG (Quét CCCD)=================
@@ -120,8 +121,8 @@ public class ContractService {
 
         // 5. LẤY MẪU HỢP ĐỒNG VÀ KHỞI TẠO
 
-        ContractTemplate template = templateRepository.findById(request.getTemplateId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy mẫu hợp đồng yêu cầu!"));
+        ContractTemplate template = templateRepository.findByLandlordIdAndIsActiveTrue(currentUserId)
+                .orElseThrow(() -> new RuntimeException("Bạn chưa thiết lập Mẫu hợp đồng mặc định! Vui lòng vào mục Quản lý mẫu hợp đồng để kích hoạt một mẫu."));
 
         // Khởi tạo đối tượng Hợp đồng
         Contract contract = Contract.builder()
@@ -136,7 +137,7 @@ public class ContractService {
                 .members(new ArrayList<>())
                 .build();
 
-        String compiledHtml = compileContractTerms(template, contract, landlord, tenant, room);
+        String compiledHtml = contractHtmlCompiler.compileContractTerms(template, contract, landlord, tenant, room);
         contract.setContractTerms(compiledHtml);
 
         // 6. KHỞI TẠO THÀNH VIÊN ĐẠI DIỆN VỚI DỮ LIỆU TỪ AI
@@ -244,8 +245,8 @@ public class ContractService {
 
         // 5. LẤY MẪU HỢP ĐỒNG VÀ KHỞI TẠO
 
-        ContractTemplate template = templateRepository.findById(request.getTemplateId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy mẫu hợp đồng yêu cầu!"));
+        ContractTemplate template = templateRepository.findByLandlordIdAndIsActiveTrue(currentUserId)
+                .orElseThrow(() -> new RuntimeException("Bạn chưa thiết lập Mẫu hợp đồng mặc định! Vui lòng vào mục Quản lý mẫu hợp đồng để kích hoạt một mẫu."));
 
         // Khởi tạo đối tượng Hợp đồng
         Contract contract = Contract.builder()
@@ -260,8 +261,7 @@ public class ContractService {
                 .members(new ArrayList<>())
                 .build();
 
-        // 🌟 Gọi hàm biên dịch HTML và lưu "chết" vào cột contractTerms
-        String compiledHtml = compileContractTerms(template, contract, landlord, tenant, room);
+        String compiledHtml = contractHtmlCompiler.compileContractTerms(template, contract, landlord, tenant, room);
         contract.setContractTerms(compiledHtml);
 
         // 5. KHỞI TẠO THÀNH VIÊN ĐẠI DIỆN
@@ -716,33 +716,7 @@ public class ContractService {
         // 7. Trả về dữ liệu mới
         return mapToDetailResponse(contract);
     }
-    // ================= HÀM PHỤ TRỢ: BIÊN DỊCH VĂN BẢN HỢP ĐỒNG =================
-    private String compileContractTerms(ContractTemplate template, Contract contract, User landlord, User tenant, Room room) {
-        String html = template.getContent();
 
-        // 1. Thay thế các biến giữ chỗ bằng dữ liệu thật
-        html = html.replace("{{START_DATE}}", contract.getStartDate() != null ? contract.getStartDate().toString() : "")
-                .replace("{{END_DATE}}", contract.getEndDate() != null ? contract.getEndDate().toString() : "")
-                .replace("{{LANDLORD_NAME}}", landlord.getFullName() != null ? landlord.getFullName() : "")
-                .replace("{{TENANT_NAME}}", tenant.getFullName() != null ? tenant.getFullName() : "")
-                .replace("{{ROOM_NUMBER}}", room.getRoomNumber())
-                .replace("{{RENT_PRICE}}", room.getRentPrice().toString());
-
-        // 2. Chèn chữ ký số của Chủ trọ (Chủ trọ đã cài đặt từ trước)
-        String landlordSig = landlord.getLandlordSignature();
-        if (landlordSig != null && !landlordSig.trim().isEmpty()) {
-            // Chèn ảnh chữ ký với chiều rộng 150px cho đẹp
-            html = html.replace("{{LANDLORD_SIGNATURE_PLACEHOLDER}}",
-                    String.format("<img src='%s' width='150'/>", landlordSig));
-        } else {
-            html = html.replace("{{LANDLORD_SIGNATURE_PLACEHOLDER}}", "[Chưa có chữ ký]");
-        }
-
-        // 3. Khách thuê lúc này chưa ký, nên hiển thị dòng chữ cảnh báo màu đỏ
-        html = html.replace("{{TENANT_SIGNATURE_PLACEHOLDER}}", "<span style='color:red; font-weight:bold;'>[Chờ khách thuê ký điện tử]</span>");
-
-        return html;
-    }
     @Transactional(readOnly = true)
     public byte[] downloadContractPdf(UUID contractId, UUID currentUserId) {
         Contract contract = contractRepository.findById(contractId)

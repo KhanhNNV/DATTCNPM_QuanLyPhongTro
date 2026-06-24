@@ -32,4 +32,6 @@ public interface ContractRepository extends JpaRepository<Contract, UUID> {
 
     // Tìm các hợp đồng đang CÓ HIỆU LỰC (SIGNED) nhưng ngày kết thúc (endDate) đã nhỏ hơn ngày hôm nay
     List<Contract> findByStatusAndEndDateBefore(ContractStatus status, LocalDate date);
+
+    boolean existsByTemplateId(UUID templateId);
 }

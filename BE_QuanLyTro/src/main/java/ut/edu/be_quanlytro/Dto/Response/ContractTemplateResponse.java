@@ -11,8 +11,12 @@ import java.util.UUID;
 public class ContractTemplateResponse {
     private UUID id;
     private String name;
-    private String content;
-    private Boolean isSystemTemplate; // true nếu là mẫu hệ thống (landlord = null)
+    private String rentalContent;
+    private String landlordDuty;
+    private String tenantDuty;
+    private String executionTerms;
+
+    private Boolean isActive;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
