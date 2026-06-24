@@ -120,13 +120,13 @@ class DepositFormScreen extends StatelessWidget {
   Future<void> _handleSave(BuildContext context, DepositFormViewModel vm) async {
     FocusScope.of(context).unfocus();
     try {
-      await vm.saveDeposit();
+      final newDeposit = await vm.saveDeposit();
       if (!context.mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Tạo phiếu đặt cọc thành công'), backgroundColor: Colors.green),
       );
-      Navigator.pop(context, true); // Trả về true để màn hình danh sách tải lại
+      Navigator.pop(context, newDeposit);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(e.toString().replaceAll('Exception: ', '')), backgroundColor: Colors.redAccent),

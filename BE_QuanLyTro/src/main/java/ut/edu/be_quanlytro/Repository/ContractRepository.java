@@ -34,4 +34,6 @@ public interface ContractRepository extends JpaRepository<Contract, UUID> {
     List<Contract> findByStatusAndEndDateBefore(ContractStatus status, LocalDate date);
 
     boolean existsByTemplateId(UUID templateId);
+    // Tìm tất cả hợp đồng đang hoạt động của một khu trọ cụ thể
+    List<Contract> findByRoomAreaIdAndStatus(UUID areaId, ContractStatus status);
 }

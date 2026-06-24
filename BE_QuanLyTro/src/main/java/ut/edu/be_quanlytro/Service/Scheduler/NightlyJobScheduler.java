@@ -5,6 +5,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import ut.edu.be_quanlytro.Service.ContractService;
 import ut.edu.be_quanlytro.Service.DepositService;
+import ut.edu.be_quanlytro.Service.InvoiceService;
 
 @Component
 @RequiredArgsConstructor
@@ -12,7 +13,7 @@ public class NightlyJobScheduler {
 
     private final DepositService depositService;
     private final ContractService contractService;
-    // Tương lai: private final InvoiceService invoiceService;
+    private final InvoiceService invoiceService;
 
     /**
      * Đồng hồ báo thức duy nhất của hệ thống: Chạy vào lúc 00:00:00 mỗi đêm.
@@ -34,8 +35,8 @@ public class NightlyJobScheduler {
             contractService.autoCheckAndExpireContracts();
 
             // TIẾN TRÌNH 3 (Tương lai): Chốt điện nước & Tạo hóa đơn tự động
-            // System.out.println("[3/3] Đang xuất hóa đơn tháng mới...");
-            // invoiceService.autoGenerateMonthlyInvoices();
+           System.out.println("[3/3] Đang xuất hóa đơn tháng mới...");
+            invoiceService.autoGenerateMonthlyInvoices();
 
         } catch (Exception e) {
             // Bọc Try-Catch để lỡ 1 tiến trình bị lỗi (VD: Đứt kết nối DB) thì không làm sập cả hệ thống

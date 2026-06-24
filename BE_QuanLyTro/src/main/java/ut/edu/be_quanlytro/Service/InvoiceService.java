@@ -27,10 +27,13 @@ public class InvoiceService {
     private final ContractRepository contractRepository;
     private final MeterReadingRepository meterReadingRepository;
     private final AreaServiceRepository areaServiceRepository;
+    final AreaRepository areaRepository;
 
+    /**
+     * LÚC 1: CHỦ TRỌ BẤM TẠO BẰNG TAY (API MANUAL)
+     */
     @Transactional
     public InvoiceResponse createInvoice(InvoiceCreateRequest request, UUID currentUserId) {
-
         LocalDate normalizedPeriod = request.getInvoicePeriod().withDayOfMonth(1);
 
         if (invoiceRepository.existsByRoomIdAndInvoicePeriod(request.getRoomId(), normalizedPeriod)) {
@@ -42,15 +45,40 @@ public class InvoiceService {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Phòng này hiện không có hợp đồng nào đang thuê hợp lệ!"));
 
-        Room room = contract.getRoom();
-        Area area = room.getArea();
-
-        if (!area.getLandlord().getId().equals(currentUserId)) {
+        // Vẫn giữ kiểm tra bảo mật IDOR cho API thủ công
+        if (!contract.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
             throw new RuntimeException("Bạn không có quyền tạo hóa đơn cho khu trọ khác!");
         }
 
-        BigDecimal totalAmount = contract.getRoom().getRentPrice();
+        Invoice invoice = generateInvoiceCore(contract, normalizedPeriod);
+        return convertToResponse(invoice);
+    }
 
+
+    @Transactional
+    public void autoGenerateMonthlyInvoices(){
+        LocalDate today = LocalDate.now();
+        int currentDay = today.getDayOfMonth();
+
+        List<Area> areas = areaRepository.findByInvoiceDay(currentDay);
+        for (Area area : areas) {
+            List<Contract> activeContracts = contractRepository.findByRoomAreaIdAndStatus(area.getId(),ContractStatus.SIGNED);
+            for (Contract contract : activeContracts) {
+                try{
+                    LocalDate normalizedPeriod = today.withDayOfMonth(1);
+                    if(invoiceRepository.existsByRoomIdAndInvoicePeriod(contract.getRoom().getId(), normalizedPeriod)){
+                    continue;
+                    }
+                    generateInvoiceCore(contract, normalizedPeriod);
+                }catch (Exception e){
+                    System.err.println("Lỗi tạo hóa đơn tự động phòng " + contract.getRoom().getRoomNumber() + ": " + e.getMessage());
+                }
+            }
+        }
+    }
+    private Invoice generateInvoiceCore(Contract contract, LocalDate normalizedPeriod) {
+        Room room = contract.getRoom();
+        Area area = room.getArea();
 
         LocalDate today = LocalDate.now();
         int daysToPay = area.getDueDate() != null ? area.getDueDate() : 5;
@@ -60,11 +88,12 @@ public class InvoiceService {
                 .room(room)
                 .invoicePeriod(normalizedPeriod)
                 .dueDate(today.plusDays(daysToPay))
-                .roomPrice(contract.getRoom().getRentPrice())
+                .roomPrice(room.getRentPrice())
                 .status(InvoiceStatus.UNPAID)
                 .build();
 
         invoice = invoiceRepository.save(invoice);
+        BigDecimal totalAmount = room.getRentPrice();
 
         List<AreaService> areaServices = areaServiceRepository.findByAreaIdAndIsActiveTrue(area.getId());
         for (AreaService service : areaServices) {
@@ -93,7 +122,6 @@ public class InvoiceService {
                     detail.setQuantity(memberCount);
                     detail.setTotalAmount(service.getPrice().multiply(BigDecimal.valueOf(memberCount)));
                     break;
-
                 case PER_ROOM:
                     detail.setQuantity(1);
                     detail.setTotalAmount(service.getPrice());
@@ -102,11 +130,34 @@ public class InvoiceService {
             invoiceDetailRepository.save(detail);
             totalAmount = totalAmount.add(detail.getTotalAmount());
         }
+        
         invoice.setTotalAmount(totalAmount);
-        invoiceRepository.save(invoice);
+        // 2. TỰ ĐỘNG SINH MÃ VIETQR NGAY LÚC NÀY
+        User landlord = area.getLandlord();
+
+        if (landlord.getBankId() != null && landlord.getAccountNo() != null && landlord.getAccountName() != null) {
+            String content = String.format("P%s THANH TOAN T%d",
+                    room.getRoomNumber(),
+                    normalizedPeriod.getMonthValue());
+
+            String qrUrl = String.format("https://img.vietqr.io/image/%s-%s-compact2.png?amount=%.0f&addInfo=%s&accountName=%s",
+                    landlord.getBankId(),
+                    landlord.getAccountNo(),
+                    totalAmount,
+                    content.replace(" ", "%20"),
+                    landlord.getAccountName().replace(" ", "%20"));
+
+            // Gắn link QR vào entity
+            invoice.setVietqrUrl(qrUrl);
+        }
+
+        return invoiceRepository.save(invoice);
+    }
+
+    private InvoiceResponse convertToResponse(Invoice invoice) {
         return InvoiceResponse.builder()
                 .id(invoice.getId())
-                .roomNumber(room.getRoomNumber())
+                .roomNumber(invoice.getRoom().getRoomNumber())
                 .invoicePeriod(invoice.getInvoicePeriod())
                 .dueDate(invoice.getDueDate())
                 .roomPrice(invoice.getRoomPrice())
