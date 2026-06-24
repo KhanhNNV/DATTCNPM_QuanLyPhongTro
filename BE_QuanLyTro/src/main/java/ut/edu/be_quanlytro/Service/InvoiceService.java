@@ -251,4 +251,54 @@ public class InvoiceService {
                 .qrImageUrl(qrUrl)
                 .build();
     }
+
+    @Transactional
+    public InvoiceResponse confirmPayment(UUID invoiceId, UUID currentUserId) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn!"));
+
+        if (!invoice.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
+            throw new RuntimeException("Bạn không có quyền xác nhận thanh toán cho hóa đơn này!");
+        }
+
+        if (invoice.getStatus() == InvoiceStatus.PAID) {
+            throw new RuntimeException("Hóa đơn này đã được xác nhận thanh toán từ trước!");
+        }
+
+        invoice.setStatus(InvoiceStatus.PAID);
+        invoice.setPaidAt(java.time.LocalDateTime.now());
+
+        invoice = invoiceRepository.save(invoice);
+
+        return convertToResponse(invoice);
+    }
+
+    @Transactional
+    public void autoUpdateOverdueInvoices() {
+        LocalDate today = LocalDate.now();
+
+        // Tìm những hóa đơn UNPAID mà dueDate < today
+        List<Invoice> overdueInvoices = invoiceRepository.findByStatusAndDueDateLessThan(InvoiceStatus.UNPAID, today);
+
+        for (Invoice invoice : overdueInvoices) {
+            invoice.setStatus(InvoiceStatus.OVERDUE);
+            invoiceRepository.save(invoice);
+            System.out.println(" Đã chuyển hóa đơn phòng " + invoice.getRoom().getRoomNumber() + " sang trạng thái QUÁ HẠN!");
+        }
+    }
+
+
+    @Transactional(readOnly = true)
+    public void autoRemindMonthlyDebts() {
+        LocalDate today = LocalDate.now();
+
+        List<Invoice> remindInvoices = invoiceRepository.findByStatusAndDueDate(InvoiceStatus.UNPAID, today);
+
+        for (Invoice invoice : remindInvoices) {
+            String tenantPhone = invoice.getContract().getTenant().getPhone();
+            System.out.println(" HỆ THỐNG GỬI THÔNG BÁO: 'Bạn ơi, hôm nay là hạn chót đóng tiền phòng "
+                    + invoice.getRoom().getRoomNumber() + " với tổng số tiền là " + invoice.getTotalAmount()
+                    + "đ rồi nhé!' tới số điện thoại " + tenantPhone);
+        }
+    }
 }
