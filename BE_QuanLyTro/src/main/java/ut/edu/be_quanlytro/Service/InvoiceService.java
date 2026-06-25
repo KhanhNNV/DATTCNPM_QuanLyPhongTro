@@ -3,6 +3,7 @@ package ut.edu.be_quanlytro.Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import ut.edu.be_quanlytro.Dto.Request.InvoiceCreateRequest;
 import ut.edu.be_quanlytro.Dto.Response.InvoiceDetailResponse;
 import ut.edu.be_quanlytro.Dto.Response.InvoiceItemResponse;
@@ -30,6 +31,7 @@ public class InvoiceService {
     private final AreaServiceRepository areaServiceRepository;
     final AreaRepository areaRepository;
     private final NotificationService notificationService;
+    private final CloudinaryService cloudinaryService;
 
     /**
      * LÚC 1: CHỦ TRỌ BẤM TẠO BẰNG TAY (API MANUAL)
@@ -323,5 +325,37 @@ public class InvoiceService {
 
             System.out.println(" Đã lưu thông báo nhắc nợ cho phòng " + invoice.getRoom().getRoomNumber());
         }
+    }
+
+    /**
+     * UC23: GỬI MINH CHỨNG THANH TOÁN (DÙNG CLOUDINARY)
+     */
+    @Transactional
+    public void uploadPaymentProof(UUID invoiceId, MultipartFile file) {
+
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn"));
+
+        if (invoice.getStatus() != InvoiceStatus.UNPAID && invoice.getStatus() != InvoiceStatus.OVERDUE) {
+            throw new RuntimeException("Chỉ có thể gửi minh chứng cho hóa đơn chưa thanh toán hoặc quá hạn!");
+        }
+
+
+        String fileUrl = cloudinaryService.uploadFile(file, "payment_proofs");
+
+        // 3. Cập nhật Database
+        invoice.setPaymentProofUrl(fileUrl);
+        invoice.setStatus(InvoiceStatus.PENDING); // Chuyển sang chờ duyệt
+        invoiceRepository.save(invoice);
+
+        // 4. Bắn thông báo cho Chủ trọ biết
+        String title = "Có minh chứng thanh toán mới!";
+        String content = "Khách thuê phòng " + invoice.getRoom().getRoomNumber() + " vừa tải lên minh chứng thanh toán. Vui lòng kiểm tra và xét duyệt!";
+        notificationService.createNotification(
+                invoice.getRoom().getArea().getLandlord(), // Gửi cho Chủ trọ
+                title,
+                content,
+                NotificationType.PAYMENT_APPROVED
+        );
     }
 }
