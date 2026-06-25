@@ -3,6 +3,7 @@ package ut.edu.be_quanlytro.Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import ut.edu.be_quanlytro.Dto.Request.InvoiceCreateRequest;
 import ut.edu.be_quanlytro.Dto.Response.InvoiceDetailResponse;
 import ut.edu.be_quanlytro.Dto.Response.InvoiceItemResponse;
@@ -11,6 +12,7 @@ import ut.edu.be_quanlytro.Dto.Response.PaymentQrResponse;
 import ut.edu.be_quanlytro.Entity.*;
 import ut.edu.be_quanlytro.Entity.Enum.ContractStatus;
 import ut.edu.be_quanlytro.Entity.Enum.InvoiceStatus;
+import ut.edu.be_quanlytro.Entity.Enum.NotificationType;
 import ut.edu.be_quanlytro.Repository.*;
 
 import java.time.LocalDate;
@@ -28,6 +30,8 @@ public class InvoiceService {
     private final MeterReadingRepository meterReadingRepository;
     private final AreaServiceRepository areaServiceRepository;
     final AreaRepository areaRepository;
+    private final NotificationService notificationService;
+    private final CloudinaryService cloudinaryService;
 
     /**
      * LÚC 1: CHỦ TRỌ BẤM TẠO BẰNG TAY (API MANUAL)
@@ -273,32 +277,85 @@ public class InvoiceService {
         return convertToResponse(invoice);
     }
 
+    /**
+     * UC27: TỰ ĐỘNG CẬP NHẬT TRẠNG THÁI QUÁ HẠN (OVERDUE)
+     */
     @Transactional
     public void autoUpdateOverdueInvoices() {
         LocalDate today = LocalDate.now();
-
-        // Tìm những hóa đơn UNPAID mà dueDate < today
         List<Invoice> overdueInvoices = invoiceRepository.findByStatusAndDueDateLessThan(InvoiceStatus.UNPAID, today);
 
         for (Invoice invoice : overdueInvoices) {
             invoice.setStatus(InvoiceStatus.OVERDUE);
             invoiceRepository.save(invoice);
-            System.out.println(" Đã chuyển hóa đơn phòng " + invoice.getRoom().getRoomNumber() + " sang trạng thái QUÁ HẠN!");
+
+            // 🚀 LƯU THÔNG BÁO VÀO DATABASE
+            String title = "Hóa đơn quá hạn thanh toán!";
+            String content = "Hóa đơn phòng " + invoice.getRoom().getRoomNumber() + " đã quá hạn. Vui lòng thanh toán sớm để tránh gián đoạn dịch vụ nhé!";
+            notificationService.createNotification(
+                    invoice.getContract().getTenant(), // Gửi cho ai? -> Gửi cho Khách thuê
+                    title,
+                    content,
+                    NotificationType.INVOICE_OVERDUE
+            );
+
+            System.out.println("[UC27] Đã chuyển hóa đơn phòng " + invoice.getRoom().getRoomNumber() + " sang QUÁ HẠN và lưu thông báo!");
         }
     }
 
-
-    @Transactional(readOnly = true)
+    /**
+     * UC26: TỰ ĐỘNG NHẮC NỢ HÀNG THÁNG
+     */
+    @Transactional
     public void autoRemindMonthlyDebts() {
         LocalDate today = LocalDate.now();
-
-        List<Invoice> remindInvoices = invoiceRepository.findByStatusAndDueDate(InvoiceStatus.UNPAID, today);
+        List<Invoice> remindInvoices = invoiceRepository.findByStatusAndDueDate(InvoiceStatus.UNPAID, today.plusDays(1));
 
         for (Invoice invoice : remindInvoices) {
-            String tenantPhone = invoice.getContract().getTenant().getPhone();
-            System.out.println(" HỆ THỐNG GỬI THÔNG BÁO: 'Bạn ơi, hôm nay là hạn chót đóng tiền phòng "
-                    + invoice.getRoom().getRoomNumber() + " với tổng số tiền là " + invoice.getTotalAmount()
-                    + "đ rồi nhé!' tới số điện thoại " + tenantPhone);
+            // 🚀 LƯU THÔNG BÁO VÀO DATABASE
+            String title = "Nhắc nhở hạn chót thanh toán";
+            String content = "Hôm nay là hạn chót đóng tiền phòng " + invoice.getRoom().getRoomNumber()
+                    + " (Tổng: " + invoice.getTotalAmount() + "đ). Bạn nhớ thanh toán nhé!";
+            notificationService.createNotification(
+                    invoice.getContract().getTenant(), // Gửi cho Khách thuê
+                    title,
+                    content,
+                    NotificationType.INVOICE_REMINDER
+            );
+
+            System.out.println(" Đã lưu thông báo nhắc nợ cho phòng " + invoice.getRoom().getRoomNumber());
         }
+    }
+
+    /**
+     * UC23: GỬI MINH CHỨNG THANH TOÁN (DÙNG CLOUDINARY)
+     */
+    @Transactional
+    public void uploadPaymentProof(UUID invoiceId, MultipartFile file) {
+
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn"));
+
+        if (invoice.getStatus() != InvoiceStatus.UNPAID && invoice.getStatus() != InvoiceStatus.OVERDUE) {
+            throw new RuntimeException("Chỉ có thể gửi minh chứng cho hóa đơn chưa thanh toán hoặc quá hạn!");
+        }
+
+
+        String fileUrl = cloudinaryService.uploadFile(file, "payment_proofs");
+
+        // 3. Cập nhật Database
+        invoice.setPaymentProofUrl(fileUrl);
+        invoice.setStatus(InvoiceStatus.PENDING); // Chuyển sang chờ duyệt
+        invoiceRepository.save(invoice);
+
+        // 4. Bắn thông báo cho Chủ trọ biết
+        String title = "Có minh chứng thanh toán mới!";
+        String content = "Khách thuê phòng " + invoice.getRoom().getRoomNumber() + " vừa tải lên minh chứng thanh toán. Vui lòng kiểm tra và xét duyệt!";
+        notificationService.createNotification(
+                invoice.getRoom().getArea().getLandlord(), // Gửi cho Chủ trọ
+                title,
+                content,
+                NotificationType.PAYMENT_APPROVED
+        );
     }
 }
