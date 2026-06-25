@@ -304,10 +304,10 @@ public class InvoiceService {
     /**
      * UC26: TỰ ĐỘNG NHẮC NỢ HÀNG THÁNG
      */
-    @Transactional(readOnly = true)
+    @Transactional
     public void autoRemindMonthlyDebts() {
         LocalDate today = LocalDate.now();
-        List<Invoice> remindInvoices = invoiceRepository.findByStatusAndDueDate(InvoiceStatus.UNPAID, today);
+        List<Invoice> remindInvoices = invoiceRepository.findByStatusAndDueDate(InvoiceStatus.UNPAID, today.plusDays(1));
 
         for (Invoice invoice : remindInvoices) {
             // 🚀 LƯU THÔNG BÁO VÀO DATABASE
@@ -321,7 +321,7 @@ public class InvoiceService {
                     NotificationType.INVOICE_REMINDER
             );
 
-            System.out.println("[UC26] Đã lưu thông báo nhắc nợ cho phòng " + invoice.getRoom().getRoomNumber());
+            System.out.println(" Đã lưu thông báo nhắc nợ cho phòng " + invoice.getRoom().getRoomNumber());
         }
     }
 }

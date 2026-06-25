@@ -58,6 +58,6 @@ public class NightlyJobScheduler {
      * 🧪 Dùng để test (Chạy liên tục mỗi 10 giây).
      * Khi nào code xong tính năng mới cần test thì mở comment dòng dưới ra.
      */
-     @Scheduled(fixedRate = 10000)
-     public void testRun() { executeAllNightlyJobs(); }
+     //@Scheduled(fixedRate = 10000)
+     //public void testRun() { executeAllNightlyJobs(); }
 }

@@ -47,6 +47,9 @@ public class Invoice {
 
     @Column(name = "vietqr_url", columnDefinition = "TEXT")
     private String vietqrUrl;
+    
+    @Column(name = "payment_proof_url")
+    private String paymentProofUrl;
 
     @Enumerated(EnumType.STRING)
     @Builder.Default
