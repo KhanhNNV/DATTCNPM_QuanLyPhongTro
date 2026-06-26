@@ -13,49 +13,67 @@ class ContractTemplateFormViewModel extends ChangeNotifier {
 
   final formKey = GlobalKey<FormState>();
   final nameController = TextEditingController();
-  final contentController = TextEditingController();
+
+  // ĐÃ SỬA: Thay thế dấu chấm thành các biến {{...}}
+  final rentalContentController = TextEditingController(
+      text: 'Bên A cho Bên B thuê 01 phòng trọ số {{SO_PHONG}} tại căn nhà số {{DIA_CHI_NHA}}. '
+          'Với thời hạn là: {{THOI_HAN}} tháng, giá thuê: {{GIA_THUE}} đồng (Bằng chữ: {{GIA_THUE_CHU}}). '
+          'Chưa bao gồm chi phí: điện sinh hoạt, nước.'
+  );
+
+  final landlordDutyController = TextEditingController(
+      text: '- Đảm bảo căn nhà cho thuê không có tranh chấp, khiếu kiện.\n'
+          '- Đăng ký với chính quyền địa phương về thủ tục cho thuê phòng trọ.'
+  );
+
+  final tenantDutyController = TextEditingController(
+      text: '- Đặt cọc với số tiền là: {{TIEN_COC}} đồng (Bằng chữ: {{TIEN_COC_CHU}}), thanh toán tiền thuê phòng hàng tháng vào ngày {{NGAY_THANH_TOAN}} + tiền điện + nước.\n'
+          '- Đảm bảo các thiết bị và sửa chữa các hư hỏng trong phòng trong khi sử dụng. Nếu không sửa chữa thì khi trả phòng, bên A sẽ trừ vào tiền đặt cọc, giá trị cụ thể được tính theo giá thị trường.\n'
+          '- Chỉ sử dụng phòng trọ vào mục đích ở, với số lượng tối đa không quá 04 người (kể cả trẻ em); không chứa các thiết bị gây cháy nổ, hàng cấm... cung cấp giấy tờ tùy thân để đăng ký tạm trú theo quy định, giữ gìn an ninh trật tự, nếp sống văn hóa đô thị; không tụ tập nhậu nhẹt, cờ bạc và các hành vi vi phạm pháp luật khác.\n'
+          '- Không được tự ý cải tạo kiếm trúc phòng hoặc trang trí ảnh hưởng tới tường, cột, nền... Nếu có nhu cầu trên phải trao đổi với bên A để được thống nhất.'
+  );
+
+  final executionTermsController = TextEditingController(
+      text: '- Hai bên nghiêm túc thực hiện những quy định trên trong thời hạn cho thuê, nếu bên A lấy phòng phải báo cho bên B ít nhất 01 tháng, hoặc ngược lại.\n'
+          '- Sau thời hạn cho thuê {{THOI_HAN}} tháng nếu bên B có nhu cầu hai bên tiếp tục thương lượng giá thuê để gia hạn hợp đồng bằng miệng hoặc thực hiện ký gia hạn mới.'
+  );
 
   bool isLoading = false;
 
-  // --- HÀM XỬ LÝ DỮ LIỆU ĐỘNG ---
-  // Nếu có dữ liệu thì hiển thị, nếu không có thì hiển thị chuỗi dấu chấm
   String _formatData(String? value, int dotLength) {
-    if (value != null && value.trim().isNotEmpty) {
-      return value;
-    }
+    if (value != null && value.trim().isNotEmpty) return value;
     return '.' * dotLength;
   }
 
-  // --- HÀM TẠO PDF ---
-  // Hỗ trợ truyền tham số tuỳ chọn.
-  // Lúc xem trước mẫu không truyền gì -> Tự ra dấu chấm.
-  // Lúc xuất hợp đồng thật -> Truyền data thật vào đây.
-  Future<Uint8List> generatePdfBytes({
-    String? ngayKy,
-    String? thangKy,
-    String? namKy,
-    String? diaChiKy,
-    String? tenBenA,
-    String? cccdBenA,
-    String? ngayCapCccdBenA,
-    String? noiCapCccdBenA,
-    String? thuongTruBenA,
-    String? tenBenB,
-    String? cccdBenB,
-    String? ngayCapCccdBenB,
-    String? noiCapCccdBenB,
-    String? thuongTruBenB,
-  }) async {
-    final userText = contentController.text.trim();
-    if (userText.isEmpty) {
-      throw Exception('Vui lòng nhập nội dung hợp đồng trước khi xem trực tiếp!');
-    }
+  pw.Widget _buildSection(String title, String content) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(title, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+        pw.SizedBox(height: 6),
+        ...content.split('\n').map((line) {
+          return pw.Padding(
+            padding: const pw.EdgeInsets.only(bottom: 6),
+            child: pw.Text(
+              line,
+              style: const pw.TextStyle(fontSize: 12, lineSpacing: 3.5),
+              textAlign: pw.TextAlign.justify,
+            ),
+          );
+        }),
+        pw.SizedBox(height: 12),
+      ],
+    );
+  }
 
+  Future<Uint8List> generatePdfBytes({
+    String? ngayKy, String? thangKy, String? namKy, String? diaChiKy,
+    String? tenBenA, String? cccdBenA, String? ngayCapCccdBenA, String? noiCapCccdBenA, String? thuongTruBenA,
+    String? tenBenB, String? cccdBenB, String? ngayCapCccdBenB, String? noiCapCccdBenB, String? thuongTruBenB,
+  }) async {
     final notoSerifRegular = await PdfGoogleFonts.notoSerifRegular();
     final notoSerifBold = await PdfGoogleFonts.notoSerifBold();
-
     final pdf = pw.Document();
-    final List<String> userLines = userText.split('\n');
 
     pdf.addPage(
       pw.MultiPage(
@@ -76,24 +94,18 @@ class ContractTemplateFormViewModel extends ChangeNotifier {
               ),
             ),
             pw.SizedBox(height: 28),
-
             pw.Center(
               child: pw.Text(
-                nameController.text.isNotEmpty
-                    ? nameController.text.toUpperCase()
-                    : 'HỢP ĐỒNG THUÊ PHÒNG TRỌ',
+                nameController.text.isNotEmpty ? nameController.text.toUpperCase() : 'HỢP ĐỒNG THUÊ PHÒNG TRỌ',
                 style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
               ),
             ),
             pw.SizedBox(height: 24),
-
             pw.Text(
                 'Hôm nay, ngày ${_formatData(ngayKy, 6)} tháng ${_formatData(thangKy, 6)} năm ${_formatData(namKy, 8)}, tại địa chỉ: ${_formatData(diaChiKy, 45)}. Chúng tôi gồm có:',
                 style: const pw.TextStyle(fontSize: 12, lineSpacing: 3)
             ),
             pw.SizedBox(height: 16),
-
-            // --- THÔNG TIN BÊN A ---
             pw.Text('BÊN CHO THUÊ PHÒNG TRỌ (gọi tắt là Bên A):', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 6),
             pw.Text('Ông/bà: ${_formatData(tenBenA, 40)}', style: const pw.TextStyle(fontSize: 12)),
@@ -102,8 +114,6 @@ class ContractTemplateFormViewModel extends ChangeNotifier {
             pw.SizedBox(height: 6),
             pw.Text('Thường trú tại: ${_formatData(thuongTruBenA, 65)}', style: const pw.TextStyle(fontSize: 12, lineSpacing: 2)),
             pw.SizedBox(height: 16),
-
-            // --- THÔNG TIN BÊN B ---
             pw.Text('BÊN THUÊ PHÒNG TRỌ (gọi tắt là Bên B):', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 6),
             pw.Text('Ông/bà: ${_formatData(tenBenB, 40)}', style: const pw.TextStyle(fontSize: 12)),
@@ -112,24 +122,13 @@ class ContractTemplateFormViewModel extends ChangeNotifier {
             pw.SizedBox(height: 6),
             pw.Text('Thường trú tại: ${_formatData(thuongTruBenB, 65)}', style: const pw.TextStyle(fontSize: 12, lineSpacing: 2)),
             pw.SizedBox(height: 20),
-
-            pw.Text('Sau khi thỏa thuận, hai bên thống nhất các điều khoản sau:', style: const pw.TextStyle(fontSize: 12)),
+            pw.Text('Sau khi thỏa thuận, hai bên thống nhất các điều khoản sau:', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold, fontStyle: pw.FontStyle.italic)),
             pw.SizedBox(height: 12),
-
-            // --- NỘI DUNG ĐIỀU KHOẢN ---
-            ...userLines.map((line) {
-              return pw.Padding(
-                padding: const pw.EdgeInsets.only(bottom: 10),
-                child: pw.Text(
-                  line,
-                  style: const pw.TextStyle(fontSize: 12, lineSpacing: 3.5),
-                  textAlign: pw.TextAlign.justify,
-                ),
-              );
-            }),
+            _buildSection('1. Nội dung thuê phòng trọ', rentalContentController.text),
+            _buildSection('2. Trách nhiệm Bên A', landlordDutyController.text),
+            _buildSection('3. Trách nhiệm Bên B', tenantDutyController.text),
+            _buildSection('4. Điều khoản thực hiện', executionTermsController.text),
             pw.SizedBox(height: 36),
-
-            // --- CHỮ KÝ ---
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
               children: [
@@ -137,14 +136,14 @@ class ContractTemplateFormViewModel extends ChangeNotifier {
                   children: [
                     pw.Text('Bên B', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
                     pw.SizedBox(height: 6),
-                    pw.Text('(Ký, ghi rõ họ tên)', style: const pw.TextStyle(fontSize: 11)),
+                    pw.Text('(Ký, ghi rõ họ tên)', style: const pw.TextStyle(fontSize: 11, fontStyle: pw.FontStyle.italic)),
                   ],
                 ),
                 pw.Column(
                   children: [
                     pw.Text('Bên A', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
                     pw.SizedBox(height: 6),
-                    pw.Text('(Ký, ghi rõ họ tên)', style: const pw.TextStyle(fontSize: 11)),
+                    pw.Text('(Ký, ghi rõ họ tên)', style: const pw.TextStyle(fontSize: 11, fontStyle: pw.FontStyle.italic)),
                   ],
                 ),
               ],
@@ -157,42 +156,21 @@ class ContractTemplateFormViewModel extends ChangeNotifier {
     return await pdf.save();
   }
 
-  Future<void> previewPdf() async {
-    isLoading = true;
-    notifyListeners();
-    try {
-      final pdfBytes = await generatePdfBytes(); // Hiện tại không truyền data -> ra dấu chấm
-      final String? filePath = await FileSaver.instance.saveAs(
-        name: 'Hop_Dong_Thue_Phong_${DateTime.now().millisecondsSinceEpoch}.pdf',
-        bytes: pdfBytes,
-        mimeType: MimeType.pdf,
-      );
-      if (filePath != null) {
-        print("Lưu thành công: $filePath");
-      }
-    } catch (e) {
-      rethrow;
-    } finally {
-      isLoading = false;
-      notifyListeners();
-    }
-  }
-
   Future<ContractTemplateResponse> saveTemplate() async {
     if (!formKey.currentState!.validate()) {
       throw Exception('Vui lòng điền đầy đủ thông tin hợp lệ!');
     }
-    final rawText = contentController.text.trim();
-    if (rawText.isEmpty) {
-      throw Exception('Vui lòng nhập nội dung hợp đồng!');
-    }
+
     try {
       isLoading = true;
       notifyListeners();
 
       final request = ContractTemplateRequest(
         name: nameController.text.trim(),
-        content: rawText,
+        rentalContent: rentalContentController.text.trim(),
+        landlordDuty: landlordDutyController.text.trim(),
+        tenantDuty: tenantDutyController.text.trim(),
+        executionTerms: executionTermsController.text.trim(),
       );
 
       final createdTemplate = await _repository.createTemplate(request);
@@ -210,7 +188,10 @@ class ContractTemplateFormViewModel extends ChangeNotifier {
   @override
   void dispose() {
     nameController.dispose();
-    contentController.dispose();
+    rentalContentController.dispose();
+    landlordDutyController.dispose();
+    tenantDutyController.dispose();
+    executionTermsController.dispose();
     super.dispose();
   }
 }

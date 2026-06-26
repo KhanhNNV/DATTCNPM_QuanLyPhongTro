@@ -171,7 +171,7 @@ class _HomeScreenState extends State<HomeScreen> {
             context,
             MaterialPageRoute(
               builder: (_) => ChangeNotifierProvider(
-                create: (_) => ContractTemplateListViewModel(),
+                create: (_) => ContractTemplateListViewModel()..fetchTemplates(),
                 child: const ContractTemplateListScreen(),
               ),
             ),

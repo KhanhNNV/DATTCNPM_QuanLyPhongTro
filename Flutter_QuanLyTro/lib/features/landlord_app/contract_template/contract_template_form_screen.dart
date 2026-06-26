@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
-import 'package:file_saver/file_saver.dart';
-import 'dart:typed_data';
-
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/custom_button.dart';
 import '../../../../core/constants/app_colors.dart';
 import 'view_models/contract_template_form_view_model.dart';
+import 'contract_template_preview_screen.dart';
 
 class ContractTemplateFormScreen extends StatelessWidget {
   const ContractTemplateFormScreen({super.key});
@@ -30,16 +27,83 @@ class ContractTemplateFormScreen extends StatelessWidget {
   }
 
   void _handleShowInAppPreview(BuildContext context, ContractTemplateFormViewModel vm) {
-    if (vm.contentController.text.trim().isEmpty) {
+    if (vm.rentalContentController.text.trim().isEmpty &&
+        vm.landlordDutyController.text.trim().isEmpty &&
+        vm.tenantDutyController.text.trim().isEmpty &&
+        vm.executionTermsController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Vui lòng nhập nội dung điều khoản trước!'), backgroundColor: Colors.orange),
+        const SnackBar(content: Text('Vui lòng nhập nội dung điều khoản trước khi xem trước!'), backgroundColor: Colors.orange),
       );
       return;
     }
 
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => _InAppPreviewScreen(vm: vm)),
+      MaterialPageRoute(
+        builder: (context) => ContractTemplatePreviewScreen(
+          templateName: vm.nameController.text.trim(),
+          rentalContent: vm.rentalContentController.text.trim(),
+          landlordDuty: vm.landlordDutyController.text.trim(),
+          tenantDuty: vm.tenantDutyController.text.trim(),
+          executionTerms: vm.executionTermsController.text.trim(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextField(TextEditingController controller, String label, int lines) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: TextFormField(
+        controller: controller,
+        maxLines: lines,
+        keyboardType: TextInputType.multiline,
+        style: const TextStyle(fontSize: 14, height: 1.4),
+        decoration: InputDecoration(
+          labelText: label,
+          alignLabelWithHint: true,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+        validator: (value) => (value == null || value.trim().isEmpty) ? 'Vui lòng nhập $label' : null,
+      ),
+    );
+  }
+
+  Widget _buildVariablesGuide() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      decoration: BoxDecoration(
+        color: Colors.blue[50],
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.blue[200]!),
+      ),
+      child: ExpansionTile(
+        title: const Text(
+          'Hướng dẫn dùng biến tự động điền (Nhấn để xem)',
+          style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.blue),
+        ),
+        iconColor: Colors.blue,
+        collapsedIconColor: Colors.blue,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Text(
+              'Khi tạo hợp đồng thực tế, hệ thống sẽ tự động điền dữ liệu vào các mã có ngoặc nhọn {{...}} dưới đây. Bạn có thể chèn các mã này vào bất cứ đâu trong nội dung hợp đồng:\n\n'
+                  '• {{SO_PHONG}}: Số phòng/Tên phòng\n'
+                  '• {{DIA_CHI_NHA}}: Địa chỉ nhà trọ\n'
+                  '• {{THOI_HAN}}: Thời gian thuê (tháng)\n'
+                  '• {{GIA_THUE}}: Giá thuê (số)\n'
+                  '• {{GIA_THUE_CHU}}: Giá thuê (chữ)\n'
+                  '• {{TIEN_COC}}: Tiền đặt cọc (số)\n'
+                  '• {{TIEN_COC_CHU}}: Tiền đặt cọc (chữ)\n'
+                  '• {{NGAY_THANH_TOAN}}: Ngày đóng tiền hàng tháng',
+              style: TextStyle(fontSize: 13, height: 1.5, color: Colors.blue[900]),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -67,32 +131,22 @@ class ContractTemplateFormScreen extends StatelessWidget {
                       filled: true,
                       fillColor: Colors.white,
                     ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) return 'Vui lòng nhập tên mẫu';
-                      return null;
-                    },
+                    validator: (value) => (value == null || value.trim().isEmpty) ? 'Vui lòng nhập tên mẫu' : null,
                   ),
-
                   const SizedBox(height: 24),
 
-                  TextFormField(
-                    controller: vm.contentController,
-                    maxLines: 20,
-                    keyboardType: TextInputType.multiline,
-                    style: const TextStyle(fontSize: 14, height: 1.4),
-                    decoration: InputDecoration(
-                      labelText: 'Nội dung điều khoản hợp đồng',
-                      alignLabelWithHint: true,
-                      hintText: 'Nhập nội dung chi tiết các điều khoản tại đây...\nCác thông tin Bên A, Bên B sẽ được hệ thống tự động chèn vào phần đầu của hợp đồng.',
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-                      filled: true,
-                      fillColor: Colors.white,
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) return 'Vui lòng nhập nội dung điều khoản';
-                      return null;
-                    },
+                  _buildVariablesGuide(),
+
+                  const Text(
+                      'Tùy chỉnh nội dung điều khoản:',
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.primary)
                   ),
+                  const SizedBox(height: 16),
+
+                  _buildTextField(vm.rentalContentController, '1. Nội dung thuê phòng trọ', 4),
+                  _buildTextField(vm.landlordDutyController, '2. Trách nhiệm Bên A', 4),
+                  _buildTextField(vm.tenantDutyController, '3. Trách nhiệm Bên B', 8),
+                  _buildTextField(vm.executionTermsController, '4. Điều khoản thực hiện', 4),
                 ],
               ),
             ),
@@ -142,97 +196,6 @@ class ContractTemplateFormScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-}
-
-// --- MÀN HÌNH XEM TRƯỚC ---
-class _InAppPreviewScreen extends StatefulWidget {
-  final ContractTemplateFormViewModel vm;
-
-  const _InAppPreviewScreen({required this.vm});
-
-  @override
-  State<_InAppPreviewScreen> createState() => _InAppPreviewScreenState();
-}
-
-class _InAppPreviewScreenState extends State<_InAppPreviewScreen> {
-  late Future<Uint8List> _pdfBytesFuture;
-  Uint8List? _cachedBytes;
-
-  @override
-  void initState() {
-    super.initState();
-    _pdfBytesFuture = widget.vm.generatePdfBytes();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.grey[200],
-      appBar: AppBar(
-        title: const Text('Bản xem trước hợp đồng', style: TextStyle(color: Colors.white, fontSize: 16)),
-        backgroundColor: AppColors.primary,
-        iconTheme: const IconThemeData(color: Colors.white),
-        actions: [
-          TextButton.icon(
-            onPressed: _cachedBytes == null
-                ? null
-                : () async {
-              try {
-                await FileSaver.instance.saveAs(
-                  name: 'Hop_Dong_Thue_Phong_${DateTime.now().millisecondsSinceEpoch}.pdf',
-                  bytes: _cachedBytes!,
-                  mimeType: MimeType.pdf,
-                );
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Đã xuất file PDF thành công!'), backgroundColor: Colors.green),
-                );
-              } catch (e) {
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Lỗi xuất file: $e'), backgroundColor: Colors.redAccent),
-                );
-              }
-            },
-            icon: const Icon(Icons.picture_as_pdf, color: Colors.white, size: 18),
-            label: const Text('XUẤT PDF', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: FutureBuilder<Uint8List>(
-        future: _pdfBytesFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
-              child: CircularProgressIndicator(color: AppColors.primary),
-            );
-          }
-          if (snapshot.hasError) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Text(
-                  'Không thể khởi tạo bản xem trước PDF:\n${snapshot.error.toString().replaceAll('Exception: ', '')}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.redAccent, fontSize: 14),
-                ),
-              ),
-            );
-          }
-          if (snapshot.hasData) {
-            _cachedBytes = snapshot.data;
-            return SfPdfViewer.memory(
-              _cachedBytes!,
-              canShowScrollHead: true,
-              canShowScrollStatus: true,
-            );
-          }
-          return const Center(child: Text('Không có dữ liệu văn bản.'));
-        },
       ),
     );
   }

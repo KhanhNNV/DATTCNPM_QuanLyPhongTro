@@ -26,5 +26,40 @@ class ContractTemplateRepository {
     }
   }
 
-// Bạn có thể bổ sung getTemplates, getTemplateById, updateTemplate, deleteTemplate ở đây
+  Future<List<ContractTemplateResponse>> getAllTemplates() async {
+    final response = await _apiClient.get('/api/contract/templates');
+
+    if (response.statusCode == 200) {
+      final List<dynamic> jsonList = jsonDecode(utf8.decode(response.bodyBytes));
+      return jsonList.map((json) => ContractTemplateResponse.fromJson(json)).toList();
+    }
+
+    _handleError(response);
+    return []; // Dummy return
+  }
+
+  Future<ContractTemplateResponse> setActiveTemplate(String id) async {
+    final response = await _apiClient.put(
+      '/api/contract/templates/active/$id',
+      {},
+    );
+
+    if (response.statusCode == 200) {
+      return ContractTemplateResponse.fromJson(
+        jsonDecode(utf8.decode(response.bodyBytes)),
+      );
+    }
+
+    _handleError(response);
+    throw Exception('Cập nhật mẫu mặc định thất bại');
+  }
+
+  void _handleError(dynamic response) {
+    try {
+      final errorData = jsonDecode(utf8.decode(response.bodyBytes));
+      throw Exception(errorData['message'] ?? 'Lỗi kết nối máy chủ');
+    } catch (_) {
+      throw Exception('Lỗi xử lý hệ thống (Mã lỗi: ${response.statusCode})');
+    }
+  }
 }

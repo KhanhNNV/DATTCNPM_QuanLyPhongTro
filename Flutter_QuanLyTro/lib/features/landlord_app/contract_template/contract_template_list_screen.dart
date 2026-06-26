@@ -6,53 +6,22 @@ import '../../../../data/models/response/contract_template_response.dart';
 import 'view_models/contract_template_list_view_model.dart';
 import 'view_models/contract_template_form_view_model.dart';
 import 'contract_template_form_screen.dart';
+import 'contract_template_preview_screen.dart';
 
-class ContractTemplateListScreen extends StatefulWidget {
+class ContractTemplateListScreen extends StatelessWidget {
   const ContractTemplateListScreen({super.key});
 
-  @override
-  State<ContractTemplateListScreen> createState() => _ContractTemplateListScreenState();
-}
-
-class _ContractTemplateListScreenState extends State<ContractTemplateListScreen> {
-  final TextEditingController _searchController = TextEditingController();
-
-  @override
-  void initState() {
-    super.initState();
-    // Gọi API giả lập khi mở màn hình
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ContractTemplateListViewModel>().fetchTemplates();
-    });
-  }
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  // Popup hiển thị chi tiết nội dung mẫu hợp đồng
   void _showTemplateDetails(BuildContext context, ContractTemplateResponse template) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(
-          template.name,
-          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ContractTemplatePreviewScreen(
+          templateName: template.name,
+          rentalContent: template.rentalContent,
+          landlordDuty: template.landlordDuty,
+          tenantDuty: template.tenantDuty,
+          executionTerms: template.executionTerms,
         ),
-        content: SingleChildScrollView(
-          child: Text(
-            template.content,
-            style: const TextStyle(fontSize: 14, height: 1.5),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('ĐÓNG'),
-          ),
-        ],
       ),
     );
   }
@@ -65,22 +34,23 @@ class _ContractTemplateListScreenState extends State<ContractTemplateListScreen>
       backgroundColor: Colors.grey[50],
       appBar: const CustomAppBar(title: 'Chọn mẫu hợp đồng'),
       floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.primary,
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ChangeNotifierProvider(
-                create: (_) => ContractTemplateFormViewModel(),
-                child: const ContractTemplateFormScreen(),
+          backgroundColor: AppColors.primary,
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ChangeNotifierProvider(
+                  create: (_) => ContractTemplateFormViewModel(),
+                  child: const ContractTemplateFormScreen(),
+                ),
               ),
-            ),
-          ).then((newTemplate) {
-            // Nhận kết quả trả về khi tạo xong (Nếu có)
-            // if (newTemplate != null) vm.addLocalTemplate(newTemplate);
-          });
-        },
-        child: const Icon(Icons.add, color: Colors.white)
+            ).then((newTemplate) {
+              if (newTemplate != null && context.mounted) {
+                context.read<ContractTemplateListViewModel>().fetchTemplates();
+              }
+            });
+          },
+          child: const Icon(Icons.add, color: Colors.white)
       ),
       body: Column(
         children: [
@@ -88,8 +58,7 @@ class _ContractTemplateListScreenState extends State<ContractTemplateListScreen>
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
-              controller: _searchController,
-              onChanged: vm.onSearchChanged,
+              controller: vm.searchController, // Dùng thẳng controller từ ViewModel
               decoration: InputDecoration(
                 hintText: 'Tìm kiếm tên mẫu hợp đồng...',
                 prefixIcon: const Icon(Icons.search, color: Colors.grey),
@@ -108,7 +77,7 @@ class _ContractTemplateListScreenState extends State<ContractTemplateListScreen>
             ),
           ),
 
-          // DANH SÁCH LIST DẠNG RADIO
+          // DANH SÁCH MẪU
           Expanded(
             child: vm.isLoading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -117,7 +86,7 @@ class _ContractTemplateListScreenState extends State<ContractTemplateListScreen>
                 : vm.displayedTemplates.isEmpty
                 ? const Center(child: Text('Không tìm thấy mẫu hợp đồng nào!'))
                 : ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 80), // Padding bottom tránh đè FAB
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 80),
               itemCount: vm.displayedTemplates.length,
               separatorBuilder: (_, __) => const SizedBox(height: 8),
               itemBuilder: (context, index) {
@@ -144,7 +113,9 @@ class _ContractTemplateListScreenState extends State<ContractTemplateListScreen>
                             value: template.id,
                             groupValue: vm.selectedTemplateId,
                             activeColor: AppColors.primary,
-                            onChanged: (val) {
+                            onChanged: vm.isUpdatingActive
+                                ? null
+                                : (val) {
                               if (val != null) vm.selectTemplate(val);
                             },
                           ),
