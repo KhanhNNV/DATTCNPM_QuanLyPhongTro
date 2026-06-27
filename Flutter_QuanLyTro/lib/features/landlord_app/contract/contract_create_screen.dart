@@ -66,7 +66,7 @@ class ContractCreateScreen extends StatelessWidget {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx);
-              Navigator.pop(context); // Đóng màn hình tạo HĐ
+              Navigator.pop(context);
             },
             child: const Text('HOÀN TẤT', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
           ),
@@ -146,7 +146,7 @@ class ContractCreateScreen extends StatelessWidget {
                     const Text('Thông tin phòng thuê', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary)),
                     const SizedBox(height: 16),
 
-                    // DROPDOWN CHỌN PHÒNG ĐÃ CỌC
+                    // DROPDOWN CHỌN PHÒNG
                     if (vm.isFetchingRooms)
                       const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()))
                     else
@@ -156,17 +156,18 @@ class ContractCreateScreen extends StatelessWidget {
                           value: vm.selectedRoom,
                           isExpanded: true,
                           decoration: InputDecoration(
-                            labelText: 'Chọn phòng (Đang cọc)',
+                            labelText: 'Chọn phòng (Trống / Đang cọc)',
                             filled: true,
                             fillColor: Colors.white,
                             border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
                           ),
-                          hint: const Text('Danh sách phòng đang cọc'),
+                          hint: const Text('Danh sách phòng hợp lệ'),
                           items: vm.depositedRooms.map((room) {
                             final formatCurrency = NumberFormat.decimalPattern();
+                            final statusLabel = room.status == 'DEPOSITED' ? 'Đang cọc' : 'Trống';
                             return DropdownMenuItem(
                               value: room,
-                              child: Text('Phòng ${room.roomNumber} (Cọc: ${formatCurrency.format(room.depositAmount)}đ)'),
+                              child: Text('Phòng ${room.roomNumber} - $statusLabel (Cọc: ${formatCurrency.format(room.depositAmount)}đ)'),
                             );
                           }).toList(),
                           onChanged: (room) => vm.selectRoom(room),
@@ -191,8 +192,7 @@ class ContractCreateScreen extends StatelessWidget {
                     _buildTextField(vm.phoneController, 'SĐT Khách Thuê', isPhone: true),
 
                     if (vm.isOcrMode) ...[
-                      _buildTextField(vm.templateIdController, 'ID Mẫu Hợp Đồng'),
-                      const SizedBox(height: 4),
+                      // Trường ID Mẫu Hợp Đồng cũ tại đây đã được loại bỏ hoàn toàn
                       const Text('Ảnh mặt trước & mặt sau CCCD (Bắt buộc)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.black87)),
                       const SizedBox(height: 12),
                       Row(

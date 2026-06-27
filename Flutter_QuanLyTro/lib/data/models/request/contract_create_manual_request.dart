@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 class ContractCreateManualRequest {
   final String roomId;
   final String startDate;
@@ -26,7 +24,8 @@ class ContractCreateManualRequest {
     required this.tenantIdCardNumber,
   });
 
-  Map<String, dynamic> toMap() {
+
+  Map<String, dynamic> toJson() {
     return {
       'roomId': roomId,
       'startDate': startDate,
@@ -41,5 +40,4 @@ class ContractCreateManualRequest {
     };
   }
 
-  String toJson() => json.encode(toMap());
 }

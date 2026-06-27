@@ -6,13 +6,13 @@ import 'package:intl/intl.dart';
 import '../../../../data/models/request/contract_create_request.dart';
 import '../../../../data/models/request/contract_create_manual_request.dart';
 import '../../../../data/models/response/contract_create_response.dart';
-import '../../../../data/models/response/room_model.dart'; // Add
+import '../../../../data/models/response/room_model.dart';
 import '../../../../data/repository/contract_repository.dart';
-import '../../../../data/repository/room_repository.dart'; // Add
+import '../../../../data/repository/room_repository.dart';
 
 class ContractCreateViewModel extends ChangeNotifier {
   final ContractRepository _contractRepo = ContractRepository();
-  final RoomRepository _roomRepo = RoomRepository(); // Thêm Room Repo
+  final RoomRepository _roomRepo = RoomRepository();
   final ImagePicker _picker = ImagePicker();
 
   // --- TRẠNG THÁI CHẾ ĐỘ ---
@@ -24,19 +24,22 @@ class ContractCreateViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- QUẢN LÝ PHÒNG ĐÃ CỌC ---
+  // --- QUẢN LÝ PHÒNG ĐÃ CỌC & PHÒNG TRỐNG ---
   List<RoomModel> depositedRooms = [];
   RoomModel? selectedRoom;
   bool isFetchingRooms = false;
 
-  // Gọi API lấy danh sách phòng DEPOSITED
+  // Gọi API lấy danh sách phòng DEPOSITED & AVAILABLE
   Future<void> loadDepositedRooms(String areaId) async {
     isFetchingRooms = true;
     notifyListeners();
     try {
-      depositedRooms = await _roomRepo.getRoomsByArea(areaId, status: 'DEPOSITED');
+      final allRooms = await _roomRepo.getRoomsByArea(areaId);
+      depositedRooms = allRooms.where((room) {
+        return room.status == 'DEPOSITED' || room.status == 'AVAILABLE';
+      }).toList();
     } catch (e) {
-      debugPrint('Lỗi tải phòng đã cọc: $e');
+      debugPrint('Lỗi tải phòng: $e');
     } finally {
       isFetchingRooms = false;
       notifyListeners();
@@ -47,7 +50,6 @@ class ContractCreateViewModel extends ChangeNotifier {
   void selectRoom(RoomModel? room) {
     selectedRoom = room;
     if (room != null) {
-      // Tự động điền tiền cọc từ phòng vào controller, bỏ .0 ở đuôi nếu có
       depositAmountController.text = room.depositAmount.toInt().toString();
     } else {
       depositAmountController.clear();
@@ -57,7 +59,6 @@ class ContractCreateViewModel extends ChangeNotifier {
 
   // --- QUẢN LÝ FORM STATE & CONTROLLERS ---
   final formKey = GlobalKey<FormState>();
-  // Xóa roomIdController đi vì dùng selectedRoom rồi
   final phoneController = TextEditingController();
   final depositAmountController = TextEditingController();
 
@@ -65,7 +66,6 @@ class ContractCreateViewModel extends ChangeNotifier {
   DateTime? endDate;
 
   // --- CHO CHẾ ĐỘ OCR ---
-  final templateIdController = TextEditingController();
   File? _frontImage;
   File? get frontImage => _frontImage;
   File? _backImage;
@@ -127,8 +127,7 @@ class ContractCreateViewModel extends ChangeNotifier {
         }
 
         final request = ContractCreateRequest(
-          roomId: selectedRoom!.id, // Lấy ID từ Object phòng đã chọn
-          templateId: templateIdController.text.trim(),
+          roomId: selectedRoom!.id,
           tenantPhone: phoneController.text.trim(),
           startDate: DateFormat('yyyy-MM-dd').format(startDate!),
           endDate: DateFormat('yyyy-MM-dd').format(endDate!),
@@ -146,7 +145,7 @@ class ContractCreateViewModel extends ChangeNotifier {
         }
 
         final request = ContractCreateManualRequest(
-          roomId: selectedRoom!.id, // Lấy ID từ Object phòng đã chọn
+          roomId: selectedRoom!.id,
           startDate: DateFormat('yyyy-MM-dd').format(startDate!),
           endDate: DateFormat('yyyy-MM-dd').format(endDate!),
           depositAmount: double.tryParse(depositAmountController.text.trim()) ?? 0.0,
@@ -169,7 +168,6 @@ class ContractCreateViewModel extends ChangeNotifier {
   void dispose() {
     phoneController.dispose();
     depositAmountController.dispose();
-    templateIdController.dispose();
     tenantNameController.dispose();
     tenantHometownController.dispose();
     tenantIdCardNumberController.dispose();
