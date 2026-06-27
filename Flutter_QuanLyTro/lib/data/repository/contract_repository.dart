@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import '../../../core/network/api_client.dart';
+import '../models/request/contract_create_manual_request.dart';
 import '../models/request/contract_create_request.dart';
 import '../models/response/contract_create_response.dart';
 import '../models/response/contract_detail_response.dart';
@@ -31,6 +32,20 @@ class ContractRepository {
     }
 
     throw Exception('Quá trình lập hợp đồng thất bại: ${response.body}');
+  }
+
+  Future<ContractCreateResponse> createContractManual(ContractCreateManualRequest request) async {
+    final response = await _apiClient.post(
+      '/api/contracts/create/manual',
+      request.toJson(),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final json = jsonDecode(utf8.decode(response.bodyBytes));
+      return ContractCreateResponse.fromJson(json);
+    }
+
+    throw Exception('Quá trình lập hợp đồng thủ công thất bại: ${response.body}');
   }
 
   Future<List<ContractDetailResponse>> getMyContracts() async {

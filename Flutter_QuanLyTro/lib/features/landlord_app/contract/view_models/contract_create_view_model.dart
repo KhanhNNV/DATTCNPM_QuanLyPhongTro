@@ -4,114 +4,161 @@ import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 
 import '../../../../data/models/request/contract_create_request.dart';
+import '../../../../data/models/request/contract_create_manual_request.dart';
 import '../../../../data/models/response/contract_create_response.dart';
+import '../../../../data/models/response/room_model.dart'; // Add
 import '../../../../data/repository/contract_repository.dart';
-
+import '../../../../data/repository/room_repository.dart'; // Add
 
 class ContractCreateViewModel extends ChangeNotifier {
-  final ContractRepository _repository = ContractRepository();
+  final ContractRepository _contractRepo = ContractRepository();
+  final RoomRepository _roomRepo = RoomRepository(); // Thêm Room Repo
   final ImagePicker _picker = ImagePicker();
+
+  // --- TRẠNG THÁI CHẾ ĐỘ ---
+  bool _isOcrMode = true;
+  bool get isOcrMode => _isOcrMode;
+
+  void toggleMode(bool isOcr) {
+    _isOcrMode = isOcr;
+    notifyListeners();
+  }
+
+  // --- QUẢN LÝ PHÒNG ĐÃ CỌC ---
+  List<RoomModel> depositedRooms = [];
+  RoomModel? selectedRoom;
+  bool isFetchingRooms = false;
+
+  // Gọi API lấy danh sách phòng DEPOSITED
+  Future<void> loadDepositedRooms(String areaId) async {
+    isFetchingRooms = true;
+    notifyListeners();
+    try {
+      depositedRooms = await _roomRepo.getRoomsByArea(areaId, status: 'DEPOSITED');
+    } catch (e) {
+      debugPrint('Lỗi tải phòng đã cọc: $e');
+    } finally {
+      isFetchingRooms = false;
+      notifyListeners();
+    }
+  }
+
+  // Khi người dùng chọn phòng từ Dropdown
+  void selectRoom(RoomModel? room) {
+    selectedRoom = room;
+    if (room != null) {
+      // Tự động điền tiền cọc từ phòng vào controller, bỏ .0 ở đuôi nếu có
+      depositAmountController.text = room.depositAmount.toInt().toString();
+    } else {
+      depositAmountController.clear();
+    }
+    notifyListeners();
+  }
 
   // --- QUẢN LÝ FORM STATE & CONTROLLERS ---
   final formKey = GlobalKey<FormState>();
-  final roomIdController = TextEditingController();
-  final templateIdController = TextEditingController();
+  // Xóa roomIdController đi vì dùng selectedRoom rồi
   final phoneController = TextEditingController();
   final depositAmountController = TextEditingController();
 
   DateTime? startDate;
   DateTime? endDate;
 
+  // --- CHO CHẾ ĐỘ OCR ---
+  final templateIdController = TextEditingController();
   File? _frontImage;
   File? get frontImage => _frontImage;
-
   File? _backImage;
   File? get backImage => _backImage;
+
+  // --- CHO CHẾ ĐỘ THỦ CÔNG ---
+  final tenantNameController = TextEditingController();
+  final tenantHometownController = TextEditingController();
+  final tenantIdCardNumberController = TextEditingController();
+  DateTime? tenantDob;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  // Thay đổi ngày bắt đầu
-  void changeStartDate(DateTime date) {
-    startDate = date;
-    notifyListeners();
-  }
+  void changeStartDate(DateTime date) { startDate = date; notifyListeners(); }
+  void changeEndDate(DateTime date) { endDate = date; notifyListeners(); }
+  void changeTenantDob(DateTime date) { tenantDob = date; notifyListeners(); }
 
-  // Thay đổi ngày kết thúc
-  void changeEndDate(DateTime date) {
-    endDate = date;
-    notifyListeners();
-  }
-
-  // Chọn ảnh từ Thư viện hoặc Camera
   Future<void> pickImage({required bool isFront, bool fromCamera = false}) async {
     final source = fromCamera ? ImageSource.camera : ImageSource.gallery;
-
-    // Đã thêm maxWidth, maxHeight để tự động resize và giảm dung lượng file
     final pickedFile = await _picker.pickImage(
       source: source,
-      imageQuality: 70, // Giảm chất lượng xuống 70%
-      maxWidth: 1920,   // Giới hạn chiều rộng tối đa (Full HD)
-      maxHeight: 1920,  // Giới hạn chiều cao tối đa
+      imageQuality: 70,
+      maxWidth: 1920,
+      maxHeight: 1920,
     );
 
     if (pickedFile != null) {
-      if (isFront) {
-        _frontImage = File(pickedFile.path);
-      } else {
-        _backImage = File(pickedFile.path);
-      }
+      if (isFront) _frontImage = File(pickedFile.path);
+      else _backImage = File(pickedFile.path);
       notifyListeners();
     }
   }
 
   void removeImage({required bool isFront}) {
-    if (isFront) {
-      _frontImage = null;
-    } else {
-      _backImage = null;
-    }
+    if (isFront) _frontImage = null;
+    else _backImage = null;
     notifyListeners();
   }
 
-  // Logic Submit Form gom hết vào đây
   Future<ContractCreateResponse?> submitContract() async {
-    // 1. Validate Form text fields
     if (!formKey.currentState!.validate()) return null;
 
-    // 2. Validate ngày tháng
-    if (startDate == null || endDate == null) {
-      throw Exception('Vui lòng chọn đầy đủ ngày bắt đầu và kết thúc!');
+    if (selectedRoom == null) {
+      throw Exception('Vui lòng chọn phòng để tạo hợp đồng!');
     }
 
-    // 3. Validate ảnh CCCD
-    if (_frontImage == null || _backImage == null) {
-      throw Exception("Vui lòng chụp/chọn đầy đủ 2 mặt CCCD!");
+    if (startDate == null || endDate == null) {
+      throw Exception('Vui lòng chọn đầy đủ ngày bắt đầu và kết thúc!');
     }
 
     _isLoading = true;
     notifyListeners();
 
     try {
-      final request = ContractCreateRequest(
-        roomId: roomIdController.text.trim(),
-        templateId: templateIdController.text.trim(),
-        tenantPhone: phoneController.text.trim(),
-        startDate: DateFormat('yyyy-MM-dd').format(startDate!),
-        endDate: DateFormat('yyyy-MM-dd').format(endDate!),
-        depositAmount:
-        double.tryParse(depositAmountController.text.trim()) ?? 0.0,
-      );
+      if (_isOcrMode) {
+        if (_frontImage == null || _backImage == null) {
+          throw Exception("Vui lòng chụp/chọn đầy đủ 2 mặt CCCD!");
+        }
 
-      final response = await _repository.createContractOcr(
-        dataRequest: request,
-        frontImage: _frontImage!,
-        backImage: _backImage!,
-      );
+        final request = ContractCreateRequest(
+          roomId: selectedRoom!.id, // Lấy ID từ Object phòng đã chọn
+          templateId: templateIdController.text.trim(),
+          tenantPhone: phoneController.text.trim(),
+          startDate: DateFormat('yyyy-MM-dd').format(startDate!),
+          endDate: DateFormat('yyyy-MM-dd').format(endDate!),
+          depositAmount: double.tryParse(depositAmountController.text.trim()) ?? 0.0,
+        );
 
-      return response;
-    } catch (e) {
-      rethrow;
+        return await _contractRepo.createContractOcr(
+          dataRequest: request,
+          frontImage: _frontImage!,
+          backImage: _backImage!,
+        );
+      } else {
+        if (tenantDob == null) {
+          throw Exception('Vui lòng chọn ngày sinh của khách thuê!');
+        }
+
+        final request = ContractCreateManualRequest(
+          roomId: selectedRoom!.id, // Lấy ID từ Object phòng đã chọn
+          startDate: DateFormat('yyyy-MM-dd').format(startDate!),
+          endDate: DateFormat('yyyy-MM-dd').format(endDate!),
+          depositAmount: double.tryParse(depositAmountController.text.trim()) ?? 0.0,
+          tenantName: tenantNameController.text.trim(),
+          tenantPhone: phoneController.text.trim(),
+          tenantDob: DateFormat('yyyy-MM-dd').format(tenantDob!),
+          tenantHometown: tenantHometownController.text.trim(),
+          tenantIdCardNumber: tenantIdCardNumberController.text.trim(),
+        );
+
+        return await _contractRepo.createContractManual(request);
+      }
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -120,11 +167,12 @@ class ContractCreateViewModel extends ChangeNotifier {
 
   @override
   void dispose() {
-    // Giải phóng bộ nhớ của các Controller khi ViewModel bị hủy
-    roomIdController.dispose();
-    templateIdController.dispose();
     phoneController.dispose();
     depositAmountController.dispose();
+    templateIdController.dispose();
+    tenantNameController.dispose();
+    tenantHometownController.dispose();
+    tenantIdCardNumberController.dispose();
     super.dispose();
   }
 }

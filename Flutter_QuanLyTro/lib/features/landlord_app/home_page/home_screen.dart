@@ -4,7 +4,7 @@ import 'package:flutter_quanlytro/features/landlord_app/meter_reading_page/meter
 import '../../../core/constants/app_colors.dart';
 import '../area_management/area_config_screen.dart';
 import '../area_management/view_models/area_config_view_model.dart';
-import '../contract/contract_create_ocr_screen.dart';
+import '../contract/contract_create_screen.dart';
 import '../contract/contract_list_screen.dart';
 import '../contract/view_models/contract_create_view_model.dart';
 import '../contract/view_models/contract_list_view_model.dart';
@@ -58,12 +58,18 @@ class _HomeScreenState extends State<HomeScreen> {
         title: 'Lập hợp đồng mới',
         icon: Icons.assignment_turned_in_outlined,
         onTap: () {
+          if (currentAreaId == null || currentAreaId.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Vui lòng chọn khu trọ trước!')),
+            );
+            return;
+          }
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => ChangeNotifierProvider(
-                create: (_) => ContractCreateViewModel(),
-                child: const ContractCreateOcrScreen(),
+                create: (_) => ContractCreateViewModel()..loadDepositedRooms(currentAreaId),
+                child: const ContractCreateScreen(),
               ),
             ),
           );
