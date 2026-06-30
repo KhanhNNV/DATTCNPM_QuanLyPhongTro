@@ -58,4 +58,32 @@ class ContractRepository {
       throw Exception('Không thể tải danh sách hợp đồng từ hệ thống!');
     }
   }
+
+  Future<ContractDetailResponse> getContractDetail(String contractId) async {
+    final response = await _apiClient.get('/api/contracts/$contractId');
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(utf8.decode(response.bodyBytes));
+      return ContractDetailResponse.fromJson(json);
+    }
+
+    throw Exception('Không thể tải thông tin chi tiết hợp đồng!');
+  }
+
+  Future<ContractDetailResponse> uploadContractFile(String contractId, File file) async {
+    final response = await _apiClient.postMultipart(
+      '/api/contracts/upload/file/$contractId',
+      fields: {},
+      files: {
+        'file': file,
+      },
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final json = jsonDecode(utf8.decode(response.bodyBytes));
+      return ContractDetailResponse.fromJson(json);
+    }
+
+    throw Exception('Lỗi tải file đính kèm hợp đồng lên: ${response.body}');
+  }
 }

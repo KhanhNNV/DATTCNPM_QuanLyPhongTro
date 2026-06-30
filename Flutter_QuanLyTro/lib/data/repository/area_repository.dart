@@ -35,4 +35,14 @@ class AreaRepository {
   Future<void> updateArea(String areaId, Map<String, dynamic> payload) async {
     await _apiClient.put('/api/areas/$areaId', payload);
   }
+
+  Future<AreaModel> getAreaById(String areaId) async {
+    final response = await _apiClient.get('/api/areas/$areaId');
+    if (response.statusCode == 200) {
+      final json = jsonDecode(utf8.decode(response.bodyBytes));
+      return AreaModel.fromJson(json);
+    } else {
+      throw Exception('Không thể tải chi tiết khu trọ: ${response.body}');
+    }
+  }
 }

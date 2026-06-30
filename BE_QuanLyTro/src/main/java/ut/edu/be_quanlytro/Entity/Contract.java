@@ -49,6 +49,10 @@ public class Contract {
     @Column(name = "deposit_amount")
     private BigDecimal depositAmount;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "creator_id", nullable = false)
+    private User creator;
+
     @Column(name = "tenant_signature", columnDefinition = "TEXT")
     private String tenantSignature;
 

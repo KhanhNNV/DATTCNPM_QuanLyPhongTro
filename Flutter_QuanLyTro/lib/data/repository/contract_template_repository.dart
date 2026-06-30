@@ -26,6 +26,19 @@ class ContractTemplateRepository {
     }
   }
 
+  Future<ContractTemplateResponse> getTemplateById(String id) async {
+    final response = await _apiClient.get('/api/contract/templates/$id');
+
+    if (response.statusCode == 200) {
+      return ContractTemplateResponse.fromJson(
+        jsonDecode(utf8.decode(response.bodyBytes)),
+      );
+    }
+
+    _handleError(response);
+    throw Exception('Không thể lấy thông tin mẫu hợp đồng');
+  }
+
   Future<List<ContractTemplateResponse>> getAllTemplates() async {
     final response = await _apiClient.get('/api/contract/templates');
 
