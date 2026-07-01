@@ -20,6 +20,14 @@ public class ContractDetailResponse {
     private UUID tenantId;
     private String tenantName;
     private String tenantPhone;
+    private String tenantIdCardNumber;
+    private String tenantHometown;
+
+    // Thông tin chủ trọ
+    private String landlordName;
+    private String landlordIdCardNumber;
+    private String landlordAddress;
+    private String landlordSignatureUrl;
 
     // Thông tin hợp đồng
     private LocalDate startDate;
@@ -33,4 +41,5 @@ public class ContractDetailResponse {
     private List<ContractMemberResponse> members;
 
     private String contractTerms;
+    private UUID templateId;
 }

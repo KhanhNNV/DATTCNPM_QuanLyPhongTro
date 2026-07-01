@@ -47,6 +47,13 @@ class _RoomsTabWidgetState extends State<RoomsTabWidget> {
     }
   }
 
+  double parseMoney(String value) {
+    return double.tryParse(
+      value.replaceAll('.', '').replaceAll(',', ''),
+    ) ??
+        0;
+  }
+
   @override
   Widget build(BuildContext context) {
     // 1. TÌM TẦNG LỚN NHẤT DỰA VÀO DANH SÁCH PHÒNG
@@ -421,13 +428,14 @@ class _RoomsTabWidgetState extends State<RoomsTabWidget> {
             onPressed: () async {
               Navigator.pop(dialogContext);
 
+
               final payload = {
                 "areaId": widget.areaId,
                 "floor": int.tryParse(widget.vm.floorController.text) ?? 1,
                 "roomNumber": widget.vm.numberController.text.trim(),
-                "areaSize": double.tryParse(widget.vm.sizeController.text.replaceAll(',', '')) ?? 0.0,
-                "rentPrice": double.tryParse(widget.vm.priceController.text.replaceAll(',', '')) ?? 0,
-                "depositAmount": double.tryParse(widget.vm.depositController.text.replaceAll(',', '')) ?? 0,
+                "areaSize": double.tryParse(widget.vm.sizeController.text) ?? 0.0,
+                "rentPrice": parseMoney(widget.vm.priceController.text),
+                "depositAmount": parseMoney(widget.vm.depositController.text),
                 "maxOccupants": int.tryParse(widget.vm.maxController.text) ?? 4,
                 "status": isEdit ? room['status'] : "AVAILABLE",
               };

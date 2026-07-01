@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../data/models/response/contract_detail_response.dart';
+import 'contract_pdf_viewer_screen.dart';
 import 'view_models/contract_list_view_model.dart';
 
 class ContractListScreen extends StatelessWidget {
@@ -132,10 +133,24 @@ class ContractListScreen extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          // CHUYỂN SANG MÀN HÌNH CHI TIẾT
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Xem chi tiết hợp đồng phòng: ${contract.roomNumber}')),
-          );
+
+          final fileUrl = contract.contractFileUrl;
+
+          if (fileUrl != null && fileUrl.isNotEmpty) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ContractPdfViewerScreen(
+                  pdfUrl: fileUrl,
+                  roomNumber: contract.roomNumber,
+                ),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Hợp đồng này chưa có file đính kèm!')),
+            );
+          }
         },
         child: Padding(
           padding: const EdgeInsets.all(16.0),

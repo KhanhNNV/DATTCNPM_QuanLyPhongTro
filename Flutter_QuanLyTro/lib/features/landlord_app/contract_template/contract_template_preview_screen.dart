@@ -89,7 +89,7 @@ class _ContractTemplatePreviewScreenState extends State<ContractTemplatePreviewS
             pw.SizedBox(height: 28),
             pw.Center(
               child: pw.Text(
-                widget.templateName.isNotEmpty ? widget.templateName.toUpperCase() : 'HỢP ĐỒNG THUÊ PHÒNG TRỌ',
+                'HỢP ĐỒNG THUÊ PHÒNG TRỌ',
                 style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
               ),
             ),

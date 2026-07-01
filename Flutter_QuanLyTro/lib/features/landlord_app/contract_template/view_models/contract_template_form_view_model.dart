@@ -14,7 +14,7 @@ class ContractTemplateFormViewModel extends ChangeNotifier {
   final formKey = GlobalKey<FormState>();
   final nameController = TextEditingController();
 
-  // ĐÃ SỬA: Thay thế dấu chấm thành các biến {{...}}
+  // Thay thế dấu chấm thành các biến {{...}}
   final rentalContentController = TextEditingController(
       text: 'Bên A cho Bên B thuê 01 phòng trọ số {{SO_PHONG}} tại căn nhà số {{DIA_CHI_NHA}}. '
           'Với thời hạn là: {{THOI_HAN}} tháng, giá thuê: {{GIA_THUE}} đồng (Bằng chữ: {{GIA_THUE_CHU}}). '
@@ -96,7 +96,7 @@ class ContractTemplateFormViewModel extends ChangeNotifier {
             pw.SizedBox(height: 28),
             pw.Center(
               child: pw.Text(
-                nameController.text.isNotEmpty ? nameController.text.toUpperCase() : 'HỢP ĐỒNG THUÊ PHÒNG TRỌ',
+                'HỢP ĐỒNG THUÊ PHÒNG TRỌ',
                 style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
               ),
             ),

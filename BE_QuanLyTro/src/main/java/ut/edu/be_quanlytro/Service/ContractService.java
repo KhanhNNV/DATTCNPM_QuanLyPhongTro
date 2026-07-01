@@ -128,6 +128,7 @@ public class ContractService {
         Contract contract = Contract.builder()
                 .room(room)
                 .tenant(tenant)
+                .creator(landlord)
                 .template(template)
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
@@ -252,6 +253,7 @@ public class ContractService {
         Contract contract = Contract.builder()
                 .room(room)
                 .tenant(tenant)
+                .creator(landlord)
                 .template(template)
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
@@ -769,7 +771,6 @@ public class ContractService {
     private ContractDetailResponse mapToDetailResponse(Contract contract) {
 
         // 1. Map danh sách khách ở ghép (ContractMembers)
-        // Lưu ý: Nếu bạn chưa có class ContractMemberResponse, hãy tạo nó để chứa thông tin thành viên
         List<ContractMemberResponse> memberResponses = contract.getMembers().stream()
                 .map(member -> ContractMemberResponse.builder()
                         .id(member.getId())
@@ -783,20 +784,39 @@ public class ContractService {
 
         // 2. Map thông tin tổng thể của Hợp đồng
         return ContractDetailResponse.builder()
+                // --- THÔNG TIN HỢP ĐỒNG CƠ BẢN ---
                 .id(contract.getId())
-                .roomId(contract.getRoom().getId())
-                .roomNumber(contract.getRoom().getRoomNumber())
-                .tenantId(contract.getTenant().getId())
-                .tenantName(contract.getTenant().getFullName())
-                .tenantPhone(contract.getTenant().getPhone())
                 .startDate(contract.getStartDate())
                 .endDate(contract.getEndDate())
                 .depositAmount(contract.getDepositAmount())
-                .rentPrice(contract.getRoom().getRentPrice())
                 .status(contract.getStatus())
                 .contractFileUrl(contract.getContractFileUrl())
                 .contractTerms(contract.getContractTerms())
-                .members(memberResponses) // Nhúng danh sách thành viên vào đây
+
+                // --- THÔNG TIN TEMPLATE
+                .templateId(contract.getTemplate() != null ? contract.getTemplate().getId() : null)
+
+                // --- THÔNG TIN PHÒNG ---
+                .roomId(contract.getRoom().getId())
+                .roomNumber(contract.getRoom().getRoomNumber())
+                .rentPrice(contract.getRoom().getRentPrice())
+
+
+                // --- THÔNG TIN NGƯỜI TẠO (CHỦ TRỌ) ---
+                .landlordName(contract.getCreator().getFullName())
+                .landlordIdCardNumber(contract.getCreator().getIdCardNumber())
+                .landlordAddress(contract.getCreator().getHometown())
+                .landlordSignatureUrl(contract.getLandlordSignature()) // Lấy chữ ký đã đóng băng lúc tạo hợp đồng
+
+                // --- THÔNG TIN KHÁCH THUÊ ĐỨNG TÊN ---
+                .tenantId(contract.getTenant().getId())
+                .tenantName(contract.getTenant().getFullName())
+                .tenantPhone(contract.getTenant().getPhone())
+                .tenantIdCardNumber(contract.getTenant().getIdCardNumber())
+                .tenantHometown(contract.getTenant().getHometown())
+
+                // --- DANH SÁCH THÀNH VIÊN ---
+                .members(memberResponses)
                 .build();
     }
 

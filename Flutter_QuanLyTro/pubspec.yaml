@@ -45,6 +45,7 @@ dependencies:
   open_file: ^3.3.2
 
   image_picker: ^1.1.2
+  number_to_vietnamese_words: ^1.0.1+1
 
 
   # The following adds the Cupertino Icons font to your application.
