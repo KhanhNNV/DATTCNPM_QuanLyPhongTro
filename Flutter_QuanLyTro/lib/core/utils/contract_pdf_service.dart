@@ -4,7 +4,6 @@ import 'package:flutter_quanlytro/core/utils/template_compiler.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:intl/intl.dart';
 import 'package:number_to_vietnamese_words/number_to_vietnamese_words.dart';
 
 class ContractPdfService {
