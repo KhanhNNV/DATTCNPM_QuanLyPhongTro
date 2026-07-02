@@ -752,18 +752,30 @@ public class ContractService {
                     "mới có quyền tải lên file cho hợp đồng này.");
         }
 
-        // 4. Gọi CloudinaryService để đẩy file lên cloud
+        // 4. XÓA FILE CŨ (NẾU CÓ) ĐỂ TIẾT KIỆM DUNG LƯỢNG CLOUD
+        String oldFileUrl = contract.getContractFileUrl();
+        if (oldFileUrl != null && !oldFileUrl.trim().isEmpty()) {
+            try {
+                cloudinaryService.deleteFile(oldFileUrl);
+            } catch (Exception e) {
+                // Chỉ in log cảnh báo chứ không throw Exception làm chết luồng chính
+                // Đề phòng trường hợp URL trong DB bị lỗi hoặc file đã bị xóa tay trên Cloudinary từ trước
+                System.err.println("Cảnh báo: Không thể xóa file hợp đồng cũ trên Cloudinary: " + e.getMessage());
+            }
+        }
+
+        // 5. Gọi CloudinaryService để đẩy file mới lên cloud
         String uploadedUrl = cloudinaryService.uploadFile(file, "contract_files");
 
-        // 5. Cập nhật URL vào Entity và lưu DB
+        // 6. Cập nhật URL vào Entity và lưu DB
         contract.setContractFileUrl(uploadedUrl);
         contractRepository.save(contract);
 
-        // 6. Ghi log hoạt động
-        String logDesc = String.format("Tải lên file đính kèm cho hợp đồng phòng %s", contract.getRoom().getRoomNumber());
+        // 7. Ghi log hoạt động
+        String logDesc = String.format("Cập nhật file đính kèm mới cho hợp đồng phòng %s", contract.getRoom().getRoomNumber());
         activityLog.createLog(contract.getRoom().getArea().getLandlord(), "UPLOAD_CONTRACT_FILE", "contracts", contract.getId(), logDesc);
 
-        // 7. Trả về chi tiết hợp đồng đã được cập nhật
+        // 8. Trả về chi tiết hợp đồng đã được cập nhật
         return mapToDetailResponse(contract);
     }
 
