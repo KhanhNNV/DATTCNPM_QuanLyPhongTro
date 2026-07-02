@@ -4,6 +4,7 @@ import '../../../core/network/api_client.dart';
 import '../models/request/user_update_request.dart';
 import '../models/response/user_model.dart';
 import 'package:http/http.dart' as http;
+import '../../../core/utils/api_error_handler.dart'; // Import bộ xử lý lỗi
 
 class UserRepository {
   final ApiClient _apiClient = ApiClient();
@@ -12,11 +13,13 @@ class UserRepository {
     final response = await _apiClient.get('/api/users/current');
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
       return UserModel.fromJson(data);
-    } else {
-      throw Exception('Không thể lấy thông tin người dùng hiện tại.');
     }
+
+    // Ném lỗi qua Handler
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 
   Future<String> updateSignature(Uint8List imageBytes) async {
@@ -30,16 +33,13 @@ class UserRepository {
     final response = await http.Response.fromStream(streamedResponse);
 
     if (response.statusCode == 200) {
-      return response.body;
-    } else {
-      throw Exception(
-          response.body.isNotEmpty
-              ? response.body
-              : 'Cập nhật chữ ký thất bại. Mã lỗi: ${response.statusCode}'
-      );
+      return utf8.decode(response.bodyBytes);
     }
-  }
 
+    // Ném lỗi qua Handler (áp dụng được cho cả phản hồi dạng stream sau khi convert)
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+  }
 
   Future<UserModel> updateUser(String id, UserUpdateRequest request) async {
     final response = await _apiClient.put(
@@ -48,11 +48,12 @@ class UserRepository {
     );
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
+      final data = jsonDecode(utf8.decode(response.bodyBytes));
       return UserModel.fromJson(data);
-    } else {
-      throw Exception('Cập nhật thông tin thất bại. Mã lỗi: ${response.statusCode}');
     }
-  }
 
+    // Ném lỗi qua Handler
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+  }
 }

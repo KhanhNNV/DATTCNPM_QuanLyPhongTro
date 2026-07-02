@@ -15,6 +15,8 @@ import ut.edu.be_quanlytro.Entity.Enum.RoleType;
 import ut.edu.be_quanlytro.Entity.Enum.RoomStatus;
 import ut.edu.be_quanlytro.Entity.Room;
 import ut.edu.be_quanlytro.Entity.User;
+import ut.edu.be_quanlytro.Exception.BadRequestException;
+import ut.edu.be_quanlytro.Exception.ResourceNotFoundException;
 import ut.edu.be_quanlytro.Repository.AreaRepository;
 import ut.edu.be_quanlytro.Repository.DepositRepository;
 import ut.edu.be_quanlytro.Repository.RoomRepository;
@@ -50,8 +52,9 @@ public class DepositService {
 
         // 3. KIỂM TRA TRẠNG THÁI: Chỉ phòng trống mới được cọc
         if (room.getStatus() != RoomStatus.AVAILABLE) {
-            throw new RuntimeException("Phòng này không trống, không thể nhận cọc!");
+            throw new BadRequestException("Phòng này không trống, không thể nhận cọc!");
         }
+
 
         // 4. Tạo phiếu cọc
         Deposit deposit = Deposit.builder()

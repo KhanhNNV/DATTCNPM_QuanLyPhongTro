@@ -2,6 +2,7 @@ import 'dart:convert';
 import '../../../core/network/api_client.dart';
 import '../models/request/contract_template_request.dart';
 import '../models/response/contract_template_response.dart';
+import '../../../core/utils/api_error_handler.dart'; // Import bộ xử lý lỗi
 
 class ContractTemplateRepository {
   final ApiClient _apiClient = ApiClient();
@@ -12,18 +13,15 @@ class ContractTemplateRepository {
       request.toJson(),
     );
 
-    if (response.statusCode == 200) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
       return ContractTemplateResponse.fromJson(
         jsonDecode(utf8.decode(response.bodyBytes)),
       );
     }
 
-    try {
-      final errorData = jsonDecode(utf8.decode(response.bodyBytes));
-      throw Exception(errorData['message'] ?? 'Tạo mẫu hợp đồng thất bại');
-    } catch (_) {
-      throw Exception('Tạo mẫu hợp đồng thất bại (Mã lỗi: ${response.statusCode})');
-    }
+    // Ném lỗi qua Handler
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 
   Future<ContractTemplateResponse> getTemplateById(String id) async {
@@ -35,8 +33,9 @@ class ContractTemplateRepository {
       );
     }
 
-    _handleError(response);
-    throw Exception('Không thể lấy thông tin mẫu hợp đồng');
+    // Ném lỗi qua Handler
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 
   Future<List<ContractTemplateResponse>> getAllTemplates() async {
@@ -47,8 +46,9 @@ class ContractTemplateRepository {
       return jsonList.map((json) => ContractTemplateResponse.fromJson(json)).toList();
     }
 
-    _handleError(response);
-    return []; // Dummy return
+    // Ném lỗi qua Handler
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 
   Future<ContractTemplateResponse> setActiveTemplate(String id) async {
@@ -63,16 +63,8 @@ class ContractTemplateRepository {
       );
     }
 
-    _handleError(response);
-    throw Exception('Cập nhật mẫu mặc định thất bại');
-  }
-
-  void _handleError(dynamic response) {
-    try {
-      final errorData = jsonDecode(utf8.decode(response.bodyBytes));
-      throw Exception(errorData['message'] ?? 'Lỗi kết nối máy chủ');
-    } catch (_) {
-      throw Exception('Lỗi xử lý hệ thống (Mã lỗi: ${response.statusCode})');
-    }
+    // Ném lỗi qua Handler
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 }

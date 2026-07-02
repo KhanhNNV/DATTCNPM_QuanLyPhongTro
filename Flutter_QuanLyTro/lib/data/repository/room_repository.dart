@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../../../core/network/api_client.dart';
 import '../models/response/room_model.dart';
+import '../../../core/utils/api_error_handler.dart'; // Import bộ xử lý lỗi
 
 class RoomRepository {
   final ApiClient _apiClient = ApiClient();
@@ -27,8 +28,8 @@ class RoomRepository {
           .toList();
     }
 
-    throw Exception(
-      'Không thể tải danh sách phòng',
-    );
+    // Ném lỗi qua Handler
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 }

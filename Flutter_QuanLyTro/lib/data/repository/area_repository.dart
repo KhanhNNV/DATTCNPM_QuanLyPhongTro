@@ -1,6 +1,7 @@
 import 'dart:convert';
 import '../../../core/network/api_client.dart';
 import '../models/response/area_model.dart';
+import '../../../core/utils/api_error_handler.dart';
 
 class AreaRepository {
   final ApiClient _apiClient = ApiClient();
@@ -13,36 +14,52 @@ class AreaRepository {
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       final json = jsonDecode(utf8.decode(response.bodyBytes));
-
       return AreaModel.fromJson(json);
     }
-    throw Exception('Lỗi khởi tạo khu trọ: ${response.body}');
+
+    // Ném lỗi qua Handler
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 
-  //Lấy area của chủ trọ hiện tại
+  // Lấy area của chủ trọ hiện tại
   Future<List<AreaModel>> getAreasByLandlord() async {
     final response = await _apiClient.get('/api/areas');
+
     if (response.statusCode == 200) {
       final List<dynamic> decodedData = jsonDecode(
         utf8.decode(response.bodyBytes),
       );
       return decodedData.map((json) => AreaModel.fromJson(json)).toList();
-    } else {
-      throw Exception('Không thể tải danh sách khu trọ: ${response.body}');
     }
+
+    // Ném lỗi qua Handler
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 
   Future<void> updateArea(String areaId, Map<String, dynamic> payload) async {
-    await _apiClient.put('/api/areas/$areaId', payload);
+    final response = await _apiClient.put('/api/areas/$areaId', payload);
+
+    if (response.statusCode == 200) {
+      return; // Thành công
+    }
+
+    // Ném lỗi qua Handler (Bổ sung thêm catch lỗi cho hàm update)
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 
   Future<AreaModel> getAreaById(String areaId) async {
     final response = await _apiClient.get('/api/areas/$areaId');
+
     if (response.statusCode == 200) {
       final json = jsonDecode(utf8.decode(response.bodyBytes));
       return AreaModel.fromJson(json);
-    } else {
-      throw Exception('Không thể tải chi tiết khu trọ: ${response.body}');
     }
+
+    // Ném lỗi qua Handler
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 }
