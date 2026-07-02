@@ -15,6 +15,9 @@ import ut.edu.be_quanlytro.Repository.AreaServiceRepository;
 import ut.edu.be_quanlytro.Repository.MeterReadingRepository;
 import ut.edu.be_quanlytro.Repository.RoomRepository;
 import ut.edu.be_quanlytro.Repository.UserRepository;
+import org.springframework.security.access.AccessDeniedException;
+import ut.edu.be_quanlytro.Exception.BadRequestException;
+import ut.edu.be_quanlytro.Exception.ResourceNotFoundException;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -33,15 +36,15 @@ public class MeterReadingService {
     @Transactional
     public MeterReading createMeterReading(MeterReadingCreateRequest request, UUID currentUserId){
         Room room = roomRepository.findById(request.getRoomId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phòng!"));
 
-        // VÁ LỖ HỔNG: Kiểm tra xem phòng này có thuộc quyền sở hữu của Chủ trọ đang gọi API không
+        //  Kiểm tra xem phòng này có thuộc quyền sở hữu của Chủ trọ đang gọi API không
         if (!room.getArea().getLandlord().getId().equals(currentUserId)) {
-            throw new RuntimeException("Bạn không có quyền chốt số cho phòng của khu trọ khác!");
+            throw new AccessDeniedException("Bạn không có quyền chốt số cho phòng của khu trọ khác!");
         }
 
         AreaService service = areaServiceRepository.findById(request.getServiceId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy dịch vụ!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dịch vụ!"));
 
         LocalDate exactReadingDate = request.getReadingDate().withDayOfMonth(1);
         Integer oldIndex = 0;
@@ -52,10 +55,10 @@ public class MeterReadingService {
             oldIndex = lastReading.get().getNewIndex();
         }
         if (request.getNewIndex()<oldIndex){
-            throw new RuntimeException(String.format("Lỗi: Chỉ số mới (%d) không được nhỏ hơn chỉ số cũ (%d)!", request.getNewIndex(), oldIndex));
+            throw new BadRequestException(String.format("Lỗi: Chỉ số mới (%d) không được nhỏ hơn chỉ số cũ (%d)!", request.getNewIndex(), oldIndex));
         }
         if(meterReadingRepository.existsByRoomIdAndServiceIdAndReadingMonth(room.getId(),service.getId(),exactReadingDate)){
-            throw new RuntimeException("Phòng này đã được chốt số trong ngày hôm nay rồi!");
+            throw new BadRequestException("Phòng này đã được chốt số trong ngày hôm nay rồi!");
         }
         User landlord = userRepository.getReferenceById(currentUserId);
         MeterReading newReading = MeterReading.builder()
@@ -84,18 +87,18 @@ public class MeterReadingService {
     @Transactional
     public MeterReading updateMeterReading(UUID readingId, Integer newIndex, UUID currentUserId) {
         MeterReading existingReading = meterReadingRepository.findById(readingId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy phiếu chốt số!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phiếu chốt số!"));
 
         if (!existingReading.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
-            throw new RuntimeException("Bạn không có quyền sửa chốt số của khu trọ khác!");
+            throw new AccessDeniedException("Bạn không có quyền sửa chốt số của khu trọ khác!");
         }
 
         if (existingReading.getIsInvoiced()) {
-            throw new RuntimeException("Phiếu này đã được lập hóa đơn, không thể sửa!");
+            throw new BadRequestException("Phiếu này đã được lập hóa đơn, không thể sửa!");
         }
 
         if (newIndex < existingReading.getOldIndex()) {
-            throw new RuntimeException(String.format("Lỗi: Số mới (%d) không được nhỏ hơn số cũ (%d)!", newIndex, existingReading.getOldIndex()));
+            throw new BadRequestException(String.format("Lỗi: Số mới (%d) không được nhỏ hơn số cũ (%d)!", newIndex, existingReading.getOldIndex()));
         }
 
         existingReading.setNewIndex(newIndex);
@@ -121,11 +124,11 @@ public class MeterReadingService {
     @Transactional(readOnly = true)
     public List<MeterReadingResponse> getReadingsByRoomAndMonth(UUID roomId, LocalDate month, UUID currentUserId) { // THÊM THAM SỐ ID
         Room room = roomRepository.findById(roomId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phòng!"));
 
 
         if (!room.getArea().getLandlord().getId().equals(currentUserId)) {
-            throw new RuntimeException("Bạn không có quyền xem dữ liệu của khu trọ khác!");
+            throw new AccessDeniedException("Bạn không có quyền xem dữ liệu của khu trọ khác!");
         }
 
         LocalDate normalizedMonth = month.withDayOfMonth(1);
