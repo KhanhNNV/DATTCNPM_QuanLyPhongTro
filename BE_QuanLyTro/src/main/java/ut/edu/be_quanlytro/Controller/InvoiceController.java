@@ -14,6 +14,7 @@ import ut.edu.be_quanlytro.Dto.Response.InvoiceDetailResponse;
 import ut.edu.be_quanlytro.Dto.Response.InvoiceResponse;
 import ut.edu.be_quanlytro.Dto.Response.PaymentQrResponse;
 import ut.edu.be_quanlytro.Service.InvoiceService;
+import ut.edu.be_quanlytro.Exception.BadRequestException;
 
 import jakarta.validation.Valid;
 
@@ -32,72 +33,72 @@ public class InvoiceController {
     public ResponseEntity<?> createInvoice(
             @Valid @RequestBody InvoiceCreateRequest request,
             @AuthenticationPrincipal Jwt jwt) {
-        try {
             UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
             // Truyền currentUserId xuống tầng Service
             InvoiceResponse response = invoiceService.createInvoice(request, currentUserId);
             return new ResponseEntity<>(response, HttpStatus.CREATED);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
     }
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('LANDLORD', 'TENANT')")
-    public ResponseEntity<?> getInvoiceDetail(
+    public ResponseEntity<InvoiceDetailResponse> getInvoiceDetail(
             @PathVariable UUID id,
             @AuthenticationPrincipal Jwt jwt) {
-        try {
-            UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
-            InvoiceDetailResponse response = invoiceService.getInvoiceDetail(id, currentUserId);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+        InvoiceDetailResponse response = invoiceService.getInvoiceDetail(id, currentUserId);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}/qr-code")
     @PreAuthorize("hasAnyRole('LANDLORD', 'TENANT')")
-    public ResponseEntity<?> getPaymentQrCode(
+    public ResponseEntity<PaymentQrResponse> getPaymentQrCode(
             @PathVariable UUID id,
             @AuthenticationPrincipal Jwt jwt) {
-        try {
-            UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
-            // Truyền currentUserId xuống tầng Service
-            PaymentQrResponse response = invoiceService.generateVietQR(id, currentUserId);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+        PaymentQrResponse response = invoiceService.generateVietQR(id, currentUserId);
+        return ResponseEntity.ok(response);
     }
     @PutMapping("/{id}/confirm-payment")
     @PreAuthorize("hasRole('LANDLORD')")
-    public ResponseEntity<?> confirmPayment(
+    public ResponseEntity<InvoiceResponse> confirmPayment(
             @PathVariable UUID id,
             @AuthenticationPrincipal Jwt jwt) {
-        try {
-            UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
-            InvoiceResponse response = invoiceService.confirmPayment(id, currentUserId);
-            return ResponseEntity.ok(response);
-        } catch (RuntimeException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
-        }
+
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+        InvoiceResponse response = invoiceService.confirmPayment(id, currentUserId);
+        return ResponseEntity.ok(response);
     }
     @PostMapping(value = "/{id}/upload-proof", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<?> uploadPaymentProof(
             @PathVariable UUID id,
             @RequestParam("file") MultipartFile file) {
-        try {
-            if (file.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("message", "File ảnh không được để trống!"));
-            }
 
-            // Gọi service xử lý (Hàm này bên trong đã đổi sang gọi CloudinaryService rồi)
-            invoiceService.uploadPaymentProof(id, file);
-
-            return ResponseEntity.ok(Map.of("message", "Gửi minh chứng lên Cloud thành công! Đang chờ chủ trọ phê duyệt."));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("message", "Lỗi khi upload: " + e.getMessage()));
+        if (file.isEmpty()) {
+            throw new BadRequestException("File ảnh không được để trống!");
         }
+
+        invoiceService.uploadPaymentProof(id, file);
+        return ResponseEntity.ok(Map.of("message", "Gửi minh chứng lên Cloud thành công! Đang chờ chủ trọ phê duyệt."));
+    }
+    /**
+     * API Chủ trọ từ chối minh chứng thanh toán
+     */
+    @PutMapping("/{id}/reject-payment")
+    @PreAuthorize("hasRole('LANDLORD')")
+    public ResponseEntity<InvoiceResponse> rejectPaymentProof(
+            @PathVariable UUID id,
+            @RequestParam("reason") String reason,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new BadRequestException("Lý do từ chối không được để trống!");
+        }
+
+        InvoiceResponse response = invoiceService.rejectPaymentProof(id, reason, currentUserId);
+        return ResponseEntity.ok(response);
     }
 }

@@ -14,6 +14,9 @@ import ut.edu.be_quanlytro.Entity.Enum.ContractStatus;
 import ut.edu.be_quanlytro.Entity.Enum.InvoiceStatus;
 import ut.edu.be_quanlytro.Entity.Enum.NotificationType;
 import ut.edu.be_quanlytro.Repository.*;
+import org.springframework.security.access.AccessDeniedException;
+import ut.edu.be_quanlytro.Exception.BadRequestException;
+import ut.edu.be_quanlytro.Exception.ResourceNotFoundException;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -41,7 +44,7 @@ public class InvoiceService {
         LocalDate normalizedPeriod = request.getInvoicePeriod().withDayOfMonth(1);
 
         if (invoiceRepository.existsByRoomIdAndInvoicePeriod(request.getRoomId(), normalizedPeriod)) {
-            throw new RuntimeException("Phòng này đã được tạo hóa đơn cho kỳ " + normalizedPeriod);
+            throw new BadRequestException("Phòng này đã được tạo hóa đơn cho kỳ " + normalizedPeriod);
         }
 
         Contract contract = contractRepository.findByRoomId(request.getRoomId()).stream()
@@ -110,7 +113,7 @@ public class InvoiceService {
                 case BY_INDEX:
                     MeterReading reading = meterReadingRepository.
                             findFirstByRoomIdAndServiceIdAndIsInvoicedFalse(room.getId(), service.getId())
-                            .orElseThrow(() -> new RuntimeException("Chưa chốt số " + service.getName() + " cho phòng này!"));
+                            .orElseThrow(() -> new BadRequestException("Chưa chốt số " + service.getName() + " cho phòng này!"));
                     int usage = reading.getNewIndex() - reading.getOldIndex();
                     detail.setOldIndex(reading.getOldIndex());
                     detail.setNewIndex(reading.getNewIndex());
@@ -174,13 +177,13 @@ public class InvoiceService {
     @Transactional(readOnly = true)
     public InvoiceDetailResponse getInvoiceDetail(UUID invoiceId, UUID currentUserId) {
         Invoice invoice = invoiceRepository.findById(invoiceId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn yêu cầu!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hóa đơn yêu cầu!"));
 
         boolean isLandlord = invoice.getRoom().getArea().getLandlord().getId().equals(currentUserId);
         boolean isTenant = invoice.getContract().getTenant().getId().equals(currentUserId);
 
         if (!isLandlord && !isTenant) {
-            throw new RuntimeException("Bạn không có quyền xem hóa đơn của phòng này!");
+            throw new AccessDeniedException("Bạn không có quyền xem hóa đơn của phòng này!");
         }
 
         List<InvoiceDetail> details = invoiceDetailRepository.findByInvoiceId(invoiceId);
@@ -213,19 +216,19 @@ public class InvoiceService {
     public PaymentQrResponse generateVietQR(UUID invoiceId, UUID currentUserId) {
 
         Invoice invoice = invoiceRepository.findById(invoiceId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hóa đơn!"));
 
         boolean isLandlord = invoice.getRoom().getArea().getLandlord().getId().equals(currentUserId);
         boolean isTenant = invoice.getContract().getTenant().getId().equals(currentUserId);
 
         if (!isLandlord && !isTenant) {
-            throw new RuntimeException("Bạn không có quyền lấy mã QR thanh toán của phòng này!");
+            throw new AccessDeniedException("Bạn không có quyền lấy mã QR thanh toán của phòng này!");
         }
 
         User landlord = invoice.getRoom().getArea().getLandlord();
 
         if (landlord.getBankId() == null || landlord.getAccountNo() == null || landlord.getAccountName() == null) {
-            throw new RuntimeException("Chủ trọ chưa cấu hình thông tin tài khoản ngân hàng để nhận thanh toán!");
+            throw new BadRequestException("Chủ trọ chưa cấu hình thông tin tài khoản ngân hàng để nhận thanh toán!");
         }
         String bankId = landlord.getBankId();
         String accountNo = landlord.getAccountNo();
@@ -259,20 +262,28 @@ public class InvoiceService {
     @Transactional
     public InvoiceResponse confirmPayment(UUID invoiceId, UUID currentUserId) {
         Invoice invoice = invoiceRepository.findById(invoiceId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hóa đơn!"));
 
         if (!invoice.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
-            throw new RuntimeException("Bạn không có quyền xác nhận thanh toán cho hóa đơn này!");
+            throw new AccessDeniedException("Bạn không có quyền xác nhận thanh toán cho hóa đơn này!");
         }
 
         if (invoice.getStatus() == InvoiceStatus.PAID) {
-            throw new RuntimeException("Hóa đơn này đã được xác nhận thanh toán từ trước!");
+            throw new BadRequestException("Hóa đơn này đã được xác nhận thanh toán từ trước!");
         }
 
         invoice.setStatus(InvoiceStatus.PAID);
         invoice.setPaidAt(java.time.LocalDateTime.now());
 
         invoice = invoiceRepository.save(invoice);
+        String title = "Thanh toán thành công!";
+        String content = "Chủ trọ đã xác nhận minh chứng thanh toán cho hóa đơn phòng " + invoice.getRoom().getRoomNumber() + ". Cảm ơn bạn!";
+        notificationService.createNotification(
+                invoice.getContract().getTenant(),
+                title,
+                content,
+                NotificationType.PAYMENT_APPROVED
+        );
 
         return convertToResponse(invoice);
     }
@@ -334,10 +345,10 @@ public class InvoiceService {
     public void uploadPaymentProof(UUID invoiceId, MultipartFile file) {
 
         Invoice invoice = invoiceRepository.findById(invoiceId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hóa đơn"));
 
         if (invoice.getStatus() != InvoiceStatus.UNPAID && invoice.getStatus() != InvoiceStatus.OVERDUE) {
-            throw new RuntimeException("Chỉ có thể gửi minh chứng cho hóa đơn chưa thanh toán hoặc quá hạn!");
+            throw new BadRequestException("Chỉ có thể gửi minh chứng cho hóa đơn chưa thanh toán hoặc quá hạn!");
         }
 
 
@@ -357,5 +368,46 @@ public class InvoiceService {
                 content,
                 NotificationType.PAYMENT_APPROVED
         );
+    }
+
+    /**
+     * UC24: TỪ CHỐI MINH CHỨNG THANH TOÁN (CHỦ TRỌ)
+     */
+    @Transactional
+    public InvoiceResponse rejectPaymentProof(UUID invoiceId, String reason, UUID currentUserId) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hóa đơn!"));
+
+        if (!invoice.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
+            throw new AccessDeniedException("Bạn không có quyền từ chối thanh toán cho hóa đơn này!");
+        }
+
+        if (invoice.getStatus() != InvoiceStatus.PENDING) {
+            throw new BadRequestException("Hóa đơn này không ở trạng thái chờ duyệt minh chứng!");
+        }
+
+        LocalDate today = LocalDate.now();
+        if (today.isAfter(invoice.getDueDate())) {
+            invoice.setStatus(InvoiceStatus.OVERDUE); // Quá hạn rồi thì phạt OVERDUE
+        } else {
+            invoice.setStatus(InvoiceStatus.UNPAID);  // Chưa quá hạn thì trả về UNPAID cho đóng lại
+        }
+
+        // 5. Xóa link ảnh minh chứng cũ để khách thuê biết đường upload ảnh mới lên thay thế
+        invoice.setPaymentProofUrl(null);
+        invoice = invoiceRepository.save(invoice);
+
+        String title = "Minh chứng thanh toán bị từ chối!";
+        String content = String.format("Chủ trọ không duyệt minh chứng phòng %s. Lý do: %s. Vui lòng kiểm tra và gửi lại nhé!",
+                invoice.getRoom().getRoomNumber(), reason);
+
+        notificationService.createNotification(
+                invoice.getContract().getTenant(),
+                title,
+                content,
+                NotificationType.PAYMENT_REJECTED
+        );
+
+        return convertToResponse(invoice);
     }
 }
