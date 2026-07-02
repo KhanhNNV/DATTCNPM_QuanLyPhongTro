@@ -16,6 +16,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder; // Thêm import này nếu chưa có
 import org.springframework.stereotype.Service;
+import ut.edu.be_quanlytro.Exception.BadRequestException;
+import ut.edu.be_quanlytro.Exception.ResourceNotFoundException;
 
 import java.util.Optional;
 
@@ -64,7 +66,7 @@ public class AuthenticationService {
     public void register(RegisterRequest request) {
         // 1. Kiểm tra xem Số điện thoại này đã có ai đăng ký chưa
         if (userRepository.existsByPhone(request.getPhone())) {
-            throw new RuntimeException("Số điện thoại này đã được sử dụng hệ thống!");
+            throw new BadRequestException("Số điện thoại này đã được sử dụng hệ thống!");
         }
 
         // 2. Build Object User: Đăng ký tự do trên app/web mặc định là CHỦ TRỌ
@@ -73,6 +75,8 @@ public class AuthenticationService {
                 .password(passwordEncoder.encode(request.getPassword()))
                 .role(RoleType.LANDLORD)
                 .fullName(request.getFullName())
+                .idCardNumber(request.getIdCardNumber())
+                .hometown(request.getHometown())
                 .isFirstLogin(false)
                 .build();
 
@@ -80,9 +84,9 @@ public class AuthenticationService {
     }
     public void changePassword(ChangePasswordRequest request, String phone) {
         User user = userRepository.findByPhone(phone)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng!"));
         if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
-            throw new RuntimeException("Mật khẩu hiện tại không chính xác!");
+            throw new BadRequestException("Mật khẩu hiện tại không chính xác!");
         }
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         user.setIsFirstLogin(false);
@@ -94,13 +98,13 @@ public class AuthenticationService {
         try {
             // 1. Kiểm tra tính hợp lệ của Token
             if (refreshToken == null || !jwtService.verifyToken(refreshToken)) {
-                throw new RuntimeException("Refresh Token không hợp lệ hoặc đã hết hạn");
+                throw new BadRequestException("Refresh Token không hợp lệ hoặc đã hết hạn");
             }
 
             // 2. Lấy SĐT và tìm User
             String phone = jwtService.extractPhone(refreshToken);
             User user = userRepository.findByPhone(phone)
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng hệ thống"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng hệ thống"));
 
             // 3. Tạo Access Token mới cứng
             String newAccessToken = jwtService.generateAccessToken(user, null, null);
@@ -112,7 +116,7 @@ public class AuthenticationService {
                     .build();
 
         } catch (Exception e) {
-            throw new RuntimeException("Lỗi xác thực Refresh Token");
+            throw new BadRequestException("Lỗi xác thực Refresh Token");
         }
     }
     public void logout(String accessToken, String refreshToken) {
