@@ -15,12 +15,15 @@ public class CloudinaryService {
 
     private final Cloudinary cloudinary;
 
-    // ================= UPLOAD FILE =================
+    // ================= 1. UPLOAD FILE =================
     public String uploadFile(MultipartFile multipartFile, String folderName) {
         try {
             Map uploadResult = cloudinary.uploader().upload(
                     multipartFile.getBytes(),
-                    ObjectUtils.asMap("folder", folderName)
+                    ObjectUtils.asMap(
+                            "folder", folderName,
+                            "resource_type", "auto" // Lệnh phép thuật giúp nhận diện đúng file PDF/Word
+                    )
             );
             return uploadResult.get("secure_url").toString();
         } catch (IOException e) {
@@ -28,7 +31,7 @@ public class CloudinaryService {
         }
     }
 
-    // ================= XÓA FILE TRÊN CLOUD =================
+    // ================= 2. XÓA FILE TRÊN CLOUD (Đã fix lỗi không xóa được PDF) =================
     public void deleteFile(String url) {
         if (url == null || url.isEmpty()) {
             return;
@@ -36,8 +39,16 @@ public class CloudinaryService {
         try {
             String publicId = extractPublicId(url);
             if (publicId != null) {
-                // Gọi lệnh destroy của Cloudinary SDK để xóa file tận gốc
-                cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+                // Xác định kiểu file để Cloudinary xóa cho đúng (image, video, hay raw)
+                String resourceType = "image"; // Mặc định là ảnh
+                if (url.contains("/raw/upload/")) {
+                    resourceType = "raw"; // Dành cho file PDF, DOCX, ZIP...
+                } else if (url.contains("/video/upload/")) {
+                    resourceType = "video"; // Dành cho Video
+                }
+
+                // Gọi lệnh destroy kèm theo resource_type
+                cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", resourceType));
             }
         } catch (IOException e) {
             throw new RuntimeException("Lỗi xảy ra trong quá trình xóa file trên Cloudinary: " + e.getMessage());
@@ -45,8 +56,6 @@ public class CloudinaryService {
     }
 
     // ================= HÀM BỔ TRỢ: BÓC TÁCH PUBLIC_ID TỪ URL =================
-    // Ví dụ URL: https://res.cloudinary.com/dqg0ynz6p/image/upload/v1780899770/signatures/gsf0x3cafa2yzzfqibeg.jpg
-    // Kết quả bóc tách cần đạt: "signatures/gsf0x3cafa2yzzfqibeg"
     private String extractPublicId(String url) {
         if (!url.contains("/upload/")) {
             return null;
@@ -55,12 +64,12 @@ public class CloudinaryService {
         // 1. Cắt bỏ phần đầu, lấy từ sau chữ "/upload/" trở đi
         String partAfterUpload = url.substring(url.indexOf("/upload/") + 8);
 
-        // 2. Nếu có phần version (bắt đầu bằng chữ 'v' và các chữ số, ví dụ: v1780899770/) thì cắt bỏ tiếp
+        // 2. Nếu có phần version (bắt đầu bằng chữ 'v' và các chữ số) thì cắt bỏ tiếp
         if (partAfterUpload.startsWith("v")) {
             partAfterUpload = partAfterUpload.substring(partAfterUpload.indexOf("/") + 1);
         }
 
-        // 3. Cắt bỏ phần đuôi mở rộng (.jpg, .png, .mp4...)
+        // 3. Cắt bỏ phần đuôi mở rộng (.jpg, .png, .mp4, .pdf...)
         int dotIndex = partAfterUpload.lastIndexOf(".");
         if (dotIndex != -1) {
             return partAfterUpload.substring(0, dotIndex);

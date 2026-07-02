@@ -214,4 +214,28 @@ public class ContractController {
         // Gọi Service và trả kết quả
         return ResponseEntity.ok(contractService.uploadContractFile(id, file, currentUserId));
     }
+    // ================= XEM TRỰC TIẾP HỢP ĐỒNG PDF (INLINE) =================
+    @GetMapping("/view/pdf/{id}")
+    public ResponseEntity<byte[]> viewContractPdf(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        // 1. Lấy ID người dùng từ Token
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+
+        // 2. Gọi Service để lấy mảng byte của file PDF (Tận dụng lại hàm cũ)
+        byte[] pdfBytes = contractService.downloadContractPdf(id, currentUserId);
+
+        // 3. Cấu hình Header yêu cầu trình duyệt HIỂN THỊ TRỰC TIẾP
+        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_PDF);
+
+        // Cú pháp 'inline' quyết định việc file sẽ được mở trên trình duyệt
+        headers.add(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=HopDong_" + id + ".pdf");
+
+        // 4. Trả về kết quả
+        return org.springframework.http.ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfBytes);
+    }
 }
