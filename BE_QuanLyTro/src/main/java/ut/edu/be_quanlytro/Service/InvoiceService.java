@@ -273,6 +273,14 @@ public class InvoiceService {
         invoice.setPaidAt(java.time.LocalDateTime.now());
 
         invoice = invoiceRepository.save(invoice);
+        String title = "Thanh toán thành công!";
+        String content = "Chủ trọ đã xác nhận minh chứng thanh toán cho hóa đơn phòng " + invoice.getRoom().getRoomNumber() + ". Cảm ơn bạn!";
+        notificationService.createNotification(
+                invoice.getContract().getTenant(),
+                title,
+                content,
+                NotificationType.PAYMENT_APPROVED
+        );
 
         return convertToResponse(invoice);
     }
@@ -357,5 +365,46 @@ public class InvoiceService {
                 content,
                 NotificationType.PAYMENT_APPROVED
         );
+    }
+
+    /**
+     * UC24: TỪ CHỐI MINH CHỨNG THANH TOÁN (CHỦ TRỌ)
+     */
+    @Transactional
+    public InvoiceResponse rejectPaymentProof(UUID invoiceId, String reason, UUID currentUserId) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy hóa đơn!"));
+
+        if (!invoice.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
+            throw new RuntimeException("Bạn không có quyền từ chối thanh toán cho hóa đơn này!");
+        }
+
+        if (invoice.getStatus() != InvoiceStatus.PENDING) {
+            throw new RuntimeException("Hóa đơn này không ở trạng thái chờ duyệt minh chứng!");
+        }
+
+        LocalDate today = LocalDate.now();
+        if (today.isAfter(invoice.getDueDate())) {
+            invoice.setStatus(InvoiceStatus.OVERDUE); // Quá hạn rồi thì phạt OVERDUE
+        } else {
+            invoice.setStatus(InvoiceStatus.UNPAID);  // Chưa quá hạn thì trả về UNPAID cho đóng lại
+        }
+
+        // 5. Xóa link ảnh minh chứng cũ để khách thuê biết đường upload ảnh mới lên thay thế
+        invoice.setPaymentProofUrl(null);
+        invoice = invoiceRepository.save(invoice);
+
+        String title = "Minh chứng thanh toán bị từ chối!";
+        String content = String.format("Chủ trọ không duyệt minh chứng phòng %s. Lý do: %s. Vui lòng kiểm tra và gửi lại nhé!",
+                invoice.getRoom().getRoomNumber(), reason);
+
+        notificationService.createNotification(
+                invoice.getContract().getTenant(),
+                title,
+                content,
+                NotificationType.PAYMENT_REJECTED
+        );
+
+        return convertToResponse(invoice);
     }
 }

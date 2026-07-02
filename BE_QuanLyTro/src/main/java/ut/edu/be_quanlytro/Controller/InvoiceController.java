@@ -100,4 +100,26 @@ public class InvoiceController {
             return ResponseEntity.badRequest().body(Map.of("message", "Lỗi khi upload: " + e.getMessage()));
         }
     }
+    /**
+     * API Chủ trọ từ chối minh chứng thanh toán
+     */
+    @PutMapping("/{id}/reject-payment")
+    @PreAuthorize("hasRole('LANDLORD')")
+    public ResponseEntity<?> rejectPaymentProof(
+            @PathVariable UUID id,
+            @RequestParam("reason") String reason,
+            @AuthenticationPrincipal Jwt jwt) {
+        try {
+            UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+
+            if (reason == null || reason.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("message", "Lý do từ chối không được để trống!"));
+            }
+
+            InvoiceResponse response = invoiceService.rejectPaymentProof(id, reason, currentUserId);
+            return ResponseEntity.ok(response);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
 }
