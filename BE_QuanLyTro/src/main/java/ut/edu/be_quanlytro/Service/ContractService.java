@@ -53,6 +53,10 @@ public class ContractService {
         if (landlord.getLandlordSignature() == null || landlord.getLandlordSignature().isEmpty()) {
             throw new BadRequestException("Vui lòng thiết lập chữ ký số cá nhân trước khi lập hợp đồng!");
         }
+        if (landlord.getIdCardNumber() == null || landlord.getIdCardNumber().isEmpty() ||
+                landlord.getHometown() == null || landlord.getHometown().isEmpty()) {
+            throw new BadRequestException("Vui lòng cập nhật đầy đủ số CCCD và Quê quán trong Hồ sơ cá nhân trước khi lập hợp đồng!");
+        }
 
         //Chỉ cho phép tạo hợp đồng khi phòng trống hoặc phòng đã nhận cọc
         if (room.getStatus() != RoomStatus.AVAILABLE && room.getStatus() != RoomStatus.DEPOSITED) {
@@ -135,6 +139,8 @@ public class ContractService {
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
                 .landlordSignature(landlord.getLandlordSignature())
+                .landlordIdCardNumber(landlord.getIdCardNumber())
+                .landlordHometown(landlord.getHometown())
                 .depositAmount(pendingDeposit != null ? pendingDeposit.getDepositAmount() : request.getDepositAmount())
                 .status(ContractStatus.DRAFT)
                 .members(new ArrayList<>())
@@ -198,6 +204,10 @@ public class ContractService {
         if (landlord.getLandlordSignature() == null || landlord.getLandlordSignature().isEmpty()) {
             throw new BadRequestException("Vui lòng thiết lập chữ ký số cá nhân trước khi lập hợp đồng!");
         }
+        if (landlord.getIdCardNumber() == null || landlord.getIdCardNumber().isEmpty() ||
+                landlord.getHometown() == null || landlord.getHometown().isEmpty()) {
+            throw new BadRequestException("Vui lòng cập nhật đầy đủ số CCCD và Quê quán trong Hồ sơ cá nhân trước khi lập hợp đồng!");
+        }
 
         // Chỉ cho phép tạo hợp đồng khi phòng trống hoặc phòng đã nhận cọc
         if (room.getStatus() != RoomStatus.AVAILABLE && room.getStatus() != RoomStatus.DEPOSITED) {
@@ -260,6 +270,8 @@ public class ContractService {
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
                 .landlordSignature(landlord.getLandlordSignature())
+                .landlordIdCardNumber(landlord.getIdCardNumber())
+                .landlordHometown(landlord.getHometown())
                 .depositAmount(pendingDeposit != null ? pendingDeposit.getDepositAmount() : request.getDepositAmount())
                 .status(ContractStatus.DRAFT)
                 .members(new ArrayList<>())
@@ -818,9 +830,9 @@ public class ContractService {
 
                 // --- THÔNG TIN NGƯỜI TẠO (CHỦ TRỌ) ---
                 .landlordName(contract.getCreator().getFullName())
-                .landlordIdCardNumber(contract.getCreator().getIdCardNumber())
-                .landlordAddress(contract.getCreator().getHometown())
-                .landlordSignatureUrl(contract.getLandlordSignature()) // Lấy chữ ký đã đóng băng lúc tạo hợp đồng
+                .landlordIdCardNumber(contract.getLandlordIdCardNumber())
+                .landlordHometown(contract.getLandlordHometown())
+                .landlordSignatureUrl(contract.getLandlordSignature())
 
                 // --- THÔNG TIN KHÁCH THUÊ ĐỨNG TÊN ---
                 .tenantId(contract.getTenant().getId())
