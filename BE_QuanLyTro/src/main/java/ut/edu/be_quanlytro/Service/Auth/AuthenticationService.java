@@ -1,5 +1,6 @@
 package ut.edu.be_quanlytro.Service.Auth;
 
+import org.springframework.transaction.annotation.Transactional;
 import ut.edu.be_quanlytro.Dto.Request.ChangePasswordRequest;
 import ut.edu.be_quanlytro.Dto.Request.LoginRequest;
 import ut.edu.be_quanlytro.Dto.Request.RegisterRequest;
@@ -32,6 +33,7 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final TokenBlacklistService tokenBlacklistService;
 
+    @Transactional
     public LoginResponse login(LoginRequest request) {
         // 1. Xác thực thông tin qua Spring Security bằng SĐT và Password
         Authentication auth = authenticationManager.authenticate(
