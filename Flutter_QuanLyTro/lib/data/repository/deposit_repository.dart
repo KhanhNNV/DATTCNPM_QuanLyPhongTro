@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../../../core/network/api_client.dart';
+import '../../core/utils/api_error_handler.dart';
 import '../models/request/deposit_create_request.dart';
 import '../models/request/deposit_update_request.dart';
 import '../models/response/deposit_response.dart';
@@ -21,7 +22,8 @@ class DepositRepository {
       final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
       return data.map((json) => DepositResponse.fromJson(json)).toList();
     }
-    throw Exception('Không thể tải danh sách phiếu đặt cọc');
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 
   Future<DepositResponse> createDeposit(
@@ -40,9 +42,8 @@ class DepositRepository {
       );
     }
 
-    throw Exception(
-      'Tạo phiếu đặt cọc thất bại',
-    );
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 
   Future<DepositResponse> getDepositById(String depositId) async {
@@ -54,12 +55,8 @@ class DepositRepository {
       );
     }
 
-    try {
-      final errorData = jsonDecode(utf8.decode(response.bodyBytes));
-      throw Exception(errorData['message'] ?? 'Không thể tải thông tin chi tiết phiếu cọc');
-    } catch (_) {
-      throw Exception('Không thể tải thông tin chi tiết phiếu cọc (Mã lỗi: ${response.statusCode})');
-    }
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 
   Future<DepositResponse> updateDeposit(String depositId, DepositUpdateRequest request) async {
@@ -74,12 +71,8 @@ class DepositRepository {
       );
     }
 
-    try {
-      final errorData = jsonDecode(utf8.decode(response.bodyBytes));
-      throw Exception(errorData['message'] ?? 'Cập nhật phiếu đặt cọc thất bại');
-    } catch (_) {
-      throw Exception('Cập nhật phiếu đặt cọc thất bại (Mã lỗi: ${response.statusCode})');
-    }
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 
 }

@@ -3,10 +3,10 @@ import '../../../core/network/api_client.dart';
 import '../models/request/meter_reading_create_request.dart';
 import '../models/request/meter_reading_bulk_update_request.dart';
 import '../models/response/meter_reading_response.dart';
+import '../../../core/utils/api_error_handler.dart'; // Import bộ xử lý lỗi
 
 class MeterReadingRepository {
   final ApiClient _apiClient = ApiClient();
-
 
   Future<List<MeterReadingResponse>> getMeterReadings(String roomId, DateTime month) async {
     final String formattedDate = "${month.year}-${month.month.toString().padLeft(2, '0')}-01";
@@ -19,7 +19,9 @@ class MeterReadingRepository {
       return data.map((json) => MeterReadingResponse.fromJson(json)).toList();
     }
 
-    throw Exception('Không thể tải chỉ số điện nước: ${response.body}');
+    // Ném lỗi qua Handler
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 
   Future<List<MeterReadingResponse>> createBulkMeterReadings(
@@ -31,14 +33,15 @@ class MeterReadingRepository {
 
     final response = await _apiClient.post(endpoint, body);
 
-    if (response.statusCode == 201) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
       final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
       return data.map((json) => MeterReadingResponse.fromJson(json)).toList();
     }
 
-    throw Exception('Không thể lưu chỉ số điện/nước hàng loạt: ${response.body}');
+    // Ném lỗi qua Handler
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
-
 
   Future<List<MeterReadingResponse>> updateBulkMeterReadings(
       List<MeterReadingBulkUpdateRequest> requests) async {
@@ -54,6 +57,8 @@ class MeterReadingRepository {
       return data.map((json) => MeterReadingResponse.fromJson(json)).toList();
     }
 
-    throw Exception('Không thể cập nhật chỉ số điện/nước: ${response.body}');
+    // Ném lỗi qua Handler
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 }

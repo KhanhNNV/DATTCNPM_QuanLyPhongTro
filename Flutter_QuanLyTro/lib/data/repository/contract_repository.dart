@@ -5,10 +5,10 @@ import '../models/request/contract_create_manual_request.dart';
 import '../models/request/contract_create_request.dart';
 import '../models/response/contract_create_response.dart';
 import '../models/response/contract_detail_response.dart';
+import '../../../core/utils/api_error_handler.dart'; // Import bộ xử lý lỗi
 
 class ContractRepository {
   final ApiClient _apiClient = ApiClient();
-
 
   Future<ContractCreateResponse> createContractOcr({
     required ContractCreateRequest dataRequest,
@@ -18,7 +18,7 @@ class ContractRepository {
     final response = await _apiClient.postMultipart(
       '/api/contracts/create',
       fields: {
-        'data': dataRequest.toJson(), 
+        'data': dataRequest.toJson(),
       },
       files: {
         'frontImage': frontImage,
@@ -31,7 +31,9 @@ class ContractRepository {
       return ContractCreateResponse.fromJson(json);
     }
 
-    throw Exception('Quá trình lập hợp đồng thất bại: ${response.body}');
+    // Ném lỗi qua Handler
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 
   Future<ContractCreateResponse> createContractManual(ContractCreateManualRequest request) async {
@@ -45,7 +47,9 @@ class ContractRepository {
       return ContractCreateResponse.fromJson(json);
     }
 
-    throw Exception('Quá trình lập hợp đồng thủ công thất bại: ${response.body}');
+    // Ném lỗi qua Handler
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 
   Future<List<ContractDetailResponse>> getMyContracts() async {
@@ -54,9 +58,11 @@ class ContractRepository {
     if (response.statusCode == 200) {
       final List<dynamic> jsonList = jsonDecode(utf8.decode(response.bodyBytes));
       return jsonList.map((json) => ContractDetailResponse.fromJson(json)).toList();
-    } else {
-      throw Exception('Không thể tải danh sách hợp đồng từ hệ thống!');
     }
+
+    // Ném lỗi qua Handler
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 
   Future<ContractDetailResponse> getContractDetail(String contractId) async {
@@ -67,7 +73,9 @@ class ContractRepository {
       return ContractDetailResponse.fromJson(json);
     }
 
-    throw Exception('Không thể tải thông tin chi tiết hợp đồng!');
+    // Ném lỗi qua Handler
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 
   Future<ContractDetailResponse> uploadContractFile(String contractId, File file) async {
@@ -84,6 +92,8 @@ class ContractRepository {
       return ContractDetailResponse.fromJson(json);
     }
 
-    throw Exception('Lỗi tải file đính kèm hợp đồng lên: ${response.body}');
+    // Ném lỗi qua Handler
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 }
