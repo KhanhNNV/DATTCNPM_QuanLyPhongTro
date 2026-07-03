@@ -1,6 +1,7 @@
 package ut.edu.be_quanlytro.Service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException; // Thêm import 403
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ut.edu.be_quanlytro.Dto.Request.AreaRequest;
@@ -11,6 +12,7 @@ import ut.edu.be_quanlytro.Entity.AreaService;
 import ut.edu.be_quanlytro.Entity.Enum.RoomStatus;
 import ut.edu.be_quanlytro.Entity.Room;
 import ut.edu.be_quanlytro.Entity.User;
+import ut.edu.be_quanlytro.Exception.ResourceNotFoundException; // Thêm import 404
 import ut.edu.be_quanlytro.Repository.AreaRepository;
 import ut.edu.be_quanlytro.Repository.AreaServiceRepository;
 import ut.edu.be_quanlytro.Repository.RoomRepository;
@@ -40,10 +42,10 @@ public class AreaManagementService {
 
         // 1. Kiểm tra chủ trọ
         User landlord = userRepository.findById(landlordId)
-                .orElseThrow(() -> new RuntimeException("Chủ trọ không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Chủ trọ không tồn tại"));
 
         if(landlord.getRole() != RoleType.LANDLORD) {
-            throw new RuntimeException("Bạn không có quyền thực hiện chức năng này vì không phải là chủ trọ");
+            throw new AccessDeniedException("Bạn không có quyền thực hiện chức năng này vì không phải là chủ trọ");
         }
         // Kiểm tra xem request có gửi thông tin ngân hàng lên không
         if (request.getBankId() != null && !request.getBankId().trim().isEmpty()) {
@@ -150,13 +152,13 @@ public class AreaManagementService {
 
         // 2. Tìm thông tin người dùng đang gọi API
         User currentUser = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại trong hệ thống"));
+                .orElseThrow(() -> new ResourceNotFoundException("Người dùng không tồn tại trong hệ thống"));
 
         // 3. KIỂM TRA BẢO MẬT: Nếu là Chủ trọ thì chỉ được xem khu của mình
         if (currentUser.getRole() == RoleType.LANDLORD) {
             // So sánh ID của chủ khu trọ với ID của người đang đăng nhập
             if (!area.getLandlord().getId().equals(currentUserId)) {
-                throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xem khu trọ của người khác.");
+                throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền xem khu trọ của người khác.");
             }
         }
 
@@ -169,7 +171,7 @@ public class AreaManagementService {
 
     public Area getAreaEntityById(UUID id) {
         return areaRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy khu trọ"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khu trọ"));
     }
 
     // ================= UPDATE =================
@@ -179,7 +181,7 @@ public class AreaManagementService {
 
         // 🔒 KIỂM TRA BẢO MẬT: Xác nhận quyền sở hữu
         if (!area.getLandlord().getId().equals(landlordId)) {
-            throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền chỉnh sửa khu trọ của người khác.");
+            throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền chỉnh sửa khu trọ của người khác.");
         }
 
         // Cập nhật các trường thông tin nếu có truyền lên
@@ -204,7 +206,7 @@ public class AreaManagementService {
 
         // 🔒 KIỂM TRA BẢO MẬT: Xác nhận quyền sở hữu
         if (!area.getLandlord().getId().equals(landlordId)) {
-            throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xóa khu trọ của người khác.");
+            throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền xóa khu trọ của người khác.");
         }
 
         // ==========================================

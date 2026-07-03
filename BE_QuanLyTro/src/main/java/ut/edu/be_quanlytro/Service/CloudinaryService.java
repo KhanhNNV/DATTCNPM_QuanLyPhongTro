@@ -5,6 +5,7 @@ import com.cloudinary.utils.ObjectUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import ut.edu.be_quanlytro.Exception.BadRequestException;
 
 import java.io.IOException;
 import java.util.Map;
@@ -27,7 +28,7 @@ public class CloudinaryService {
             );
             return uploadResult.get("secure_url").toString();
         } catch (IOException e) {
-            throw new RuntimeException("Lỗi xảy ra trong quá trình upload file lên Cloudinary: " + e.getMessage());
+            throw new BadRequestException("Lỗi xử lý file khi upload lên Cloudinary: " + e.getMessage());
         }
     }
 
@@ -51,7 +52,7 @@ public class CloudinaryService {
                 cloudinary.uploader().destroy(publicId, ObjectUtils.asMap("resource_type", resourceType));
             }
         } catch (IOException e) {
-            throw new RuntimeException("Lỗi xảy ra trong quá trình xóa file trên Cloudinary: " + e.getMessage());
+            throw new BadRequestException("Lỗi xảy ra trong quá trình xóa file trên Cloudinary: " + e.getMessage());
         }
     }
 

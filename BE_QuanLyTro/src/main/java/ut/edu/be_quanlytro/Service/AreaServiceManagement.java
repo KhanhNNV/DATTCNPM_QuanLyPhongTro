@@ -1,6 +1,7 @@
 package ut.edu.be_quanlytro.Service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException; // Thêm import 403
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ut.edu.be_quanlytro.Dto.Request.AreaServiceRequest;
@@ -9,6 +10,8 @@ import ut.edu.be_quanlytro.Entity.Area;
 import ut.edu.be_quanlytro.Entity.AreaService;
 import ut.edu.be_quanlytro.Entity.Enum.RoleType;
 import ut.edu.be_quanlytro.Entity.User;
+import ut.edu.be_quanlytro.Exception.BadRequestException; // Thêm import 400
+import ut.edu.be_quanlytro.Exception.ResourceNotFoundException; // Thêm import 404
 import ut.edu.be_quanlytro.Repository.AreaServiceRepository;
 import ut.edu.be_quanlytro.Repository.UserRepository;
 
@@ -33,12 +36,12 @@ public class AreaServiceManagement {
 
         // 🔒 KIỂM TRA BẢO MẬT: Xác nhận quyền sở hữu khu trọ
         if (!area.getLandlord().getId().equals(landlordId)) {
-            throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền thêm dịch vụ cho khu trọ của người khác.");
+            throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền thêm dịch vụ cho khu trọ của người khác.");
         }
 
         // 2. Kiểm tra xem dịch vụ đã tồn tại chưa
         if (areaServiceRepository.existsByAreaIdAndName(areaId, request.getName())) {
-            throw new RuntimeException("Dịch vụ này đã tồn tại trong khu trọ");
+            throw new BadRequestException("Dịch vụ này đã tồn tại trong khu trọ");
         }
 
         // 3. Khởi tạo và lưu dịch vụ mới
@@ -68,12 +71,12 @@ public class AreaServiceManagement {
 
         // 2. Lấy thông tin người dùng đang gọi API
         User currentUser = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại trong hệ thống"));
+                .orElseThrow(() -> new ResourceNotFoundException("Người dùng không tồn tại trong hệ thống"));
 
         // 3. 🔒 KIỂM TRA BẢO MẬT: Nếu là Chủ trọ thì chỉ được xem dịch vụ khu của mình
         if (currentUser.getRole() == RoleType.LANDLORD) {
             if (!area.getLandlord().getId().equals(currentUserId)) {
-                throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xem dịch vụ của khu trọ khác.");
+                throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền xem dịch vụ của khu trọ khác.");
             }
         }
 
@@ -89,12 +92,12 @@ public class AreaServiceManagement {
     public AreaServiceResponse updateService(UUID serviceId, AreaServiceRequest request, UUID landlordId) {
         // 1. Lấy thông tin Dịch vụ từ Database
         AreaService service = areaServiceRepository.findById(serviceId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy dịch vụ"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy dịch vụ"));
 
         // 2. 🔒 KIỂM TRA BẢO MẬT: Xác nhận quyền sở hữu
         // Từ dịch vụ -> Gọi lên Khu trọ -> Gọi lên Chủ trọ -> Lấy ID đem so sánh
         if (!service.getArea().getLandlord().getId().equals(landlordId)) {
-            throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền chỉnh sửa dịch vụ thuộc khu trọ của người khác.");
+            throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền chỉnh sửa dịch vụ thuộc khu trọ của người khác.");
         }
 
         // 3. Cập nhật các trường thông tin nếu có truyền lên
