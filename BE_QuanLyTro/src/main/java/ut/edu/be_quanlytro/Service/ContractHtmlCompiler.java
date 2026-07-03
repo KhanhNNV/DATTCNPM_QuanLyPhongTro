@@ -23,11 +23,14 @@ public class ContractHtmlCompiler {
                 <h4>BÊN A (BÊN CHO THUÊ):</h4>
                 <p>Ông/Bà: <b>{{LANDLORD_NAME}}</b></p>
                 <p>Số điện thoại: {{LANDLORD_PHONE}}</p>
+                <p>CCCD/CMND: {{LANDLORD_ID_CARD}}</p>
+                <p>Quê quán: {{LANDLORD_HOMETOWN}}</p>
                 
                 <h4>BÊN B (BÊN THUÊ):</h4>
                 <p>Ông/Bà: <b>{{TENANT_NAME}}</b></p>
                 <p>Số điện thoại: {{TENANT_PHONE}}</p>
                 <p>CCCD/CMND: {{TENANT_ID_CARD}}</p>
+                <p>Quê quán: {{TENANT_HOMETOWN}}</p>
                 
                 <hr/>
                 
@@ -62,14 +65,21 @@ public class ContractHtmlCompiler {
 
         // 3. NHỒI THÔNG TIN CÁ NHÂN VÀ PHÒNG
         html = html.replace("{{START_DATE}}", contract.getStartDate() != null ? contract.getStartDate().toString() : "")
+                // Khúc này lấy Tên và SĐT từ User hiện tại
                 .replace("{{LANDLORD_NAME}}", landlord.getFullName() != null ? landlord.getFullName() : "")
                 .replace("{{LANDLORD_PHONE}}", landlord.getPhone() != null ? landlord.getPhone() : "")
+                // 🌟 QUAN TRỌNG: Lấy CCCD và Quê quán từ "Bản chụp" (Snapshot) trong Contract
+                .replace("{{LANDLORD_ID_CARD}}", contract.getLandlordIdCardNumber() != null ? contract.getLandlordIdCardNumber() : "")
+                .replace("{{LANDLORD_HOMETOWN}}", contract.getLandlordHometown() != null ? contract.getLandlordHometown() : "")
+
                 .replace("{{TENANT_NAME}}", tenant.getFullName() != null ? tenant.getFullName() : "")
                 .replace("{{TENANT_PHONE}}", tenant.getPhone() != null ? tenant.getPhone() : "")
-                .replace("{{TENANT_ID_CARD}}", tenant.getIdCardNumber() != null ? tenant.getIdCardNumber() : "");
+                .replace("{{TENANT_ID_CARD}}", tenant.getIdCardNumber() != null ? tenant.getIdCardNumber() : "")
+                .replace("{{TENANT_HOMETOWN}}", tenant.getHometown() != null ? tenant.getHometown() : "");
 
         // 4. CHỮ KÝ SỐ
-        String landlordSig = landlord.getLandlordSignature();
+        // Chữ ký của chủ trọ cũng được lấy từ "Bản chụp" (Snapshot) trong Contract cho chuẩn pháp lý
+        String landlordSig = contract.getLandlordSignature();
         if (landlordSig != null && !landlordSig.trim().isEmpty()) {
             html = html.replace("{{LANDLORD_SIGNATURE_PLACEHOLDER}}", String.format("<img src='%s' width='150'/>", landlordSig));
         } else {

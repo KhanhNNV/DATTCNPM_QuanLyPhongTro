@@ -1,7 +1,7 @@
 package ut.edu.be_quanlytro.Service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.access.AccessDeniedException; // Thêm import 403
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ut.edu.be_quanlytro.Dto.Request.DepositCreateRequest;
@@ -43,18 +43,17 @@ public class DepositService {
 
         // 1. Kiểm tra phòng
         Room room = roomRepository.findById(request.getRoomId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phòng"));
 
         // 2. 🔒 KIỂM TRA BẢO MẬT: Chỉ Chủ trọ của phòng này mới được tạo phiếu cọc
         if (!room.getArea().getLandlord().getId().equals(currentUserId)) {
-            throw new RuntimeException("Bạn không có quyền tạo phiếu đặt cọc cho phòng thuộc khu trọ khác");
+            throw new AccessDeniedException("Bạn không có quyền tạo phiếu đặt cọc cho phòng thuộc khu trọ khác");
         }
 
         // 3. KIỂM TRA TRẠNG THÁI: Chỉ phòng trống mới được cọc
         if (room.getStatus() != RoomStatus.AVAILABLE) {
             throw new BadRequestException("Phòng này không trống, không thể nhận cọc!");
         }
-
 
         // 4. Tạo phiếu cọc
         Deposit deposit = Deposit.builder()
@@ -88,18 +87,18 @@ public class DepositService {
     public DepositResponse updateDeposit(UUID id, DepositUpdateRequest request, UUID currentUserId) {
 
         Deposit deposit = depositRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy phiếu đặt cọc"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phiếu đặt cọc"));
 
         Room room = deposit.getRoom();
 
         // 1. 🔒 KIỂM TRA BẢO MẬT
         if (!room.getArea().getLandlord().getId().equals(currentUserId)) {
-            throw new RuntimeException("Bạn không có quyền chỉnh sửa phiếu cọc này");
+            throw new AccessDeniedException("Bạn không có quyền chỉnh sửa phiếu cọc này");
         }
 
         // Không cho phép sửa phiếu cọc khi đã chuyển thành hợp đồng
         if (deposit.getStatus() == DepositStatus.COMPLETED) {
-            throw new RuntimeException("Phiếu cọc này đã hoàn tất (đã ký hợp đồng), không thể chỉnh sửa");
+            throw new BadRequestException("Phiếu cọc này đã hoàn tất (đã ký hợp đồng), không thể chỉnh sửa");
         }
 
         // 2. Cập nhật thông tin
@@ -121,7 +120,7 @@ public class DepositService {
             // Nếu đổi ngược lại từ Hủy -> Đang chờ
             else if (request.getStatus() == DepositStatus.PENDING) {
                 if (room.getStatus() != RoomStatus.AVAILABLE) {
-                    throw new RuntimeException("Phòng này hiện không trống để có thể khôi phục phiếu cọc");
+                    throw new BadRequestException("Phòng này hiện không trống để có thể khôi phục phiếu cọc");
                 }
                 room.setStatus(RoomStatus.DEPOSITED);
                 roomRepository.save(room);
@@ -137,16 +136,17 @@ public class DepositService {
 
         return mapToResponse(updatedDeposit);
     }
+
     // ================= READ (XEM CHI TIẾT 1 PHIẾU CỌC) =================
     @Transactional(readOnly = true)
     public DepositResponse getDepositById(UUID id, UUID currentUserId) {
 
         Deposit deposit = depositRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy phiếu đặt cọc"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phiếu đặt cọc"));
 
         // 🔒 KIỂM TRA BẢO MẬT: Chỉ Chủ trọ của khu trọ đó mới được xem
         if (!deposit.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
-            throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xem phiếu cọc của khu trọ khác.");
+            throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền xem phiếu cọc của khu trọ khác.");
         }
 
         return mapToResponse(deposit);
@@ -158,11 +158,11 @@ public class DepositService {
 
         // 1. Lấy thông tin Khu trọ để kiểm tra quyền sở hữu
         Area area = areaRepository.findById(areaId)
-                .orElseThrow(() -> new RuntimeException("Khu trọ không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Khu trọ không tồn tại"));
 
         // 2. KIỂM TRA BẢO MẬT: Chặn hành vi truyền ID khu trọ của người khác
         if (!area.getLandlord().getId().equals(currentUserId)) {
-            throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xem danh sách cọc của khu trọ khác.");
+            throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền xem danh sách cọc của khu trọ khác.");
         }
 
         // 3. Lấy dữ liệu thông qua Custom Query đã viết trong DepositRepository và map sang DTO
@@ -228,11 +228,11 @@ public class DepositService {
 
         // 1. Lấy thông tin Khu trọ từ Database
         Area area = areaRepository.findById(areaId)
-                .orElseThrow(() -> new RuntimeException("Khu trọ không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Khu trọ không tồn tại"));
 
         // 2. 🔒 KIỂM TRA BẢO MẬT: Đảm bảo Chủ trọ đang đăng nhập là người sở hữu khu trọ này
         if (!area.getLandlord().getId().equals(currentUserId)) {
-            throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xem danh sách phiếu cọc của khu trọ khác.");
+            throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền xem danh sách phiếu cọc của khu trọ khác.");
         }
 
         // 3. Sử dụng Query để lọc theo areaId và status
@@ -241,6 +241,7 @@ public class DepositService {
                 .map(this::mapToResponse)
                 .toList();
     }
+
     // ================= MAPPER =================
     private DepositResponse mapToResponse(Deposit deposit) {
         return DepositResponse.builder()

@@ -7,6 +7,8 @@ import ut.edu.be_quanlytro.Dto.Request.ContractTemplateRequest;
 import ut.edu.be_quanlytro.Dto.Response.ContractTemplateResponse;
 import ut.edu.be_quanlytro.Entity.ContractTemplate;
 import ut.edu.be_quanlytro.Entity.User;
+import ut.edu.be_quanlytro.Exception.BadRequestException; // Thêm import 400
+import ut.edu.be_quanlytro.Exception.ResourceNotFoundException; // Thêm import 404
 import ut.edu.be_quanlytro.Repository.ContractRepository;
 import ut.edu.be_quanlytro.Repository.ContractTemplateRepository;
 import ut.edu.be_quanlytro.Repository.UserRepository;
@@ -27,7 +29,7 @@ public class ContractTemplateService {
     @Transactional
     public ContractTemplateResponse createTemplate(ContractTemplateRequest request, UUID landlordId) {
         User landlord = userRepository.findById(landlordId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông tin Chủ trọ"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông tin Chủ trọ"));
 
         // Kiểm tra xem chủ trọ này đã có mẫu nào chưa?
         // Nếu chưa có, mẫu đầu tiên tạo ra sẽ tự động được gán isActive = true
@@ -62,7 +64,7 @@ public class ContractTemplateService {
     @Transactional(readOnly = true)
     public ContractTemplateResponse getTemplateById(UUID id, UUID landlordId) {
         ContractTemplate template = templateRepository.findByIdAndLandlordId(id, landlordId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy mẫu hợp đồng hoặc bạn không có quyền xem!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy mẫu hợp đồng hoặc bạn không có quyền xem!"));
 
         return mapToResponse(template);
     }
@@ -71,7 +73,7 @@ public class ContractTemplateService {
     @Transactional
     public ContractTemplateResponse updateTemplate(UUID id, ContractTemplateRequest request, UUID landlordId) {
         ContractTemplate template = templateRepository.findByIdAndLandlordId(id, landlordId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy mẫu hợp đồng!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy mẫu hợp đồng!"));
 
         if (request.getName() != null) template.setName(request.getName());
         if (request.getRentalContent() != null) template.setRentalContent(request.getRentalContent());
@@ -100,7 +102,7 @@ public class ContractTemplateService {
         }
 
         if (selectedTemplate == null) {
-            throw new RuntimeException("Không tìm thấy mẫu hợp đồng!");
+            throw new ResourceNotFoundException("Không tìm thấy mẫu hợp đồng!");
         }
 
         // Lưu đồng loạt xuống DB
@@ -112,17 +114,17 @@ public class ContractTemplateService {
     @Transactional
     public void deleteTemplate(UUID id, UUID landlordId) {
         ContractTemplate template = templateRepository.findByIdAndLandlordId(id, landlordId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy mẫu hợp đồng!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy mẫu hợp đồng!"));
 
         // Chốt chặn 1: Không xóa mẫu đang được chọn làm mặc định
         if (template.getIsActive()) {
-            throw new RuntimeException("Không thể xóa mẫu đang được thiết lập làm mặc định. Vui lòng chọn mẫu khác làm mặc định trước khi xóa!");
+            throw new BadRequestException("Không thể xóa mẫu đang được thiết lập làm mặc định. Vui lòng chọn mẫu khác làm mặc định trước khi xóa!");
         }
 
         // Chốt chặn 2: Không xóa mẫu đã có hợp đồng sử dụng (Khắc phục lỗi Foreign Key)
         boolean isUsedInContracts = contractRepository.existsByTemplateId(id);
         if (isUsedInContracts) {
-            throw new RuntimeException("Không thể xóa mẫu này vì đã có hợp đồng thực tế đang sử dụng. Bạn chỉ có thể ngừng sử dụng nó bằng cách chọn mẫu khác làm mặc định!");
+            throw new BadRequestException("Không thể xóa mẫu này vì đã có hợp đồng thực tế đang sử dụng. Bạn chỉ có thể ngừng sử dụng nó bằng cách chọn mẫu khác làm mặc định!");
         }
 
         templateRepository.delete(template);

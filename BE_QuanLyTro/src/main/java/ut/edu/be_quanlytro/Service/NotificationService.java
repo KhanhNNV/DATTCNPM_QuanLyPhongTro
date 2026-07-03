@@ -1,6 +1,7 @@
 package ut.edu.be_quanlytro.Service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException; // Thêm import 403
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 // import org.springframework.messaging.simp.SimpMessagingTemplate; // 🌟 Mở ra khi dùng WebSocket
@@ -9,6 +10,7 @@ import ut.edu.be_quanlytro.Dto.Response.NotificationResponse;
 import ut.edu.be_quanlytro.Entity.Enum.NotificationType;
 import ut.edu.be_quanlytro.Entity.Notification;
 import ut.edu.be_quanlytro.Entity.User;
+import ut.edu.be_quanlytro.Exception.ResourceNotFoundException; // Thêm import 404
 import ut.edu.be_quanlytro.Repository.NotificationRepository;
 
 import java.util.List;
@@ -67,11 +69,11 @@ public class NotificationService {
     @Transactional
     public void markAsRead(UUID notificationId, UUID userId) {
         Notification notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy thông báo"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy thông báo"));
 
         // Chốt chặn: Chỉ chủ nhân của thông báo mới được đánh dấu đọc
         if (!notification.getUser().getId().equals(userId)) {
-            throw new RuntimeException("Bạn không có quyền thao tác trên thông báo này");
+            throw new AccessDeniedException("Bạn không có quyền thao tác trên thông báo này");
         }
 
         notification.setIsRead(true);
