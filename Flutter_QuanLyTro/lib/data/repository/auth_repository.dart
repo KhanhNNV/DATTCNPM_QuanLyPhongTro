@@ -16,7 +16,6 @@ class AuthRepository {
       final accessToken = data['accessToken'];
       final refreshToken = data['refreshToken'];
 
-
       if (accessToken != null) {
         await TokenManager.saveAuthData(
           accessToken: accessToken,
@@ -30,7 +29,8 @@ class AuthRepository {
     }
   }
 
-  Future<String> register(String fullName, String phone, String password) async {
+
+  Future<String> register(String fullName, String phone, String password, String idCardNumber, String hometown) async {
     final response = await http.post(
       Uri.parse('${ApiClient.baseUrl}/auth/register'),
       headers: {
@@ -40,6 +40,8 @@ class AuthRepository {
         'fullName': fullName,
         'phone': phone,
         'password': password,
+        'idCardNumber': idCardNumber,
+        'hometown': hometown,
       }),
     );
 

@@ -17,6 +17,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
+  // Thêm 2 controller mới
+  final TextEditingController _idCardController = TextEditingController();
+  final TextEditingController _hometownController = TextEditingController();
+
   final RegisterViewModel _viewModel = RegisterViewModel();
 
   @override
@@ -42,16 +46,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
       fullName: _nameController.text,
       phone: _phoneController.text,
       password: _passwordController.text,
+      idCardNumber: _idCardController.text,
+      hometown: _hometownController.text,
       onSuccess: () {
-        // Thông báo thành công
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Đăng ký thành công!'),
             backgroundColor: Colors.green,
           ),
         );
-
-        // Chuyển sang trang Setup
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const SetupIntroScreen()),
@@ -65,6 +68,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _nameController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
+    _idCardController.dispose();
+    _hometownController.dispose();
     super.dispose();
   }
 
@@ -102,11 +107,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 40),
 
-                  // Nhập Họ tên
+                  // 1. Nhập Họ tên
                   TextField(
                     controller: _nameController,
                     textCapitalization: TextCapitalization.words,
-                    enabled: !_viewModel.isLoading, // Khóa khi tải
+                    enabled: !_viewModel.isLoading,
                     decoration: InputDecoration(
                       labelText: 'Họ và tên',
                       hintText: 'Nhập họ và tên của bạn',
@@ -116,7 +121,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Nhập SĐT
+                  // 2. Nhập SĐT
                   TextField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
@@ -130,7 +135,35 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Nhập Mật khẩu
+                  // 3. Nhập CCCD
+                  TextField(
+                    controller: _idCardController,
+                    keyboardType: TextInputType.number,
+                    enabled: !_viewModel.isLoading,
+                    decoration: InputDecoration(
+                      labelText: 'Số CCCD',
+                      hintText: 'Nhập căn cước công dân',
+                      prefixIcon: const Icon(Icons.badge_outlined),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // 4. Nhập Quê quán
+                  TextField(
+                    controller: _hometownController,
+                    textCapitalization: TextCapitalization.words,
+                    enabled: !_viewModel.isLoading,
+                    decoration: InputDecoration(
+                      labelText: 'Quê quán',
+                      hintText: 'Nhập quê quán / địa chỉ thường trú',
+                      prefixIcon: const Icon(Icons.location_on_outlined),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // 5. Nhập Mật khẩu
                   TextField(
                     controller: _passwordController,
                     obscureText: _isObscure,
@@ -153,7 +186,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     width: double.infinity,
                     height: 56,
                     child: ElevatedButton(
-                      // Khóa nút khi đang tải
                       onPressed: _viewModel.isLoading ? null : _handleRegister,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
@@ -170,6 +202,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                           : const Text('Đăng ký', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
                     ),
                   ),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
