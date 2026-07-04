@@ -59,11 +59,6 @@ public class Contract {
     @Column(name = "landlord_signature", columnDefinition = "TEXT")
     private String landlordSignature;
 
-    @Column(name = "landlord_id_card_number")
-    private String landlordIdCardNumber;
-
-    @Column(name = "landlord_hometown")
-    private String landlordHometown;
 
     @Column(name = "contract_file_url")
     private String contractFileUrl;

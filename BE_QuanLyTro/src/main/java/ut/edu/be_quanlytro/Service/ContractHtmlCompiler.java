@@ -69,8 +69,8 @@ public class ContractHtmlCompiler {
                 .replace("{{LANDLORD_NAME}}", landlord.getFullName() != null ? landlord.getFullName() : "")
                 .replace("{{LANDLORD_PHONE}}", landlord.getPhone() != null ? landlord.getPhone() : "")
                 // 🌟 QUAN TRỌNG: Lấy CCCD và Quê quán từ "Bản chụp" (Snapshot) trong Contract
-                .replace("{{LANDLORD_ID_CARD}}", contract.getLandlordIdCardNumber() != null ? contract.getLandlordIdCardNumber() : "")
-                .replace("{{LANDLORD_HOMETOWN}}", contract.getLandlordHometown() != null ? contract.getLandlordHometown() : "")
+                .replace("{{LANDLORD_ID_CARD}}", contract.getCreator().getIdCardNumber() != null ?  contract.getCreator().getIdCardNumber() : "")
+                .replace("{{LANDLORD_HOMETOWN}}", contract.getCreator().getHometown() != null ? contract.getCreator().getHometown() : "")
 
                 .replace("{{TENANT_NAME}}", tenant.getFullName() != null ? tenant.getFullName() : "")
                 .replace("{{TENANT_PHONE}}", tenant.getPhone() != null ? tenant.getPhone() : "")

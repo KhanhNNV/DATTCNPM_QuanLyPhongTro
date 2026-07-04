@@ -19,4 +19,6 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
 
     // UC26: Tìm các hóa đơn chưa đóng tiền mà sắp đến hạn (Ví dụ: còn đúng 1 ngày hoặc chính là ngày hôm nay)
     List<Invoice> findByStatusAndDueDate(InvoiceStatus status, LocalDate date);
+
+    void deleteAllByContractId(UUID contractId);
 }

@@ -10,5 +10,6 @@ import java.util.UUID;
 @Repository
 public interface InvoiceDetailRepository extends JpaRepository<InvoiceDetail, UUID> {
     List<InvoiceDetail> findByInvoiceId(UUID invoiceId);
+    void deleteAllByInvoiceId(UUID invoiceId);
 
 }

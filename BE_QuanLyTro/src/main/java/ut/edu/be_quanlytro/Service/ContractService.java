@@ -24,6 +24,7 @@ public class ContractService {
     private final ContractRepository contractRepository;
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
+    private final InvoiceRepository invoiceRepository;
 
     // Tận dụng lại các Service đã có
     private final UserService userService;
@@ -33,7 +34,7 @@ public class ContractService {
     private final CloudinaryService cloudinaryService;
     private final NotificationService notificationService;
     private final ContractTemplateRepository templateRepository;
-    private final PdfExportService pdfExportService;
+
     private final ContractHtmlCompiler contractHtmlCompiler;
 
 
@@ -139,8 +140,6 @@ public class ContractService {
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
                 .landlordSignature(landlord.getLandlordSignature())
-                .landlordIdCardNumber(landlord.getIdCardNumber())
-                .landlordHometown(landlord.getHometown())
                 .depositAmount(pendingDeposit != null ? pendingDeposit.getDepositAmount() : request.getDepositAmount())
                 .status(ContractStatus.DRAFT)
                 .members(new ArrayList<>())
@@ -270,8 +269,6 @@ public class ContractService {
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
                 .landlordSignature(landlord.getLandlordSignature())
-                .landlordIdCardNumber(landlord.getIdCardNumber())
-                .landlordHometown(landlord.getHometown())
                 .depositAmount(pendingDeposit != null ? pendingDeposit.getDepositAmount() : request.getDepositAmount())
                 .status(ContractStatus.DRAFT)
                 .members(new ArrayList<>())
@@ -483,7 +480,7 @@ public class ContractService {
     }
     // ================= 8. CẬP NHẬT HỢP ĐỒNG (CHỈ ÁP DỤNG KHI LÀ BẢN NHÁP) =================
     @Transactional
-    public ContractDetailResponse updateContract(UUID contractId, ContractUpdateRequest request, UUID currentUserId) {
+    public ContractDetailResponse updateContract(UUID contractId, ContractUpdateRequest request, MultipartFile file, UUID currentUserId) {
 
         // 1. Tìm hợp đồng dưới DB
         Contract contract = contractRepository.findById(contractId)
@@ -499,29 +496,67 @@ public class ContractService {
             throw new BadRequestException("Lỗi: Chỉ có thể chỉnh sửa điều khoản khi hợp đồng đang là Bản Nháp. Hợp đồng đã ký không được phép thay đổi!");
         }
 
-        // 4. Cập nhật các trường dữ liệu (Chỉ cập nhật nếu có truyền lên từ Request)
-        if (request.getStartDate() != null) {
+        boolean isDataChanged = false; // Biến cờ hiệu để check xem có cần Compile lại HTML không
+
+        // 4. Cập nhật các trường dữ liệu
+        if (request.getStartDate() != null && !request.getStartDate().equals(contract.getStartDate())) {
             contract.setStartDate(request.getStartDate());
+            isDataChanged = true;
         }
-        if (request.getEndDate() != null) {
+        if (request.getEndDate() != null && !request.getEndDate().equals(contract.getEndDate())) {
             contract.setEndDate(request.getEndDate());
+            isDataChanged = true;
         }
-
         if (request.getDepositAmount() != null) {
-            contract.setDepositAmount(request.getDepositAmount());
+            // Kiểm tra xem số tiền có thực sự thay đổi không (Dùng compareTo cho BigDecimal)
+            if (contract.getDepositAmount() == null || contract.getDepositAmount().compareTo(request.getDepositAmount()) != 0) {
+                contract.setDepositAmount(request.getDepositAmount());
+                isDataChanged = true;
+            }
         }
 
-        // 5. Lưu xuống DB
+        // 5. RENDER LẠI BẢN CHỤP HTML NẾU CÓ THAY ĐỔI DỮ LIỆU
+        if (isDataChanged) {
+            String newCompiledHtml = contractHtmlCompiler.compileContractTerms(
+                    contract.getTemplate(),
+                    contract,
+                    contract.getCreator(),
+                    contract.getTenant(),
+                    contract.getRoom()
+            );
+            contract.setContractTerms(newCompiledHtml);
+        }
+
+        // 6. XỬ LÝ REPLACE FILE TRÊN CLOUD (Nếu chủ trọ đính kèm file mới)
+        if (file != null && !file.isEmpty()) {
+
+            // a. Xóa file cũ để dọn rác Cloudinary
+            String oldFileUrl = contract.getContractFileUrl();
+            if (oldFileUrl != null && !oldFileUrl.trim().isEmpty()) {
+                try {
+                    cloudinaryService.deleteFile(oldFileUrl);
+                } catch (Exception e) {
+                    // Bọc try-catch để lỡ Cloudinary lỗi mạng thì luồng lưu DB vẫn không bị sập
+                    System.err.println("Cảnh báo: Không thể xóa file hợp đồng cũ trên Cloud - " + e.getMessage());
+                }
+            }
+
+            // b. Up file mới và cập nhật URL
+            String newFileUrl = cloudinaryService.uploadFile(file, "contract_files");
+            contract.setContractFileUrl(newFileUrl);
+        }
+
+        // 7. Lưu xuống DB
         Contract updatedContract = contractRepository.save(contract);
 
-        // 6. Ghi log hoạt động
+        // 8. Ghi log hoạt động
         String logDesc = String.format("Cập nhật thông tin bản nháp hợp đồng phòng %s", contract.getRoom().getRoomNumber());
         activityLog.createLog(contract.getRoom().getArea().getLandlord(), "UPDATE_CONTRACT", "contracts", updatedContract.getId(), logDesc);
 
-        // 7. Trả về chi tiết mới nhất
+        // 9. Trả về chi tiết mới nhất
         return mapToDetailResponse(updatedContract);
     }
-    // ================= 9. XÓA HỢP ĐỒNG NHÁP (ĐÃ TỐI ƯU DỌN USER RÁC) =================
+    // ================= 9. XÓA HỢP ĐỒNG (BẢN NHÁP & QUÁ HẠN - DỌN RÁC TRIỆT ĐỂ) =================
     @Transactional
     public void deleteContract(UUID contractId, UUID currentUserId) {
 
@@ -532,41 +567,76 @@ public class ContractService {
             throw new AccessDeniedException("Bạn không có quyền xóa hợp đồng của khu trọ khác!");
         }
 
-        if (contract.getStatus() != ContractStatus.DRAFT) {
-            throw new BadRequestException("Chỉ được phép xóa hợp đồng Nháp!");
+        // CHỐT CHẶN: Chỉ cho xóa bản DRAFT (Nháp) hoặc EXPIRED (Quá hạn)
+        if (contract.getStatus() != ContractStatus.DRAFT && contract.getStatus() != ContractStatus.EXPIRED) {
+            throw new BadRequestException("Chỉ được phép xóa hợp đồng Nháp hoặc Hợp đồng đã Quá hạn!");
         }
 
-        //KHÁCH THUÊ TRƯỚC KHI XÓA HỢP ĐỒNG
         UUID tenantId = contract.getTenant().getId();
         Room room = contract.getRoom();
 
-
-        Optional<Deposit> linkedDeposit = depositRepository.findByContractId(contractId);
-        if (linkedDeposit.isPresent()) {
-            Deposit deposit = linkedDeposit.get();
-            deposit.setStatus(DepositStatus.PENDING);
-            deposit.setContract(null);
-            depositRepository.save(deposit);
-            room.setStatus(RoomStatus.DEPOSITED);
-        } else {
-            room.setStatus(RoomStatus.AVAILABLE);
+        // ==============================================================
+        // 1. DỌN DẸP CLOUD (XÓA FILE PDF VÀ CHỮ KÝ ĐỂ TIẾT KIỆM DUNG LƯỢNG)
+        // ==============================================================
+        try {
+            if (contract.getContractFileUrl() != null && !contract.getContractFileUrl().isEmpty()) {
+                cloudinaryService.deleteFile(contract.getContractFileUrl());
+            }
+            if (contract.getTenantSignature() != null && !contract.getTenantSignature().isEmpty()) {
+                cloudinaryService.deleteFile(contract.getTenantSignature());
+            }
+        } catch (Exception e) {
+            // Bọc try-catch để lỡ Cloudinary có lỗi thì vẫn tiếp tục xóa Database, không làm chết API
+            System.err.println("Cảnh báo: Không thể xóa file trên Cloudinary - " + e.getMessage());
         }
-        roomRepository.save(room);
 
-        // Ghi log hoạt động
-        String logDesc = String.format("Xóa bản nháp hợp đồng của phòng %s", room.getRoomNumber());
+        // ==============================================================
+        // 2. XỬ LÝ LIÊN KẾT DATABASE DỰA THEO TRẠNG THÁI HỢP ĐỒNG
+        // ==============================================================
+        if (contract.getStatus() == ContractStatus.DRAFT) {
+            // NẾU LÀ DRAFT: Trả lại cọc về PENDING và mở lại phòng
+            Optional<Deposit> linkedDeposit = depositRepository.findByContractId(contractId);
+            if (linkedDeposit.isPresent()) {
+                Deposit deposit = linkedDeposit.get();
+                deposit.setStatus(DepositStatus.PENDING);
+                deposit.setContract(null);
+                depositRepository.save(deposit);
+                room.setStatus(RoomStatus.DEPOSITED);
+            } else {
+                room.setStatus(RoomStatus.AVAILABLE);
+            }
+            roomRepository.save(room);
+
+        } else if (contract.getStatus() == ContractStatus.EXPIRED) {
+            // NẾU LÀ EXPIRED: Không mở lại phòng (vì có thể khách mới đã thuê).
+            // Chỉ cần gỡ liên kết với Phiếu cọc cũ (vẫn giữ trạng thái COMPLETED làm lịch sử)
+            Optional<Deposit> linkedDeposit = depositRepository.findByContractId(contractId);
+            if (linkedDeposit.isPresent()) {
+                Deposit deposit = linkedDeposit.get();
+                deposit.setContract(null);
+                depositRepository.save(deposit);
+            }
+
+            //CỰC KỲ QUAN TRỌNG: Xóa sạch Hóa đơn cũ để tránh lỗi Khóa Ngoại (Foreign Key)
+            invoiceRepository.deleteAllByContractId(contractId);
+        }
+
+        // ==============================================================
+        // 3. GHI LOG VÀ THỰC HIỆN XÓA HỢP ĐỒNG
+        // ==============================================================
+        String logDesc = String.format("Xóa triệt để hợp đồng [%s] của phòng %s. Đã dọn dẹp file Cloud và các dữ liệu liên quan.",
+                contract.getStatus().name(), room.getRoomNumber());
         activityLog.createLog(contract.getRoom().getArea().getLandlord(), "DELETE_CONTRACT", "contracts", contract.getId(), logDesc);
 
-        // Thực hiện xóa hợp đồng
+        // Xóa Hợp đồng (Lúc này ContractMembers sẽ tự động bị xóa theo nhờ CascadeType.ALL)
         contractRepository.delete(contract);
 
-        // Sau khi tờ hợp đồng này bay màu, ta đếm xem người khách này còn tờ hợp đồng nào khác không?
+        // ==============================================================
+        // 4. DỌN DẸP USER RÁC (KHÁCH VÃNG LAI)
+        // ==============================================================
         long remainingContracts = contractRepository.countByTenantId(tenantId);
-
         if (remainingContracts == 0) {
-            // Nếu bằng 0, chứng tỏ tài khoản User này được sinh ra chỉ cho cái hợp đồng nháp vừa bị hủy.
-            // Tiến hành kích hoạt hàm deleteUser tinh gọn bên UserService để quét sạch tài khoản rác này!
-            System.out.println("Phát hiện tài khoản khách vãng lai không có hợp đồng thực tế. Tiến hành dọn dẹp...");
+            System.out.println("Phát hiện tài khoản khách vãng lai không còn hợp đồng nào. Tiến hành dọn dẹp...");
             userService.deleteUser(tenantId);
         }
     }
@@ -733,20 +803,6 @@ public class ContractService {
         return mapToDetailResponse(contract);
     }
 
-    @Transactional(readOnly = true)
-    public byte[] downloadContractPdf(UUID contractId, UUID currentUserId) {
-        Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hợp đồng!"));
-
-        boolean isLandlord = contract.getRoom().getArea().getLandlord().getId().equals(currentUserId);
-        boolean isTenant = contract.getTenant().getId().equals(currentUserId);
-
-        if (!isLandlord && !isTenant) {
-            throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền tải hợp đồng này.");
-        }
-
-        return pdfExportService.generatePdfFromHtml(contract.getContractTerms());
-    }
     // ================= 13. TẢI LÊN FILE HỢP ĐỒNG (BẢN SCAN / BẢN MỀM) =================
     @Transactional
     public ContractDetailResponse uploadContractFile(UUID contractId, MultipartFile file, UUID currentUserId) {
@@ -830,8 +886,8 @@ public class ContractService {
 
                 // --- THÔNG TIN NGƯỜI TẠO (CHỦ TRỌ) ---
                 .landlordName(contract.getCreator().getFullName())
-                .landlordIdCardNumber(contract.getLandlordIdCardNumber())
-                .landlordHometown(contract.getLandlordHometown())
+                .landlordIdCardNumber(contract.getCreator().getIdCardNumber())
+                .landlordHometown(contract.getCreator().getHometown())
                 .landlordSignatureUrl(contract.getLandlordSignature())
 
                 // --- THÔNG TIN KHÁCH THUÊ ĐỨNG TÊN ---
