@@ -1,3 +1,3 @@
-package ut.edu.be_quanlytro.Entity.Enum;
+    package ut.edu.be_quanlytro.Entity.Enum;
 
-public enum PaymentStatus { PENDING, APPROVED, REJECTED }
+    public enum PaymentStatus { PENDING, APPROVED, REJECTED }

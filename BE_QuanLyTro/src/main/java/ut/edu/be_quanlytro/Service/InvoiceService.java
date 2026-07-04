@@ -35,6 +35,7 @@ public class InvoiceService {
     final AreaRepository areaRepository;
     private final NotificationService notificationService;
     private final CloudinaryService cloudinaryService;
+    private final PaymentRepository paymentRepository;
 
     /**
      * LÚC 1: CHỦ TRỌ BẤM TẠO BẰNG TAY (API MANUAL)
@@ -259,6 +260,48 @@ public class InvoiceService {
                 .build();
     }
 
+    /**
+     * UC23: GỬI MINH CHỨNG THANH TOÁN (LƯU VÀO BẢNG PAYMENT)
+     */
+    @Transactional
+    public void uploadPaymentProof(UUID invoiceId, MultipartFile file) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hóa đơn"));
+
+        if (invoice.getStatus() != InvoiceStatus.UNPAID && invoice.getStatus() != InvoiceStatus.OVERDUE) {
+            throw new BadRequestException("Chỉ có thể gửi minh chứng cho hóa đơn chưa thanh toán hoặc quá hạn!");
+        }
+
+        // 1. Upload ảnh lên Cloudinary
+        String fileUrl = cloudinaryService.uploadFile(file, "payment_proofs");
+
+        // 2. LƯU LỊCH SỬ GIAO DỊCH VÀO BẢNG PAYMENT (Thay vì lưu thẳng vào Invoice)
+        Payment payment = Payment.builder()
+                .invoice(invoice)
+                .amount(invoice.getTotalAmount()) // Khách thanh toán toàn bộ số tiền của hóa đơn
+                .paymentProof(fileUrl)
+                .status(ut.edu.be_quanlytro.Entity.Enum.PaymentStatus.PENDING) // Trạng thái giao dịch chờ duyệt
+                .build();
+        paymentRepository.save(payment);
+
+        // 3. Cập nhật Invoice sang PENDING để Chủ trọ biết mà vào duyệt
+        invoice.setStatus(InvoiceStatus.PENDING);
+        invoiceRepository.save(invoice);
+
+        // 4. Bắn thông báo
+        String title = "Có minh chứng thanh toán mới!";
+        String content = "Khách thuê phòng " + invoice.getRoom().getRoomNumber() + " vừa tải lên minh chứng thanh toán. Vui lòng kiểm tra!";
+        notificationService.createNotification(
+                invoice.getRoom().getArea().getLandlord(),
+                title,
+                content,
+                NotificationType.PAYMENT_APPROVED
+        );
+    }
+
+    /**
+     * XÁC NHẬN THANH TOÁN (DUYỆT PAYMENT -> APPROVED)
+     */
     @Transactional
     public InvoiceResponse confirmPayment(UUID invoiceId, UUID currentUserId) {
         Invoice invoice = invoiceRepository.findById(invoiceId)
@@ -268,22 +311,62 @@ public class InvoiceService {
             throw new AccessDeniedException("Bạn không có quyền xác nhận thanh toán cho hóa đơn này!");
         }
 
-        if (invoice.getStatus() == InvoiceStatus.PAID) {
-            throw new BadRequestException("Hóa đơn này đã được xác nhận thanh toán từ trước!");
-        }
+        // 1. Tìm cái giao dịch đang chờ duyệt của Hóa đơn này
+        Payment pendingPayment = paymentRepository.findFirstByInvoiceIdAndStatusOrderByCreatedAtDesc(invoiceId, ut.edu.be_quanlytro.Entity.Enum.PaymentStatus.PENDING)
+                .orElseThrow(() -> new BadRequestException("Không tìm thấy giao dịch nào đang chờ duyệt!"));
 
+        // 2. Chuyển Payment thành APPROVED
+        pendingPayment.setStatus(ut.edu.be_quanlytro.Entity.Enum.PaymentStatus.APPROVED);
+        paymentRepository.save(pendingPayment);
+
+        // 3. Chuyển Hóa đơn thành PAID
         invoice.setStatus(InvoiceStatus.PAID);
         invoice.setPaidAt(java.time.LocalDateTime.now());
-
         invoice = invoiceRepository.save(invoice);
+
+        // 4. Gửi thông báo
         String title = "Thanh toán thành công!";
-        String content = "Chủ trọ đã xác nhận minh chứng thanh toán cho hóa đơn phòng " + invoice.getRoom().getRoomNumber() + ". Cảm ơn bạn!";
-        notificationService.createNotification(
-                invoice.getContract().getTenant(),
-                title,
-                content,
-                NotificationType.PAYMENT_APPROVED
-        );
+        String content = "Chủ trọ đã xác nhận minh chứng thanh toán cho hóa đơn phòng " + invoice.getRoom().getRoomNumber() + ".";
+        notificationService.createNotification(invoice.getContract().getTenant(), title, content, NotificationType.PAYMENT_APPROVED);
+
+        return convertToResponse(invoice);
+    }
+
+    /**
+     * UC24: TỪ CHỐI MINH CHỨNG (PAYMENT -> REJECTED, KÈM LÝ DO)
+     */
+    @Transactional
+    public InvoiceResponse rejectPaymentProof(UUID invoiceId, String reason, UUID currentUserId) {
+        Invoice invoice = invoiceRepository.findById(invoiceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hóa đơn!"));
+
+        if (!invoice.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
+            throw new AccessDeniedException("Bạn không có quyền từ chối thanh toán!");
+        }
+
+        // 1. Tìm cái giao dịch đang chờ duyệt
+        Payment pendingPayment = paymentRepository.findFirstByInvoiceIdAndStatusOrderByCreatedAtDesc(invoiceId, ut.edu.be_quanlytro.Entity.Enum.PaymentStatus.PENDING)
+                .orElseThrow(() -> new BadRequestException("Hóa đơn này không ở trạng thái chờ duyệt minh chứng!"));
+
+        // 2. Đánh dấu giao dịch này là REJECTED và lưu lý do từ chối
+        pendingPayment.setStatus(ut.edu.be_quanlytro.Entity.Enum.PaymentStatus.REJECTED);
+        pendingPayment.setNote(reason);
+        paymentRepository.save(pendingPayment);
+
+        // 3. Tính toán trả Hóa đơn về trạng thái Nợ
+        LocalDate today = LocalDate.now();
+        if (today.isAfter(invoice.getDueDate())) {
+            invoice.setStatus(InvoiceStatus.OVERDUE);
+        } else {
+            invoice.setStatus(InvoiceStatus.UNPAID);
+        }
+        invoice = invoiceRepository.save(invoice);
+
+        // 4. Bắn thông báo
+        String title = "Minh chứng thanh toán bị từ chối!";
+        String content = String.format("Chủ trọ không duyệt minh chứng phòng %s. Lý do: %s. Vui lòng kiểm tra và gửi lại!",
+                invoice.getRoom().getRoomNumber(), reason);
+        notificationService.createNotification(invoice.getContract().getTenant(), title, content, NotificationType.PAYMENT_REJECTED);
 
         return convertToResponse(invoice);
     }
@@ -336,78 +419,5 @@ public class InvoiceService {
 
             System.out.println(" Đã lưu thông báo nhắc nợ cho phòng " + invoice.getRoom().getRoomNumber());
         }
-    }
-
-    /**
-     * UC23: GỬI MINH CHỨNG THANH TOÁN (DÙNG CLOUDINARY)
-     */
-    @Transactional
-    public void uploadPaymentProof(UUID invoiceId, MultipartFile file) {
-
-        Invoice invoice = invoiceRepository.findById(invoiceId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hóa đơn"));
-
-        if (invoice.getStatus() != InvoiceStatus.UNPAID && invoice.getStatus() != InvoiceStatus.OVERDUE) {
-            throw new BadRequestException("Chỉ có thể gửi minh chứng cho hóa đơn chưa thanh toán hoặc quá hạn!");
-        }
-
-
-        String fileUrl = cloudinaryService.uploadFile(file, "payment_proofs");
-
-        // 3. Cập nhật Database
-        invoice.setPaymentProofUrl(fileUrl);
-        invoice.setStatus(InvoiceStatus.PENDING); // Chuyển sang chờ duyệt
-        invoiceRepository.save(invoice);
-
-        // 4. Bắn thông báo cho Chủ trọ biết
-        String title = "Có minh chứng thanh toán mới!";
-        String content = "Khách thuê phòng " + invoice.getRoom().getRoomNumber() + " vừa tải lên minh chứng thanh toán. Vui lòng kiểm tra và xét duyệt!";
-        notificationService.createNotification(
-                invoice.getRoom().getArea().getLandlord(), // Gửi cho Chủ trọ
-                title,
-                content,
-                NotificationType.PAYMENT_APPROVED
-        );
-    }
-
-    /**
-     * UC24: TỪ CHỐI MINH CHỨNG THANH TOÁN (CHỦ TRỌ)
-     */
-    @Transactional
-    public InvoiceResponse rejectPaymentProof(UUID invoiceId, String reason, UUID currentUserId) {
-        Invoice invoice = invoiceRepository.findById(invoiceId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hóa đơn!"));
-
-        if (!invoice.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
-            throw new AccessDeniedException("Bạn không có quyền từ chối thanh toán cho hóa đơn này!");
-        }
-
-        if (invoice.getStatus() != InvoiceStatus.PENDING) {
-            throw new BadRequestException("Hóa đơn này không ở trạng thái chờ duyệt minh chứng!");
-        }
-
-        LocalDate today = LocalDate.now();
-        if (today.isAfter(invoice.getDueDate())) {
-            invoice.setStatus(InvoiceStatus.OVERDUE); // Quá hạn rồi thì phạt OVERDUE
-        } else {
-            invoice.setStatus(InvoiceStatus.UNPAID);  // Chưa quá hạn thì trả về UNPAID cho đóng lại
-        }
-
-        // 5. Xóa link ảnh minh chứng cũ để khách thuê biết đường upload ảnh mới lên thay thế
-        invoice.setPaymentProofUrl(null);
-        invoice = invoiceRepository.save(invoice);
-
-        String title = "Minh chứng thanh toán bị từ chối!";
-        String content = String.format("Chủ trọ không duyệt minh chứng phòng %s. Lý do: %s. Vui lòng kiểm tra và gửi lại nhé!",
-                invoice.getRoom().getRoomNumber(), reason);
-
-        notificationService.createNotification(
-                invoice.getContract().getTenant(),
-                title,
-                content,
-                NotificationType.PAYMENT_REJECTED
-        );
-
-        return convertToResponse(invoice);
     }
 }
