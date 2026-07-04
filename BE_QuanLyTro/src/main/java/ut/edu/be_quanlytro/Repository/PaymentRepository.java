@@ -13,4 +13,5 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
 
     // Tìm giao dịch đang chờ duyệt (PENDING) mới nhất của một hóa đơn
     Optional<Payment> findFirstByInvoiceIdAndStatusOrderByCreatedAtDesc(UUID invoiceId, PaymentStatus status);
+    void deleteAllByInvoiceId(UUID invoiceId);
 }

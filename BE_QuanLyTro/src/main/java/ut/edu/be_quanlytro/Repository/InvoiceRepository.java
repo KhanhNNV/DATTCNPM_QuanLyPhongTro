@@ -21,4 +21,6 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
     List<Invoice> findByStatusAndDueDate(InvoiceStatus status, LocalDate date);
 
     void deleteAllByContractId(UUID contractId);
+
+    List<Invoice> findByContractId(UUID contractId);
 }

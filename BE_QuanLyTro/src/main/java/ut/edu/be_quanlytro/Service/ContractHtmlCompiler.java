@@ -68,7 +68,6 @@ public class ContractHtmlCompiler {
                 // Khúc này lấy Tên và SĐT từ User hiện tại
                 .replace("{{LANDLORD_NAME}}", landlord.getFullName() != null ? landlord.getFullName() : "")
                 .replace("{{LANDLORD_PHONE}}", landlord.getPhone() != null ? landlord.getPhone() : "")
-                // 🌟 QUAN TRỌNG: Lấy CCCD và Quê quán từ "Bản chụp" (Snapshot) trong Contract
                 .replace("{{LANDLORD_ID_CARD}}", contract.getCreator().getIdCardNumber() != null ?  contract.getCreator().getIdCardNumber() : "")
                 .replace("{{LANDLORD_HOMETOWN}}", contract.getCreator().getHometown() != null ? contract.getCreator().getHometown() : "")
 

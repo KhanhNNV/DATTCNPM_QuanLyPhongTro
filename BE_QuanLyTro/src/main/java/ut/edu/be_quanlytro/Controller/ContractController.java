@@ -155,7 +155,7 @@ public class ContractController {
         contractService.deleteContract(contractId, currentUserId);
 
         // 3. Trả về thông báo thành công cho Frontend
-        return ResponseEntity.ok("Xóa bản nháp hợp đồng thành công! Căn phòng đã được giải phóng và dữ liệu đã được dọn dẹp.");
+        return ResponseEntity.ok("Xóa hợp đồng thành công! Căn phòng đã được giải phóng và dữ liệu đã được dọn dẹp.");
     }
 
     // ================= KHÁCH THUÊ KÝ HỢP ĐỒNG =================

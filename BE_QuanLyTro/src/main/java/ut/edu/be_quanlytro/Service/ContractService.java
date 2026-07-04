@@ -25,6 +25,8 @@ public class ContractService {
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
     private final InvoiceRepository invoiceRepository;
+    private final InvoiceDetailRepository invoiceDetailRepository;
+    private final PaymentRepository  paymentRepository;
 
     // Tận dụng lại các Service đã có
     private final UserService userService;
@@ -586,45 +588,49 @@ public class ContractService {
                 cloudinaryService.deleteFile(contract.getTenantSignature());
             }
         } catch (Exception e) {
-            // Bọc try-catch để lỡ Cloudinary có lỗi thì vẫn tiếp tục xóa Database, không làm chết API
             System.err.println("Cảnh báo: Không thể xóa file trên Cloudinary - " + e.getMessage());
         }
 
         // ==============================================================
-        // 2. XỬ LÝ LIÊN KẾT DATABASE DỰA THEO TRẠNG THÁI HỢP ĐỒNG
+        // 2. XỬ LÝ LIÊN KẾT DATABASE (CỌC & HÓA ĐƠN) DỰA THEO TRẠNG THÁI
         // ==============================================================
+        Optional<Deposit> linkedDeposit = depositRepository.findByContractId(contractId);
+
         if (contract.getStatus() == ContractStatus.DRAFT) {
-            // NẾU LÀ DRAFT: Trả lại cọc về PENDING và mở lại phòng
-            Optional<Deposit> linkedDeposit = depositRepository.findByContractId(contractId);
+            // NẾU LÀ DRAFT: GIỮ LẠI CỌC, gỡ liên kết và trả phòng về DEPOSITED
             if (linkedDeposit.isPresent()) {
                 Deposit deposit = linkedDeposit.get();
                 deposit.setStatus(DepositStatus.PENDING);
                 deposit.setContract(null);
                 depositRepository.save(deposit);
+
                 room.setStatus(RoomStatus.DEPOSITED);
             } else {
+                // Nếu trường hợp HĐ nháp này tạo ra mà không qua bước cọc
                 room.setStatus(RoomStatus.AVAILABLE);
             }
             roomRepository.save(room);
 
         } else if (contract.getStatus() == ContractStatus.EXPIRED) {
-            // NẾU LÀ EXPIRED: Không mở lại phòng (vì có thể khách mới đã thuê).
-            // Chỉ cần gỡ liên kết với Phiếu cọc cũ (vẫn giữ trạng thái COMPLETED làm lịch sử)
-            Optional<Deposit> linkedDeposit = depositRepository.findByContractId(contractId);
+            // NẾU LÀ EXPIRED: XÓA SẠCH CỌC
             if (linkedDeposit.isPresent()) {
-                Deposit deposit = linkedDeposit.get();
-                deposit.setContract(null);
-                depositRepository.save(deposit);
+                depositRepository.delete(linkedDeposit.get());
             }
 
-            //CỰC KỲ QUAN TRỌNG: Xóa sạch Hóa đơn cũ để tránh lỗi Khóa Ngoại (Foreign Key)
+            // DỌN RÁC 3 TẦNG: PAYMENT + INVOICE DETAIL -> INVOICE
+            List<Invoice> oldInvoices = invoiceRepository.findByContractId(contractId);
+
+            for (Invoice inv : oldInvoices) {
+                invoiceDetailRepository.deleteAllByInvoiceId(inv.getId());
+                paymentRepository.deleteAllByInvoiceId(inv.getId());
+            }
             invoiceRepository.deleteAllByContractId(contractId);
         }
 
         // ==============================================================
         // 3. GHI LOG VÀ THỰC HIỆN XÓA HỢP ĐỒNG
         // ==============================================================
-        String logDesc = String.format("Xóa triệt để hợp đồng [%s] của phòng %s. Đã dọn dẹp file Cloud và các dữ liệu liên quan.",
+        String logDesc = String.format("Xóa triệt để hợp đồng [%s] của phòng %s.",
                 contract.getStatus().name(), room.getRoomNumber());
         activityLog.createLog(contract.getRoom().getArea().getLandlord(), "DELETE_CONTRACT", "contracts", contract.getId(), logDesc);
 
