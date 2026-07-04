@@ -16,6 +16,7 @@ import ut.edu.be_quanlytro.Entity.Enum.RoleType;
 import ut.edu.be_quanlytro.Entity.User;
 import ut.edu.be_quanlytro.Exception.BadRequestException; // Import thêm lỗi 400
 import ut.edu.be_quanlytro.Exception.ResourceNotFoundException; // Import thêm lỗi 404
+import ut.edu.be_quanlytro.Repository.ActivityLogRepository;
 import ut.edu.be_quanlytro.Repository.AreaRepository;
 import ut.edu.be_quanlytro.Repository.UserRepository;
 
@@ -31,6 +32,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final ActivityLogService activityLog;
     private final CloudinaryService cloudinaryService;
+    private final ActivityLogRepository activityLogRepository;
 
     // ================= CREATE =================
     @Transactional
@@ -181,6 +183,7 @@ public class UserService {
     public void deleteUser(UUID id) {
         User targetUser = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản cần xóa!"));
+        activityLogRepository.deleteAllByUserId(id);
         userRepository.delete(targetUser);
     }
 

@@ -127,14 +127,16 @@ public class ContractController {
 
     // API 6: Cập nhật thông tin hợp đồng (Nháp)
     @PutMapping("/update/{contractId}")
-    @PreAuthorize("hasRole('LANDLORD')") // Chỉ chủ trọ mới có quyền sửa
+    @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<ContractDetailResponse> updateContract(
             @PathVariable UUID contractId,
-            @RequestBody ContractUpdateRequest request,
+            @ModelAttribute ContractUpdateRequest request,
+            @RequestParam(value = "file", required = false) MultipartFile file,
             @AuthenticationPrincipal Jwt jwt) {
 
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
-        ContractDetailResponse response = contractService.updateContract(contractId, request, currentUserId);
+
+        ContractDetailResponse response = contractService.updateContract(contractId, request, file, currentUserId);
 
         return ResponseEntity.ok(response);
     }
@@ -170,7 +172,7 @@ public class ContractController {
         return ResponseEntity.ok(response);
     }
 
-    // ================= GIA HẠN HỢP ĐỒNG =================
+    // ================= GIA HẠN HỢP ĐỒNG (Gia hạn là tạo hợp đồng mới nhưng tài khoản cũ) =================
     @PutMapping("/extend/{contractId}")
     @PreAuthorize("hasRole('LANDLORD')") // Chỉ chủ trọ mới có quyền gia hạn
     public ResponseEntity<ContractDetailResponse> extendContract(
@@ -184,22 +186,7 @@ public class ContractController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/download/pdf/{id}")
-    public ResponseEntity<byte[]> downloadContractPdf(
-            @PathVariable UUID id,
-            @AuthenticationPrincipal Jwt jwt) {
 
-        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
-        byte[] pdfBytes = contractService.downloadContractPdf(id, currentUserId);
-
-        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
-        headers.setContentType(org.springframework.http.MediaType.APPLICATION_PDF);
-        headers.setContentDispositionFormData("attachment", "HopDong_" + id + ".pdf");
-
-        return org.springframework.http.ResponseEntity.ok()
-                .headers(headers)
-                .body(pdfBytes);
-    }
 
     // ================= UPLOAD FILE HỢP ĐỒNG =================
     @PostMapping(value = "/upload/file/{id}", consumes = "multipart/form-data")
