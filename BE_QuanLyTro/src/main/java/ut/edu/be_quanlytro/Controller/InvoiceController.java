@@ -71,6 +71,7 @@ public class InvoiceController {
         return ResponseEntity.ok(response);
     }
     @PostMapping(value = "/{id}/upload-proof", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('TENANT')")
     public ResponseEntity<?> uploadPaymentProof(
             @PathVariable UUID id,
             @RequestParam("file") MultipartFile file) {

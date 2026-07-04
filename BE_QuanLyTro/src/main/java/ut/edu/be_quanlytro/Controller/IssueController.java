@@ -10,6 +10,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import ut.edu.be_quanlytro.Dto.Response.IssueResponse;
+import ut.edu.be_quanlytro.Entity.Enum.IssueStatus;
 import ut.edu.be_quanlytro.Service.IssueService;
 
 import java.util.UUID;
@@ -33,5 +34,18 @@ public class IssueController {
         IssueResponse response = issueService.reportIssue(roomId, description, image, tenantId);
 
         return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
+    @PutMapping("/{id}/status")
+    @PreAuthorize("hasRole('LANDLORD')") // Bắt buộc là Chủ trọ mới được sửa
+    public ResponseEntity<IssueResponse> updateIssueStatus(
+            @PathVariable UUID id,
+            @RequestParam("status") IssueStatus status,
+            @RequestParam(value = "solutionNote", required = false) String solutionNote,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        UUID landlordId = UUID.fromString(jwt.getClaimAsString("userId"));
+        IssueResponse response = issueService.updateIssueStatus(id, status, solutionNote, landlordId);
+
+        return ResponseEntity.ok(response);
     }
 }

@@ -81,6 +81,39 @@ public class IssueService {
 
         return convertToResponse(issue);
     }
+    public IssueResponse updateIssueStatus(UUID issueId, IssueStatus newStatus, String solutionNote, UUID landlordId) {
+        Issue issue = issueRepository.findById(issueId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy báo cáo sự cố này!"));
+
+        // Chốt chặn bảo mật: Chỉ Chủ trọ của khu trọ đó mới được quyền cập nhật
+        if (!issue.getRoom().getArea().getLandlord().getId().equals(landlordId)) {
+            throw new AccessDeniedException("Bạn không có quyền cập nhật sự cố của khu trọ khác!");
+        }
+
+        // Cập nhật trạng thái và ghi chú
+        issue.setStatus(newStatus);
+        if (solutionNote != null && !solutionNote.trim().isEmpty()) {
+            issue.setSolutionNote(solutionNote);
+        }
+
+        issue = issueRepository.save(issue);
+
+        // Bắn thông báo về cho Khách thuê biết tiến độ
+        String statusText = newStatus == IssueStatus.ACCEPTED ? "Đã tiếp nhận" : "Đã hoàn thành";
+        String title = "Cập nhật tiến độ sự cố phòng " + issue.getRoom().getRoomNumber();
+        String content = String.format("Sự cố của bạn hiện đang ở trạng thái: %s. Ghi chú từ chủ trọ: %s",
+                statusText,
+                issue.getSolutionNote() != null ? issue.getSolutionNote() : "Không có");
+
+        notificationService.createNotification(
+                issue.getTenant(), // Bắn thẳng về điện thoại khách thuê
+                title,
+                content,
+                NotificationType.ISSUE_UPDATED
+        );
+
+        return convertToResponse(issue);
+    }
 
     private IssueResponse convertToResponse(Issue issue) {
         return IssueResponse.builder()
