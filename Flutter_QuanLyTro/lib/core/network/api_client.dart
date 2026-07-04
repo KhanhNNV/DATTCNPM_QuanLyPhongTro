@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../features/landlord_app/welcome/welcome_screen.dart';
-import '../../main.dart';
+import '../../main_landlord.dart';
 import '../utils/token_manager.dart';
 
 class ApiClient {

@@ -9,6 +9,25 @@ android {
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
+    buildFeatures {
+        resValues = true
+    }
+
+    flavorDimensions += "default"
+
+    productFlavors {
+        create("landlord") {
+            dimension = "default"
+            applicationIdSuffix = ".landlord"
+            resValue("string", "app_name", "\"Quản Lý Trọ\"")
+        }
+        create("tenant") {
+            dimension = "default"
+            applicationIdSuffix = ".tenant"
+            resValue("string", "app_name", "\"Phòng Của Tôi\"")
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
