@@ -126,19 +126,29 @@ public class ContractController {
     }
 
     // API 6: Cập nhật thông tin hợp đồng (Nháp)
-    @PutMapping("/update/{contractId}")
+    @PutMapping(value = "/update/{contractId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<ContractDetailResponse> updateContract(
             @PathVariable UUID contractId,
-            @ModelAttribute ContractUpdateRequest request,
+            @RequestParam(value = "data", required = false) String dataJson, // Nhận chuỗi JSON
             @RequestParam(value = "file", required = false) MultipartFile file,
             @AuthenticationPrincipal Jwt jwt) {
 
-        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+        try {
+            UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
 
-        ContractDetailResponse response = contractService.updateContract(contractId, request, file, currentUserId);
+            // Ép kiểu từ chuỗi JSON ra Object
+            ContractUpdateRequest request = new ContractUpdateRequest();
+            if (dataJson != null && !dataJson.trim().isEmpty()) {
+                request = objectMapper.readValue(dataJson, ContractUpdateRequest.class);
+            }
 
-        return ResponseEntity.ok(response);
+            ContractDetailResponse response = contractService.updateContract(contractId, request, file, currentUserId);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi xử lý dữ liệu cập nhật: " + e.getMessage());
+        }
     }
 
     // ================= XÓA HỢP ĐỒNG (BẢN NHÁP) =================
