@@ -484,23 +484,23 @@ public class ContractService {
     @Transactional
     public ContractDetailResponse updateContract(UUID contractId, ContractUpdateRequest request, MultipartFile file, UUID currentUserId) {
 
-        // 1. Tìm hợp đồng dưới DB
+        // 1. TÌM HỢP ĐỒNG VÀ CHỐT CHẶN BẢO MẬT
         Contract contract = contractRepository.findById(contractId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hợp đồng!"));
 
-        // 2. Chốt chặn bảo mật
         if (!contract.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
             throw new AccessDeniedException("Bạn không có quyền chỉnh sửa hợp đồng này!");
         }
 
-        // 3. Chốt chặn Nghiệp vụ pháp lý (CỰC KỲ QUAN TRỌNG)
         if (contract.getStatus() != ContractStatus.DRAFT) {
             throw new BadRequestException("Lỗi: Chỉ có thể chỉnh sửa điều khoản khi hợp đồng đang là Bản Nháp. Hợp đồng đã ký không được phép thay đổi!");
         }
 
-        boolean isDataChanged = false; // Biến cờ hiệu để check xem có cần Compile lại HTML không
+        boolean isDataChanged = false; // Biến cờ hiệu quyết định việc in lại HTML
 
-        // 4. Cập nhật các trường dữ liệu
+        // =================================================================
+        // 2. CẬP NHẬT THÔNG TIN CƠ BẢN (Ngày tháng, Tiền cọc, Mẫu hợp đồng)
+        // =================================================================
         if (request.getStartDate() != null && !request.getStartDate().equals(contract.getStartDate())) {
             contract.setStartDate(request.getStartDate());
             isDataChanged = true;
@@ -510,14 +510,93 @@ public class ContractService {
             isDataChanged = true;
         }
         if (request.getDepositAmount() != null) {
-            // Kiểm tra xem số tiền có thực sự thay đổi không (Dùng compareTo cho BigDecimal)
             if (contract.getDepositAmount() == null || contract.getDepositAmount().compareTo(request.getDepositAmount()) != 0) {
                 contract.setDepositAmount(request.getDepositAmount());
                 isDataChanged = true;
             }
         }
+        if (request.getTemplateId() != null &&
+                (contract.getTemplate() == null || !request.getTemplateId().equals(contract.getTemplate().getId()))) {
 
-        // 5. RENDER LẠI BẢN CHỤP HTML NẾU CÓ THAY ĐỔI DỮ LIỆU
+            ContractTemplate newTemplate = templateRepository.findById(request.getTemplateId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy mẫu hợp đồng mới!"));
+            if (!newTemplate.getLandlord().getId().equals(currentUserId)) {
+                throw new AccessDeniedException("Mẫu hợp đồng này không thuộc quyền sở hữu của bạn!");
+            }
+            contract.setTemplate(newTemplate);
+            isDataChanged = true;
+        }
+
+        // =================================================================
+        // 3. CẬP NHẬT THÔNG TIN KHÁCH THUÊ CHÍNH (MAIN TENANT)
+        // =================================================================
+        User tenant = contract.getTenant();
+        boolean isTenantChanged = false;
+
+        if (request.getTenantFullName() != null && !request.getTenantFullName().equals(tenant.getFullName())) {
+            tenant.setFullName(request.getTenantFullName());
+            isTenantChanged = true;
+        }
+        if (request.getTenantIdCardNumber() != null && !request.getTenantIdCardNumber().equals(tenant.getIdCardNumber())) {
+            tenant.setIdCardNumber(request.getTenantIdCardNumber());
+            isTenantChanged = true;
+        }
+        if (request.getTenantDob() != null && !request.getTenantDob().equals(tenant.getDob())) {
+            tenant.setDob(request.getTenantDob());
+            isTenantChanged = true;
+        }
+        if (request.getTenantHometown() != null && !request.getTenantHometown().equals(tenant.getHometown())) {
+            tenant.setHometown(request.getTenantHometown());
+            isTenantChanged = true;
+        }
+
+        if (isTenantChanged) {
+            userRepository.save(tenant);
+            isDataChanged = true;
+
+            // Đồng bộ thông tin vào bảng ContractMember (để lúc hiển thị danh sách người ở không bị lệch)
+            contract.getMembers().stream()
+                    .filter(m -> m.getPhone().equals(tenant.getPhone()))
+                    .findFirst()
+                    .ifPresent(mainMember -> {
+                        mainMember.setFullName(tenant.getFullName());
+                        mainMember.setIdCardNumber(tenant.getIdCardNumber());
+                        mainMember.setDob(tenant.getDob());
+                        mainMember.setHometown(tenant.getHometown());
+                    });
+        }
+
+        // =================================================================
+        // 4. CẬP NHẬT DANH SÁCH THÀNH VIÊN Ở GHÉP (CO-TENANTS)
+        // =================================================================
+        if (request.getMembers() != null) {
+            String mainTenantPhone = tenant.getPhone();
+
+            // Nhờ orphanRemoval = true, lệnh removeIf này sẽ ra lệnh cho Database xóa hẳn các thành viên cũ
+            contract.getMembers().removeIf(m -> !m.getPhone().equals(mainTenantPhone));
+
+            // Thêm danh sách thành viên mới từ Request
+            for (ContractMemberAddRequest memberReq : request.getMembers()) {
+                // Bỏ qua nếu frontend lỡ gửi kèm số điện thoại của người đại diện vào list này
+                if (memberReq.getPhone().equals(mainTenantPhone)) continue;
+
+                ContractMember newMember = ContractMember.builder()
+                        .contract(contract)
+                        .fullName(memberReq.getFullName())
+                        .phone(memberReq.getPhone())
+                        .idCardNumber(memberReq.getIdCardNumber())
+                        .dob(memberReq.getDob())
+                        .hometown(memberReq.getHometown())
+                        .joinedAt(LocalDate.now())
+                        .build();
+                contract.getMembers().add(newMember);
+            }
+            isDataChanged = true;
+        }
+
+        // =================================================================
+        // 5. RENDER LẠI BẢN CHỤP HTML NẾU CÓ THAY ĐỔI
+        // =================================================================
         if (isDataChanged) {
             String newCompiledHtml = contractHtmlCompiler.compileContractTerms(
                     contract.getTemplate(),
@@ -529,33 +608,30 @@ public class ContractService {
             contract.setContractTerms(newCompiledHtml);
         }
 
-        // 6. XỬ LÝ REPLACE FILE TRÊN CLOUD (Nếu chủ trọ đính kèm file mới)
+        // =================================================================
+        // 6. XỬ LÝ FILE ĐÍNH KÈM (CLOUDINARY)
+        // =================================================================
         if (file != null && !file.isEmpty()) {
-
-            // a. Xóa file cũ để dọn rác Cloudinary
             String oldFileUrl = contract.getContractFileUrl();
             if (oldFileUrl != null && !oldFileUrl.trim().isEmpty()) {
                 try {
                     cloudinaryService.deleteFile(oldFileUrl);
                 } catch (Exception e) {
-                    // Bọc try-catch để lỡ Cloudinary lỗi mạng thì luồng lưu DB vẫn không bị sập
                     System.err.println("Cảnh báo: Không thể xóa file hợp đồng cũ trên Cloud - " + e.getMessage());
                 }
             }
-
-            // b. Up file mới và cập nhật URL
             String newFileUrl = cloudinaryService.uploadFile(file, "contract_files");
             contract.setContractFileUrl(newFileUrl);
         }
 
-        // 7. Lưu xuống DB
+        // =================================================================
+        // 7. LƯU DATABASE & GHI LOG
+        // =================================================================
         Contract updatedContract = contractRepository.save(contract);
 
-        // 8. Ghi log hoạt động
         String logDesc = String.format("Cập nhật thông tin bản nháp hợp đồng phòng %s", contract.getRoom().getRoomNumber());
         activityLog.createLog(contract.getRoom().getArea().getLandlord(), "UPDATE_CONTRACT", "contracts", updatedContract.getId(), logDesc);
 
-        // 9. Trả về chi tiết mới nhất
         return mapToDetailResponse(updatedContract);
     }
     // ================= 9. XÓA HỢP ĐỒNG (BẢN NHÁP & QUÁ HẠN - DỌN RÁC TRIỆT ĐỂ) =================
