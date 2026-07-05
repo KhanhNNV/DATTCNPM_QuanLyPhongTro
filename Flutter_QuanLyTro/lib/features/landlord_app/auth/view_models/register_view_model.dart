@@ -49,7 +49,11 @@ class RegisterViewModel extends ChangeNotifier {
       );
 
       // Tự động đăng nhập sau khi đăng ký thành công
-      await _authProvider.login(phone.trim(), password.trim());
+      await _authProvider.login(
+        phone.trim(),
+        password.trim(),
+        expectedRole: 'LANDLORD',
+      );
       onSuccess();
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');

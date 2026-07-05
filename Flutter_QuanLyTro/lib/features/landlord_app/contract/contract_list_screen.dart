@@ -10,7 +10,7 @@ import 'view_models/contract_list_view_model.dart';
 
 class ContractListScreen extends StatelessWidget {
   const ContractListScreen({super.key});
-  
+
   String _formatDate(String dateStr) {
     try {
       final parsedDate = DateTime.parse(dateStr);
