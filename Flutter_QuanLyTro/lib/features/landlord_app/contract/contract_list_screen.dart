@@ -5,8 +5,11 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../data/models/response/contract_detail_response.dart';
+import '../main_layout/view_models/main_layout_view_model.dart';
 import 'contract_pdf_viewer_screen.dart';
+import 'contract_update_screen.dart';
 import 'view_models/contract_list_view_model.dart';
+import 'view_models/contract_update_view_model.dart';
 
 class ContractListScreen extends StatelessWidget {
   const ContractListScreen({super.key});
@@ -22,11 +25,16 @@ class ContractListScreen extends StatelessWidget {
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'DRAFT': return Colors.orange;
-      case 'SIGNED': return Colors.green;
-      case 'EXPIRED': return Colors.red;
-      case 'TERMINATED': return Colors.grey;
-      default: return Colors.blue;
+      case 'DRAFT':
+        return Colors.orange;
+      case 'SIGNED':
+        return Colors.green;
+      case 'EXPIRED':
+        return Colors.red;
+      case 'TERMINATED':
+        return Colors.grey;
+      default:
+        return Colors.blue;
     }
   }
 
@@ -39,7 +47,7 @@ class ContractListScreen extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext), // Đóng dialog
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
@@ -75,9 +83,74 @@ class ContractListScreen extends StatelessWidget {
     );
   }
 
+  Future<void> _handleEditContract(BuildContext context, ContractListViewModel vm, ContractDetailResponse contract) async {
+    final currentAreaId = context.read<MainLayoutViewModel>().selectedAreaId;
+
+    if (currentAreaId == null || currentAreaId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lỗi: Chưa xác định được Khu trọ hiện tại!')),
+      );
+      return;
+    }
+
+    final isUpdated = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider(
+          create: (_) => ContractUpdateViewModel(currentContract: contract, areaId: currentAreaId),
+          child: const ContractUpdateScreen(),
+        ),
+      ),
+    );
+
+    if (isUpdated == true) {
+      vm.fetchContracts();
+    }
+  }
+
+  void _showActionSheet(BuildContext context, ContractListViewModel vm, ContractDetailResponse contract) {
+    final canEdit = contract.status == 'DRAFT';
+    final canDelete = contract.status == 'DRAFT' || contract.status == 'EXPIRED';
+
+    if (!canEdit && !canDelete) return;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (bottomSheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (canEdit)
+                ListTile(
+                  leading: const Icon(Icons.edit_outlined, color: Colors.blueAccent),
+                  title: const Text('Sửa hợp đồng'),
+                  onTap: () {
+                    Navigator.pop(bottomSheetContext);
+                    _handleEditContract(context, vm, contract);
+                  },
+                ),
+              if (canDelete)
+                ListTile(
+                  leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                  title: const Text('Xóa hợp đồng'),
+                  onTap: () {
+                    Navigator.pop(bottomSheetContext);
+                    _showDeleteConfirmDialog(context, vm, contract);
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Lắng nghe State được cung cấp từ màn hình cha
     final vm = context.watch<ContractListViewModel>();
 
     return Scaffold(
@@ -85,11 +158,10 @@ class ContractListScreen extends StatelessWidget {
       appBar: const CustomAppBar(title: 'Quản lý hợp đồng'),
       body: Column(
         children: [
-          // 1. THANH TÌM KIẾM
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: TextField(
-              controller: vm.searchController, // Lấy Controller từ ViewModel
+              controller: vm.searchController,
               onChanged: vm.onSearchChanged,
               decoration: InputDecoration(
                 hintText: 'Tìm theo số phòng, tên khách thuê...',
@@ -108,8 +180,6 @@ class ContractListScreen extends StatelessWidget {
               ),
             ),
           ),
-
-          // 2. CHIPS PHÂN LOẠI TRẠNG THÁI
           SizedBox(
             height: 50,
             child: ListView(
@@ -139,8 +209,6 @@ class ContractListScreen extends StatelessWidget {
               }).toList(),
             ),
           ),
-
-          // 3. DANH SÁCH HỢP ĐỒNG
           Expanded(
             child: vm.isLoading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -161,7 +229,6 @@ class ContractListScreen extends StatelessWidget {
       ),
     );
   }
-
 
   Widget _buildContractCard(BuildContext context, ContractListViewModel vm, ContractDetailResponse contract) {
     final statusColor = _getStatusColor(contract.status);
@@ -193,12 +260,12 @@ class ContractListScreen extends StatelessWidget {
             );
           }
         },
+        onLongPress: () => _showActionSheet(context, vm, contract),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Hàng đầu tiên: Số phòng, Trạng thái và Nút Xóa
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -212,38 +279,17 @@ class ContractListScreen extends StatelessWidget {
                       ),
                     ],
                   ),
-                  Row(
-                    children: [
-                      // Chip Trạng thái
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          vm.statusMap[contract.status] ?? contract.status,
-                          style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-
-                      // Nút Xóa (CHỈ HIỂN THỊ NẾU LÀ DRAFT HOẶC EXPIRED)
-                      if (contract.status == 'DRAFT' || contract.status == 'EXPIRED') ...[
-                        const SizedBox(width: 4),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(), // Thu gọn padding mặc định
-                          onPressed: () => _showDeleteConfirmDialog(context, vm, contract),
-                        ),
-                      ]
-                    ],
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
+                    child: Text(
+                      vm.statusMap[contract.status] ?? contract.status,
+                      style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ],
               ),
               const Divider(height: 24, thickness: 0.5),
-
-              // Hàng thứ hai: Khách thuê đại diện
               Row(
                 children: [
                   Icon(Icons.person_outline, color: Colors.grey[600], size: 18),
@@ -256,8 +302,6 @@ class ContractListScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-
-              // Hàng thứ ba: Ngày hiệu lực (Bắt đầu -> Kết thúc)
               Row(
                 children: [
                   Icon(Icons.calendar_today_outlined, color: Colors.grey[600], size: 16),
