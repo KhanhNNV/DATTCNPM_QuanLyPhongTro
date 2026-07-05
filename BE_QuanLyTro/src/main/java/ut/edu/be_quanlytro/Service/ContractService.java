@@ -756,57 +756,116 @@ public class ContractService {
         System.out.println("Hoàn tất quét hợp đồng và gửi thông báo!");
     }
 
-    // ================= 12. GIA HẠN HỢP ĐỒNG =================
+    // ================= 12. GIA HẠN HỢP ĐỒNG (BẰNG CÁCH TẠO BẢN KẾ THIẾT MỚI) =================
     @Transactional
-    public ContractDetailResponse extendContract(UUID contractId, ContractExtendRequest request, UUID currentUserId) {
+    public ContractDetailResponse extendContract(UUID oldContractId, ContractExtendRequest request, UUID currentUserId) {
 
-        // 1. Tìm hợp đồng
-        Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hợp đồng!"));
+        // 1. TÌM HỢP ĐỒNG CŨ
+        Contract oldContract = contractRepository.findById(oldContractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hợp đồng cũ!"));
 
-        // 2. Chốt chặn bảo mật
-        if (!contract.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
+        // 2. CHỐT CHẶN BẢO MẬT VÀ NGHIỆP VỤ
+        if (!oldContract.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
             throw new AccessDeniedException("Bạn không có quyền gia hạn hợp đồng của khu trọ khác!");
         }
 
-        // 3. Chốt chặn nghiệp vụ
-        if (contract.getStatus() != ContractStatus.SIGNED && contract.getStatus() != ContractStatus.EXPIRED) {
-            throw new BadRequestException("Chỉ có thể gia hạn hợp đồng đang có hiệu lực (SIGNED) hoặc vừa hết hạn (EXPIRED)!");
+        if (oldContract.getStatus() != ContractStatus.SIGNED && oldContract.getStatus() != ContractStatus.EXPIRED) {
+            throw new BadRequestException("Chỉ có thể gia hạn khi hợp đồng cũ đang có hiệu lực (SIGNED) hoặc vừa hết hạn (EXPIRED)!");
         }
 
-        if (request.getNewEndDate() == null || !request.getNewEndDate().isAfter(contract.getEndDate())) {
-            throw new BadRequestException("Ngày gia hạn mới bắt buộc phải nằm sau ngày kết thúc cũ!");
+        if (request.getNewEndDate() == null || !request.getNewEndDate().isAfter(oldContract.getEndDate())) {
+            throw new BadRequestException("Ngày kết thúc mới bắt buộc phải nằm sau ngày kết thúc của hợp đồng cũ!");
         }
 
-        // 4. Cập nhật dữ liệu
-        contract.setEndDate(request.getNewEndDate());
+        // ==========================================================
+        // BƯỚC QUAN TRỌNG 1: ĐÓNG BĂNG HỢP ĐỒNG CŨ (LƯU VÀO LỊCH SỬ)
+        // ==========================================================
+        oldContract.setStatus(ContractStatus.EXPIRED);
+        contractRepository.save(oldContract);
 
-        // Nếu hợp đồng trước đó đã bị Cron Job quét và chuyển thành EXPIRED -> Hồi sinh nó
-        if (contract.getStatus() == ContractStatus.EXPIRED) {
-            contract.setStatus(ContractStatus.SIGNED);
+        // ==========================================================
+        // BƯỚC QUAN TRỌNG 2: KHỞI TẠO HỢP ĐỒNG MỚI DỰA TRÊN DỮ LIỆU CŨ
+        // ==========================================================
+        // Mặc định ngày bắt đầu của HĐ mới = Ngày kết thúc của HĐ cũ (hoặc tùy bạn định nghĩa thêm trong DTO)
+        LocalDate newStartDate = oldContract.getEndDate();
 
-            Room room = contract.getRoom();
-            room.setStatus(RoomStatus.RENTED); // Đóng phòng lại để không ai thuê được
-            roomRepository.save(room);
+        Contract newContract = Contract.builder()
+                .room(oldContract.getRoom())
+                .tenant(oldContract.getTenant())
+                .creator(oldContract.getCreator())
+                .template(oldContract.getTemplate())
+
+                // Cập nhật thời hạn mới
+                .startDate(newStartDate)
+                .endDate(request.getNewEndDate())
+
+                // Kế thừa dữ liệu tài chính & pháp lý
+                .depositAmount(oldContract.getDepositAmount())
+                .landlordSignature(oldContract.getLandlordSignature())
+                .creator(oldContract.getCreator())
+                //  Hợp đồng mới phải là DRAFT để đợi khách vào ký lại!
+                .status(ContractStatus.DRAFT)
+                .build();
+
+        // ==========================================================
+        // BƯỚC QUAN TRỌNG 3: SAO CHÉP DANH SÁCH KHÁCH Ở GHÉP
+        // ==========================================================
+        List<ContractMember> clonedMembers = oldContract.getMembers().stream().map(oldMember ->
+                ContractMember.builder()
+                        .contract(newContract) // Gắn vào hợp đồng mới
+                        .fullName(oldMember.getFullName())
+                        .phone(oldMember.getPhone())
+                        .dob(oldMember.getDob())
+                        .hometown(oldMember.getHometown())
+                        .idCardNumber(oldMember.getIdCardNumber())
+                        .joinedAt(oldMember.getJoinedAt()) // Giữ nguyên ngày vào ở ban đầu
+                        .build()
+        ).toList();
+        newContract.setMembers(new ArrayList<>(clonedMembers));
+
+        // ==========================================================
+        // BƯỚC QUAN TRỌNG 4: RENDER LẠI BẢN CHỤP HTML (VÌ ĐÃ ĐỔI NGÀY)
+        // ==========================================================
+        String compiledHtml = contractHtmlCompiler.compileContractTerms(
+                newContract.getTemplate(),
+                newContract,
+                newContract.getCreator(),
+                newContract.getTenant(),
+                newContract.getRoom()
+        );
+        newContract.setContractTerms(compiledHtml);
+
+        // ==========================================================
+        // BƯỚC QUAN TRỌNG 5: CHUYỂN DỊCH PHIẾU CỌC VÀ LƯU DATABASE
+        // ==========================================================
+        Contract savedNewContract = contractRepository.save(newContract);
+
+        // Tìm phiếu cọc của hợp đồng cũ và "trỏ" nó sang hợp đồng mới để bảo toàn dữ liệu
+        Optional<Deposit> linkedDeposit = depositRepository.findByContractId(oldContractId);
+        if (linkedDeposit.isPresent()) {
+            Deposit deposit = linkedDeposit.get();
+            deposit.setContract(savedNewContract);
+            depositRepository.save(deposit);
         }
 
-        contractRepository.save(contract);
+        // Chuyển phòng về trạng thái CHỜ KÝ (RESERVED) vì hợp đồng mới đang là DRAFT
+        Room room = oldContract.getRoom();
+        room.setStatus(RoomStatus.RESERVED);
+        roomRepository.save(room);
 
-        // 5. Ghi log hoạt động
-        String logDesc = String.format("Chủ trọ gia hạn hợp đồng phòng %s đến ngày %s",
-                contract.getRoom().getRoomNumber(), request.getNewEndDate().toString());
-        activityLog.createLog(contract.getRoom().getArea().getLandlord(), "EXTEND_CONTRACT", "contracts", contract.getId(), logDesc);
+        // ==========================================================
+        // BƯỚC QUAN TRỌNG 6: GHI LOG & BẮN THÔNG BÁO CHO KHÁCH
+        // ==========================================================
+        String logDesc = String.format("Chủ trọ gia hạn phòng %s (Chờ khách ký).", room.getRoomNumber());
+        activityLog.createLog(oldContract.getCreator(), "EXTEND_CONTRACT", "contracts", savedNewContract.getId(), logDesc);
 
-        // 6. Bắn thông báo báo hỉ cho Khách thuê
-        String title = "Hợp đồng đã được gia hạn";
-        String content = String.format("Chủ trọ đã gia hạn thời gian thuê phòng %s của bạn đến ngày %s. Chúc bạn có trải nghiệm lưu trú tuyệt vời!",
-                contract.getRoom().getRoomNumber(), request.getNewEndDate().toString());
+        String title = "Yêu cầu ký Hợp đồng gia hạn";
+        String content = String.format("Chủ trọ đã tạo bản Hợp đồng gia hạn mới cho phòng %s (Từ ngày %s đến %s). Vui lòng vào ứng dụng để kiểm tra và xác nhận chữ ký điện tử nhé!",
+                room.getRoomNumber(), newStartDate.toString(), request.getNewEndDate().toString());
+        notificationService.createNotification(savedNewContract.getTenant(), title, content, NotificationType.CONTRACT_EXTEND);
 
-        // (Lưu ý: Bạn có thể tạo thêm enum NotificationType.SYSTEM hoặc tái sử dụng CONTRACT_SIGNED)
-        notificationService.createNotification(contract.getTenant(), title, content, NotificationType.CONTRACT_EXTEND);
-
-        // 7. Trả về dữ liệu mới
-        return mapToDetailResponse(contract);
+        // Trả về DTO của cái hợp đồng MỚI
+        return mapToDetailResponse(savedNewContract);
     }
 
     // ================= 13. TẢI LÊN FILE HỢP ĐỒNG (BẢN SCAN / BẢN MỀM) =================
