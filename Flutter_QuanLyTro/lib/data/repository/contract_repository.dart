@@ -96,4 +96,15 @@ class ContractRepository {
     final rawError = utf8.decode(response.bodyBytes);
     throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
+
+  Future<String> deleteContract(String contractId) async {
+    final response = await _apiClient.delete('/api/contracts/$contractId');
+
+    if (response.statusCode == 200) {
+      return utf8.decode(response.bodyBytes);
+    }
+
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+  }
 }

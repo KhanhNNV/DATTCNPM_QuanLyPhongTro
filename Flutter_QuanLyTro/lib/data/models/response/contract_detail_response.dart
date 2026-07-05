@@ -25,7 +25,7 @@ class ContractDetailResponse {
   // Thông tin chủ trọ
   final String landlordName;
   final String landlordIdCardNumber;
-  final String landlordAddress;
+  final String landlordHometown;
   final String? landlordSignatureUrl;
 
   ContractDetailResponse({
@@ -49,7 +49,7 @@ class ContractDetailResponse {
     this.createdAt,
     required this.landlordName,
     required this.landlordIdCardNumber,
-    required this.landlordAddress,
+    required this.landlordHometown,
     this.landlordSignatureUrl,
   });
 
@@ -80,7 +80,7 @@ class ContractDetailResponse {
 
       landlordName: json['landlordName'] ?? '',
       landlordIdCardNumber: json['landlordIdCardNumber'] ?? '',
-      landlordAddress: json['landlordAddress'] ?? '',
+      landlordHometown: json['landlordHometown'] ?? '',
       landlordSignatureUrl: json['landlordSignatureUrl'],
     );
   }

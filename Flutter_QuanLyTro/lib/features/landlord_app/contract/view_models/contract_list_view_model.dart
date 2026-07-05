@@ -77,6 +77,18 @@ class ContractListViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<String> deleteContract(String contractId) async {
+    try {
+      final successMessage = await _repository.deleteContract(contractId);
+      _allContracts.removeWhere((c) => c.id == contractId);
+      _applyFilters();
+
+      return successMessage;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   @override
   void dispose() {
     searchController.dispose();

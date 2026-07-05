@@ -202,7 +202,7 @@ class ContractCreateViewModel extends ChangeNotifier {
           // Dữ liệu User
           landlordName: contractDetail.landlordName,
           landlordIdCard: contractDetail.landlordIdCardNumber,
-          landlordAddress: contractDetail.landlordAddress,
+          landlordAddress: contractDetail.landlordHometown,
 
           tenantName: contractDetail.tenantName,
           tenantIdCard: contractDetail.tenantIdCardNumber,
