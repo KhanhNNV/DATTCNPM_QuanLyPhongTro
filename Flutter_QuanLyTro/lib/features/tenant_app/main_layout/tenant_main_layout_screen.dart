@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 
+import '../home_page/tenant_home_screen.dart';
 import 'view_models/tenant_main_layout_view_model.dart';
 import 'widgets/tenant_main_app_bar.dart';
 import 'widgets/tenant_main_bottom_bar.dart';
@@ -50,21 +51,8 @@ class TenantMainLayoutScreen extends StatelessWidget {
       )
           : IndexedStack(
         index: viewModel.currentIndex,
-        children: const [
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.check_circle_outline, color: Colors.green, size: 80),
-                SizedBox(height: 16),
-                Text(
-                  'Đăng nhập thành công! \nChào mừng bạn đến với App Khách Thuê.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 18, color: Colors.black87),
-                ),
-              ],
-            ),
-          ),
+        children: [
+          const TenantHomeScreen(),
           Center(child: Text('Màn hình Hóa đơn', style: TextStyle(fontSize: 18))),
           Center(child: Text('Màn hình Thông báo', style: TextStyle(fontSize: 18))),
         ],
