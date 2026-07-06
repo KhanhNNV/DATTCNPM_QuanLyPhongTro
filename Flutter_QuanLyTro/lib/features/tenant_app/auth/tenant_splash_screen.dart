@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/token_manager.dart';
 import '../main_layout/tenant_main_layout_screen.dart';
+import '../main_layout/view_models/tenant_main_layout_view_model.dart';
 import 'tenant_login_screen.dart';
 
 class TenantSplashScreen extends StatefulWidget {
@@ -49,10 +51,15 @@ class _TenantSplashScreenState extends State<TenantSplashScreen> {
   void _navigateToHome() {
     if (mounted) {
       Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const TenantMainLayoutScreen()),
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChangeNotifierProvider(
+              create: (_) => TenantMainLayoutViewModel(),
+              child: const TenantMainLayoutScreen(),
+            ),
+          ),
       );
-    }
+    };
   }
 
   @override

@@ -1,49 +1,94 @@
 import 'package:flutter/material.dart';
-import '../../../core/utils/token_manager.dart';
-import '../auth/tenant_login_screen.dart';
+import 'package:provider/provider.dart';
+import '../../../../core/constants/app_colors.dart';
 
-class TenantMainLayoutScreen extends StatelessWidget {
+import 'view_models/tenant_main_layout_view_model.dart';
+import 'widgets/tenant_main_app_bar.dart';
+import 'widgets/tenant_main_bottom_bar.dart';
+import 'widgets/tenant_main_drawer.dart';
+
+class TenantMainLayoutScreen extends StatefulWidget {
   const TenantMainLayoutScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Phòng Của Tôi', style: TextStyle(fontWeight: FontWeight.bold)),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.redAccent),
-            tooltip: 'Đăng xuất',
-            onPressed: () async {
-              // Xóa token khi đăng xuất
-              await TokenManager.clearAuthData();
+  State<TenantMainLayoutScreen> createState() => _TenantMainLayoutScreenState();
+}
 
-              if (context.mounted) {
-                // Đẩy người dùng về lại trang Đăng nhập và xóa lịch sử trang
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (_) => const TenantLoginScreen()),
-                      (route) => false,
-                );
-              }
-            },
-          )
-        ],
+class _TenantMainLayoutScreenState extends State<TenantMainLayoutScreen> {
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<TenantMainLayoutViewModel>().fetchInitialData();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Lắng nghe sự thay đổi trạng thái từ ViewModel
+    final viewModel = context.watch<TenantMainLayoutViewModel>();
+
+    return Scaffold(
+      backgroundColor: Colors.grey[100],
+      appBar: TenantMainAppBar(
+        roomNumber: viewModel.displayRoomNumber,
+        areaName: viewModel.displayAreaName,
       ),
-      body: const Center(
+      endDrawer: TenantMainDrawer(
+        tenantName: viewModel.displayTenantName,
+        tenantPhone: viewModel.displayTenantPhone,
+      ),
+      body: viewModel.isLoading
+          ? const Center(
+        child: CircularProgressIndicator(color: AppColors.primary),
+      )
+          : viewModel.errorMessage != null
+          ? Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.check_circle_outline, color: Colors.green, size: 80),
-            SizedBox(height: 16),
+            const Icon(Icons.cloud_off, size: 48, color: Colors.redAccent),
+            const SizedBox(height: 16),
             Text(
-              'Đăng nhập thành công! \nChào mừng bạn đến với App Khách Thuê.',
+              'Lỗi: ${viewModel.errorMessage}',
+              style: const TextStyle(color: Colors.redAccent),
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 18, color: Colors.black87),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: viewModel.fetchInitialData,
+              child: const Text('Thử lại'),
             ),
           ],
         ),
+      )
+          : IndexedStack(
+        index: viewModel.currentIndex,
+        children: const [
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.check_circle_outline, color: Colors.green, size: 80),
+                SizedBox(height: 16),
+                Text(
+                  'Đăng nhập thành công! \nChào mừng bạn đến với App Khách Thuê.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 18, color: Colors.black87),
+                ),
+              ],
+            ),
+          ),
+          Center(child: Text('Màn hình Hóa đơn', style: TextStyle(fontSize: 18))),
+
+          Center(child: Text('Màn hình Thông báo', style: TextStyle(fontSize: 18))),
+        ],
+      ),
+      // 4. BOTTOM BAR: Dùng hàm chuyển tab từ ViewModel
+      bottomNavigationBar: TenantMainBottomBar(
+        currentIndex: viewModel.currentIndex,
+        onTabSelected: viewModel.changeTab,
       ),
     );
   }

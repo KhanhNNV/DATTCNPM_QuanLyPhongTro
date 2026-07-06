@@ -28,7 +28,17 @@ class RoomRepository {
           .toList();
     }
 
-    // Ném lỗi qua Handler
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+  }
+
+  Future<RoomModel> getRoomById(String roomId) async {
+    final response = await _apiClient.get('/api/rooms/$roomId');
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(utf8.decode(response.bodyBytes));
+      return RoomModel.fromJson(json);
+    }
     final rawError = utf8.decode(response.bodyBytes);
     throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
