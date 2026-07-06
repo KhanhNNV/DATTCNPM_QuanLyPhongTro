@@ -1,5 +1,6 @@
     package ut.edu.be_quanlytro.Dto.Response;
 
+    import jakarta.persistence.Column;
     import lombok.Builder;
     import lombok.Getter;
     import lombok.Setter;
@@ -23,11 +24,16 @@
         private String tenantIdCardNumber;
         private String tenantHometown;
 
+        // --- Bổ sung thông tin Khu trọ ---
+        private String areaName;
+        private String areaAddress;
+
         // Thông tin chủ trọ
         private String landlordName;
         private String landlordIdCardNumber;
         private String landlordHometown;
         private String landlordSignatureUrl;
+
 
         // Thông tin hợp đồng
         private LocalDate startDate;

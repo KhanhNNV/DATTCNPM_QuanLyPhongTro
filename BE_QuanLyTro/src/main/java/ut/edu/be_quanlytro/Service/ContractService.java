@@ -1015,6 +1015,9 @@ public class ContractService {
                 .status(contract.getStatus())
                 .contractFileUrl(contract.getContractFileUrl())
                 .contractTerms(contract.getContractTerms())
+                //Thông tin khu trọ
+                .areaName(contract.getRoom().getArea().getName())
+                .areaAddress(contract.getRoom().getArea().getAddress())
 
                 // --- THÔNG TIN TEMPLATE
                 .templateId(contract.getTemplate() != null ? contract.getTemplate().getId() : null)
@@ -1023,7 +1026,6 @@ public class ContractService {
                 .roomId(contract.getRoom().getId())
                 .roomNumber(contract.getRoom().getRoomNumber())
                 .rentPrice(contract.getRoom().getRentPrice())
-
 
                 // --- THÔNG TIN NGƯỜI TẠO (CHỦ TRỌ) ---
                 .landlordName(contract.getCreator().getFullName())
