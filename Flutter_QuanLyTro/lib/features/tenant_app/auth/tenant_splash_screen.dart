@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/token_manager.dart';
+// Bạn nhớ kiểm tra lại đường dẫn import này cho khớp với cấu trúc thư mục nhé
+import '../../../../data/repository/user_repository.dart';
 import '../main_layout/tenant_main_layout_screen.dart';
 import '../main_layout/view_models/tenant_main_layout_view_model.dart';
 import 'tenant_login_screen.dart';
@@ -14,6 +16,8 @@ class TenantSplashScreen extends StatefulWidget {
 }
 
 class _TenantSplashScreenState extends State<TenantSplashScreen> {
+  final UserRepository _userProvider = UserRepository();
+
   @override
   void initState() {
     super.initState();
@@ -32,6 +36,8 @@ class _TenantSplashScreenState extends State<TenantSplashScreen> {
     }
 
     try {
+      // Gọi API để xác thực Token.
+      await _userProvider.getCurrentUser();
       _navigateToHome();
     } catch (e) {
       await TokenManager.clearAuthData();
@@ -51,15 +57,15 @@ class _TenantSplashScreenState extends State<TenantSplashScreen> {
   void _navigateToHome() {
     if (mounted) {
       Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => ChangeNotifierProvider(
-              create: (_) => TenantMainLayoutViewModel(),
-              child: const TenantMainLayoutScreen(),
-            ),
+        context,
+        MaterialPageRoute(
+          builder: (context) => ChangeNotifierProvider(
+            create: (_) => TenantMainLayoutViewModel()..fetchInitialData(),
+            child: const TenantMainLayoutScreen(),
           ),
+        ),
       );
-    };
+    }
   }
 
   @override
@@ -70,7 +76,6 @@ class _TenantSplashScreenState extends State<TenantSplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Icon phòng thay cho tòa nhà để hợp với Khách thuê
             Icon(Icons.meeting_room_outlined, size: 80, color: AppColors.primary),
             SizedBox(height: 24),
             CircularProgressIndicator(

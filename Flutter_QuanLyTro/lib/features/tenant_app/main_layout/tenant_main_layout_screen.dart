@@ -7,26 +7,11 @@ import 'widgets/tenant_main_app_bar.dart';
 import 'widgets/tenant_main_bottom_bar.dart';
 import 'widgets/tenant_main_drawer.dart';
 
-class TenantMainLayoutScreen extends StatefulWidget {
+class TenantMainLayoutScreen extends StatelessWidget {
   const TenantMainLayoutScreen({super.key});
 
   @override
-  State<TenantMainLayoutScreen> createState() => _TenantMainLayoutScreenState();
-}
-
-class _TenantMainLayoutScreenState extends State<TenantMainLayoutScreen> {
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<TenantMainLayoutViewModel>().fetchInitialData();
-    });
-  }
-
-  @override
   Widget build(BuildContext context) {
-    // Lắng nghe sự thay đổi trạng thái từ ViewModel
     final viewModel = context.watch<TenantMainLayoutViewModel>();
 
     return Scaffold(
@@ -81,11 +66,9 @@ class _TenantMainLayoutScreenState extends State<TenantMainLayoutScreen> {
             ),
           ),
           Center(child: Text('Màn hình Hóa đơn', style: TextStyle(fontSize: 18))),
-
           Center(child: Text('Màn hình Thông báo', style: TextStyle(fontSize: 18))),
         ],
       ),
-      // 4. BOTTOM BAR: Dùng hàm chuyển tab từ ViewModel
       bottomNavigationBar: TenantMainBottomBar(
         currentIndex: viewModel.currentIndex,
         onTabSelected: viewModel.changeTab,

@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_quanlytro/features/landlord_app/welcome/welcome_screen.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/token_manager.dart';
 import '../../../../data/repository/user_repository.dart';
 import '../home_page/home_page_screen.dart';
 import '../main_layout/main_layout_screen.dart';
+import '../main_layout/view_models/main_layout_view_model.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -38,7 +40,7 @@ class _SplashScreenState extends State<SplashScreen> {
 
     // Trường hợp CÓ Token -> Gọi API check xem còn hạn không
     try {
-      // Nếu API trả về 200 ok (hợp lệ) -> Vào trang chủ
+      await _userProvider.getCurrentUser();
       _navigateToHome();
     } catch (e) {
       await TokenManager.clearAuthData();
@@ -59,7 +61,12 @@ class _SplashScreenState extends State<SplashScreen> {
     if (mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => MainLayoutScreen()),
+        MaterialPageRoute(
+          builder: (_) => ChangeNotifierProvider(
+            create: (_) => MainLayoutViewModel()..fetchInitialData(),
+            child: const MainLayoutScreen(),
+          ),
+        ),
       );
     }
   }

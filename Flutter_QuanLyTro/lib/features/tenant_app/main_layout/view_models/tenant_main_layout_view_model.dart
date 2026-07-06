@@ -13,7 +13,6 @@ import '../../../../core/utils/token_manager.dart';
 class TenantMainLayoutViewModel extends ChangeNotifier {
   final UserRepository _userRepo = UserRepository();
   final ContractRepository _contractRepo = ContractRepository();
-  final AreaRepository _areaRepo = AreaRepository();
 
   // --- QUẢN LÝ TAB ---
   int _currentIndex = 0;
@@ -25,12 +24,6 @@ class TenantMainLayoutViewModel extends ChangeNotifier {
 
   ContractDetailResponse? _currentContract;
   ContractDetailResponse? get currentContract => _currentContract;
-
-  RoomModel? _currentRoom;
-  RoomModel? get currentRoom => _currentRoom;
-
-  AreaModel? _currentArea;
-  AreaModel? get currentArea => _currentArea;
 
   // --- TRẠNG THÁI ---
   bool _isLoading = true;
@@ -47,10 +40,10 @@ class TenantMainLayoutViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1. Lấy thông tin User hiện tại
+      // Lấy thông tin User hiện tại
       _currentUser = await _userRepo.getCurrentUser();
 
-      // 2. Lấy thông tin Hợp đồng của khách thuê
+      // Lấy thông tin Hợp đồng của khách thuê
       _currentContract = await _contractRepo.getMyCurrentContract();
 
     } catch (e) {
@@ -70,8 +63,8 @@ class TenantMainLayoutViewModel extends ChangeNotifier {
   }
 
   // Lấy các text hiển thị nhanh trên UI
-  String get displayRoomNumber => _currentContract?.roomNumber ?? "Chưa có phòng";
-  String get displayAreaName => _currentArea?.name ?? "Đang tải dữ liệu...";
+  String get displayRoomNumber => _currentContract?.roomNumber ?? "...";
+  String get displayAreaName => _currentContract?.areaName ?? "...";
   String get displayTenantName => _currentUser?.fullName ?? "Khách thuê";
   String get displayTenantPhone => _currentUser?.phone ?? "---";
 
