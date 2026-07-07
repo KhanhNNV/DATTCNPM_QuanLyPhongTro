@@ -79,6 +79,7 @@ public class AuthenticationService {
                 .fullName(request.getFullName())
                 .idCardNumber(request.getIdCardNumber())
                 .hometown(request.getHometown())
+                .email(request.getEmail())
                 .isFirstLogin(false)
                 .build();
 
