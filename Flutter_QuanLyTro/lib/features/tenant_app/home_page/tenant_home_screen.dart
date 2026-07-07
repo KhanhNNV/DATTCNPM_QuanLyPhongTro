@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../landlord_app/home_page/quick_action_item.dart';
+import '../contract/tenant_contract_pdf_viewer_screen.dart';
+import '../contract/view_models/tenant_contract_view_model.dart';
 import '../main_layout/view_models/tenant_main_layout_view_model.dart';
 
 class TenantHomeScreen extends StatefulWidget {
@@ -14,12 +16,37 @@ class TenantHomeScreen extends StatefulWidget {
 class _TenantHomeScreenState extends State<TenantHomeScreen> {
 
   // --- DANH SÁCH CHỨC NĂNG: QUẢN LÝ PHÒNG TRỌ ---
-  List<QuickActionItem> _getRoomActions(BuildContext context) {
+  List<QuickActionItem> _getRoomActions(BuildContext context,TenantMainLayoutViewModel viewModel) {
     return [
       QuickActionItem(
         title: 'Hợp đồng điện tử',
         icon: Icons.assignment_outlined,
-        onTap: () => _navigateTo('Màn hình Chi tiết hợp đồng thuê phòng'),
+        onTap: () {
+          final contract = viewModel.currentContract;
+          if (contract == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Không tìm thấy thông tin hợp đồng hiện tại!')),
+            );
+            return;
+          }
+
+          final fileUrl = contract.contractFileUrl;
+          if (fileUrl != null && fileUrl.isNotEmpty) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ChangeNotifierProvider(
+                  create: (_) => TenantContractViewModel()..loadCurrentContract(),
+                  child: const TenantContractPdfViewerScreen(),
+                ),
+              ),
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Hợp đồng này chưa có file đính kèm!')),
+            );
+          }
+        },
       ),
       QuickActionItem(
         title: 'Hóa đơn & Thanh toán',
@@ -64,7 +91,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
     // Đọc trạng thái từ ViewModel của khách thuê (ví dụ: thông tin phòng, thông tin user)
     final viewModel = context.watch<TenantMainLayoutViewModel>();
 
-    final roomActions = _getRoomActions(context);
+    final roomActions = _getRoomActions(context,viewModel);
     final utilityActions = _getUtilityActions(context);
 
     return Scaffold(
