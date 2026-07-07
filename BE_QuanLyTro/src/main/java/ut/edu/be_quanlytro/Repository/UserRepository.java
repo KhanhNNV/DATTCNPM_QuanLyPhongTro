@@ -15,6 +15,7 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findByPhone(String phone);
     boolean existsByPhone(String phone);
+    boolean existsByEmail(String email);
 
     //Lấy trực tiếp người đại diện (tenant) từ bảng Contract
     @Query("SELECT DISTINCT c.tenant FROM Contract c WHERE c.room.area.id = :areaId")
