@@ -5,13 +5,15 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../data/models/response/contract_detail_response.dart';
+import '../main_layout/view_models/main_layout_view_model.dart';
 import 'contract_pdf_viewer_screen.dart';
+import 'contract_update_screen.dart';
 import 'view_models/contract_list_view_model.dart';
+import 'view_models/contract_update_view_model.dart';
 
 class ContractListScreen extends StatelessWidget {
   const ContractListScreen({super.key});
 
-  // Định dạng hiển thị ngày DD/MM/YYYY từ String yyyy-MM-dd của Backend
   String _formatDate(String dateStr) {
     try {
       final parsedDate = DateTime.parse(dateStr);
@@ -21,20 +23,134 @@ class ContractListScreen extends StatelessWidget {
     }
   }
 
-  // Trả về màu sắc tương ứng với từng trạng thái hợp đồng
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'DRAFT': return Colors.orange; // Bản nháp: Màu cam
-      case 'SIGNED': return Colors.green; // Đã ký: Màu xanh lá
-      case 'EXPIRED': return Colors.red;  // Hết hạn: Màu đỏ
-      case 'TERMINATED': return Colors.grey; // Thanh lý: Màu xám
-      default: return Colors.blue;
+      case 'DRAFT':
+        return Colors.orange;
+      case 'SIGNED':
+        return Colors.green;
+      case 'EXPIRED':
+        return Colors.red;
+      case 'TERMINATED':
+        return Colors.grey;
+      default:
+        return Colors.blue;
     }
+  }
+
+  void _showDeleteConfirmDialog(BuildContext context, ContractListViewModel vm, ContractDetailResponse contract) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Xóa hợp đồng?', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text('Bạn có chắc chắn muốn xóa hợp đồng phòng ${contract.roomNumber} không? Dữ liệu không thể khôi phục.'),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              elevation: 0,
+            ),
+            onPressed: () async {
+              Navigator.pop(dialogContext);
+              try {
+                final message = await vm.deleteContract(contract.id);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(message), backgroundColor: Colors.green),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(e.toString().replaceAll('Exception: ', '')),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              }
+            },
+            child: const Text('Xóa ngay'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleEditContract(BuildContext context, ContractListViewModel vm, ContractDetailResponse contract) async {
+    final currentAreaId = context.read<MainLayoutViewModel>().selectedAreaId;
+
+    if (currentAreaId == null || currentAreaId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lỗi: Chưa xác định được Khu trọ hiện tại!')),
+      );
+      return;
+    }
+
+    final isUpdated = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChangeNotifierProvider(
+          create: (_) => ContractUpdateViewModel(currentContract: contract, areaId: currentAreaId),
+          child: const ContractUpdateScreen(),
+        ),
+      ),
+    );
+
+    if (isUpdated == true) {
+      vm.fetchContracts();
+    }
+  }
+
+  void _showActionSheet(BuildContext context, ContractListViewModel vm, ContractDetailResponse contract) {
+    final canEdit = contract.status == 'DRAFT';
+    final canDelete = contract.status == 'DRAFT' || contract.status == 'EXPIRED';
+
+    if (!canEdit && !canDelete) return;
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (bottomSheetContext) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (canEdit)
+                ListTile(
+                  leading: const Icon(Icons.edit_outlined, color: Colors.blueAccent),
+                  title: const Text('Sửa hợp đồng'),
+                  onTap: () {
+                    Navigator.pop(bottomSheetContext);
+                    _handleEditContract(context, vm, contract);
+                  },
+                ),
+              if (canDelete)
+                ListTile(
+                  leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                  title: const Text('Xóa hợp đồng'),
+                  onTap: () {
+                    Navigator.pop(bottomSheetContext);
+                    _showDeleteConfirmDialog(context, vm, contract);
+                  },
+                ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    // Lắng nghe State được cung cấp từ màn hình cha
     final vm = context.watch<ContractListViewModel>();
 
     return Scaffold(
@@ -42,11 +158,10 @@ class ContractListScreen extends StatelessWidget {
       appBar: const CustomAppBar(title: 'Quản lý hợp đồng'),
       body: Column(
         children: [
-          // 1. THANH TÌM KIẾM
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: TextField(
-              controller: vm.searchController, // Lấy Controller từ ViewModel
+              controller: vm.searchController,
               onChanged: vm.onSearchChanged,
               decoration: InputDecoration(
                 hintText: 'Tìm theo số phòng, tên khách thuê...',
@@ -65,8 +180,6 @@ class ContractListScreen extends StatelessWidget {
               ),
             ),
           ),
-
-          // 2. CHIPS PHÂN LOẠI TRẠNG THÁI
           SizedBox(
             height: 50,
             child: ListView(
@@ -96,8 +209,6 @@ class ContractListScreen extends StatelessWidget {
               }).toList(),
             ),
           ),
-
-          // 3. DANH SÁCH HỢP ĐỒNG
           Expanded(
             child: vm.isLoading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -119,7 +230,6 @@ class ContractListScreen extends StatelessWidget {
     );
   }
 
-  // Widget Thẻ chi tiết hợp đồng rút gọn
   Widget _buildContractCard(BuildContext context, ContractListViewModel vm, ContractDetailResponse contract) {
     final statusColor = _getStatusColor(contract.status);
 
@@ -133,9 +243,7 @@ class ContractListScreen extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-
           final fileUrl = contract.contractFileUrl;
-
           if (fileUrl != null && fileUrl.isNotEmpty) {
             Navigator.push(
               context,
@@ -152,12 +260,12 @@ class ContractListScreen extends StatelessWidget {
             );
           }
         },
+        onLongPress: () => _showActionSheet(context, vm, contract),
         child: Padding(
           padding: const EdgeInsets.all(16.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Hàng đầu tiên: Số phòng và Trạng thái
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -173,10 +281,7 @@ class ContractListScreen extends StatelessWidget {
                   ),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: statusColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
+                    decoration: BoxDecoration(color: statusColor.withOpacity(0.1), borderRadius: BorderRadius.circular(6)),
                     child: Text(
                       vm.statusMap[contract.status] ?? contract.status,
                       style: TextStyle(color: statusColor, fontSize: 11, fontWeight: FontWeight.bold),
@@ -185,8 +290,6 @@ class ContractListScreen extends StatelessWidget {
                 ],
               ),
               const Divider(height: 24, thickness: 0.5),
-
-              // Hàng thứ hai: Khách thuê đại diện
               Row(
                 children: [
                   Icon(Icons.person_outline, color: Colors.grey[600], size: 18),
@@ -199,8 +302,6 @@ class ContractListScreen extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-
-              // Hàng thứ ba: Ngày hiệu lực (Bắt đầu -> Kết thúc)
               Row(
                 children: [
                   Icon(Icons.calendar_today_outlined, color: Colors.grey[600], size: 16),

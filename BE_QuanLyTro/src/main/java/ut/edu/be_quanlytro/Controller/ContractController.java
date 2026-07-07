@@ -126,17 +126,29 @@ public class ContractController {
     }
 
     // API 6: Cập nhật thông tin hợp đồng (Nháp)
-    @PutMapping("/update/{contractId}")
-    @PreAuthorize("hasRole('LANDLORD')") // Chỉ chủ trọ mới có quyền sửa
+    @PutMapping(value = "/update/{contractId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<ContractDetailResponse> updateContract(
             @PathVariable UUID contractId,
-            @RequestBody ContractUpdateRequest request,
+            @RequestParam(value = "data", required = false) String dataJson, // Nhận chuỗi JSON
+            @RequestParam(value = "file", required = false) MultipartFile file,
             @AuthenticationPrincipal Jwt jwt) {
 
-        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
-        ContractDetailResponse response = contractService.updateContract(contractId, request, currentUserId);
+        try {
+            UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
 
-        return ResponseEntity.ok(response);
+            // Ép kiểu từ chuỗi JSON ra Object
+            ContractUpdateRequest request = new ContractUpdateRequest();
+            if (dataJson != null && !dataJson.trim().isEmpty()) {
+                request = objectMapper.readValue(dataJson, ContractUpdateRequest.class);
+            }
+
+            ContractDetailResponse response = contractService.updateContract(contractId, request, file, currentUserId);
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            throw new RuntimeException("Lỗi xử lý dữ liệu cập nhật: " + e.getMessage());
+        }
     }
 
     // ================= XÓA HỢP ĐỒNG (BẢN NHÁP) =================
@@ -153,7 +165,7 @@ public class ContractController {
         contractService.deleteContract(contractId, currentUserId);
 
         // 3. Trả về thông báo thành công cho Frontend
-        return ResponseEntity.ok("Xóa bản nháp hợp đồng thành công! Căn phòng đã được giải phóng và dữ liệu đã được dọn dẹp.");
+        return ResponseEntity.ok("Xóa hợp đồng thành công! Căn phòng đã được giải phóng và dữ liệu đã được dọn dẹp.");
     }
 
     // ================= KHÁCH THUÊ KÝ HỢP ĐỒNG =================
@@ -170,7 +182,7 @@ public class ContractController {
         return ResponseEntity.ok(response);
     }
 
-    // ================= GIA HẠN HỢP ĐỒNG =================
+    // ================= GIA HẠN HỢP ĐỒNG (Gia hạn là tạo hợp đồng mới nhưng tài khoản cũ) =================
     @PutMapping("/extend/{contractId}")
     @PreAuthorize("hasRole('LANDLORD')") // Chỉ chủ trọ mới có quyền gia hạn
     public ResponseEntity<ContractDetailResponse> extendContract(
@@ -184,22 +196,7 @@ public class ContractController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/download/pdf/{id}")
-    public ResponseEntity<byte[]> downloadContractPdf(
-            @PathVariable UUID id,
-            @AuthenticationPrincipal Jwt jwt) {
 
-        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
-        byte[] pdfBytes = contractService.downloadContractPdf(id, currentUserId);
-
-        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
-        headers.setContentType(org.springframework.http.MediaType.APPLICATION_PDF);
-        headers.setContentDispositionFormData("attachment", "HopDong_" + id + ".pdf");
-
-        return org.springframework.http.ResponseEntity.ok()
-                .headers(headers)
-                .body(pdfBytes);
-    }
 
     // ================= UPLOAD FILE HỢP ĐỒNG =================
     @PostMapping(value = "/upload/file/{id}", consumes = "multipart/form-data")
@@ -213,29 +210,5 @@ public class ContractController {
 
         // Gọi Service và trả kết quả
         return ResponseEntity.ok(contractService.uploadContractFile(id, file, currentUserId));
-    }
-    // ================= XEM TRỰC TIẾP HỢP ĐỒNG PDF (INLINE) =================
-    @GetMapping("/view/pdf/{id}")
-    public ResponseEntity<byte[]> viewContractPdf(
-            @PathVariable UUID id,
-            @AuthenticationPrincipal Jwt jwt) {
-
-        // 1. Lấy ID người dùng từ Token
-        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
-
-        // 2. Gọi Service để lấy mảng byte của file PDF (Tận dụng lại hàm cũ)
-        byte[] pdfBytes = contractService.downloadContractPdf(id, currentUserId);
-
-        // 3. Cấu hình Header yêu cầu trình duyệt HIỂN THỊ TRỰC TIẾP
-        org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
-        headers.setContentType(org.springframework.http.MediaType.APPLICATION_PDF);
-
-        // Cú pháp 'inline' quyết định việc file sẽ được mở trên trình duyệt
-        headers.add(org.springframework.http.HttpHeaders.CONTENT_DISPOSITION, "inline; filename=HopDong_" + id + ".pdf");
-
-        // 4. Trả về kết quả
-        return org.springframework.http.ResponseEntity.ok()
-                .headers(headers)
-                .body(pdfBytes);
     }
 }

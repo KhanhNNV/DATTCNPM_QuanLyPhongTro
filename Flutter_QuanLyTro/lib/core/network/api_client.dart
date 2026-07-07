@@ -4,7 +4,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import '../../features/landlord_app/welcome/welcome_screen.dart';
-import '../../main.dart';
+import '../../main_landlord.dart';
 import '../utils/token_manager.dart';
 
 class ApiClient {
@@ -269,6 +269,73 @@ class ApiClient {
         response = await http.Response.fromStream(streamedResponse);
       } else {
         // Refresh thất bại -> văng ra màn hình chào
+        await TokenManager.clearAuthData();
+        navigatorKey.currentState?.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+              (route) => false,
+        );
+        throw Exception('Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.');
+      }
+    }
+
+    return response;
+  }
+
+  // Hàm xử lý upload file kèm dữ liệu văn bản (PUT Multipart)
+  Future<http.Response> putMultipartForm(
+      String endpoint, {
+        required Map<String, String> fields,
+        Map<String, File>? files,
+      }) async {
+    final url = Uri.parse('$baseUrl$endpoint');
+    var request = http.MultipartRequest('PUT', url);
+
+    // 1. Lấy Token gắn vào header
+    final token = await TokenManager.getAccessToken();
+    if (token != null) {
+      request.headers['Authorization'] = 'Bearer $token';
+    }
+
+    // 2. Gắn các trường text (data json)
+    request.fields.addAll(fields);
+
+    // 3. Gắn file nếu có
+    if (files != null) {
+      for (var entry in files.entries) {
+        request.files.add(
+          await http.MultipartFile.fromPath(entry.key, entry.value.path),
+        );
+      }
+    }
+
+    var streamedResponse = await request.send();
+    var response = await http.Response.fromStream(streamedResponse);
+
+    // 4. Xử lý logic Auto Refresh Token
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      bool isRefreshed = await _refreshToken();
+
+      if (isRefreshed) {
+        // Tạo lại request mới sau khi đổi token thành công
+        request = http.MultipartRequest('PUT', url);
+        final newToken = await TokenManager.getAccessToken();
+        if (newToken != null) {
+          request.headers['Authorization'] = 'Bearer $newToken';
+        }
+
+        request.fields.addAll(fields);
+
+        if (files != null) {
+          for (var entry in files.entries) {
+            request.files.add(
+              await http.MultipartFile.fromPath(entry.key, entry.value.path),
+            );
+          }
+        }
+
+        streamedResponse = await request.send();
+        response = await http.Response.fromStream(streamedResponse);
+      } else {
         await TokenManager.clearAuthData();
         navigatorKey.currentState?.pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const WelcomeScreen()),

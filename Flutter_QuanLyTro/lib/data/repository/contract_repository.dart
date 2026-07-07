@@ -96,4 +96,46 @@ class ContractRepository {
     final rawError = utf8.decode(response.bodyBytes);
     throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
+
+  Future<String> deleteContract(String contractId) async {
+    final response = await _apiClient.delete('/api/contracts/$contractId');
+
+    if (response.statusCode == 200) {
+      return utf8.decode(response.bodyBytes);
+    }
+
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+  }
+
+  Future<ContractDetailResponse> updateContract({
+    required String contractId,
+    required Map<String, dynamic> data,
+    File? file,
+  }) async {
+    final endpoint = '/api/contracts/update/$contractId';
+
+    final Map<String, String> fields = {
+      'data': jsonEncode(data),
+    };
+
+    final Map<String, File> files = {};
+    if (file != null) {
+      files['file'] = file;
+    }
+    
+    final response = await _apiClient.putMultipartForm(
+      endpoint,
+      fields: fields,
+      files: files.isNotEmpty ? files : null,
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final json = jsonDecode(utf8.decode(response.bodyBytes));
+      return ContractDetailResponse.fromJson(json);
+    }
+
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+  }
 }

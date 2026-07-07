@@ -1,7 +1,7 @@
 package ut.edu.be_quanlytro.Service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.access.AccessDeniedException; // Thêm import 403
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -9,6 +9,8 @@ import ut.edu.be_quanlytro.Dto.Request.*;
 import ut.edu.be_quanlytro.Dto.Response.*;
 import ut.edu.be_quanlytro.Entity.*;
 import ut.edu.be_quanlytro.Entity.Enum.*;
+import ut.edu.be_quanlytro.Exception.BadRequestException; // Thêm import 400
+import ut.edu.be_quanlytro.Exception.ResourceNotFoundException; // Thêm import 404
 import ut.edu.be_quanlytro.Repository.*;
 
 import java.math.BigDecimal;
@@ -22,6 +24,9 @@ public class ContractService {
     private final ContractRepository contractRepository;
     private final RoomRepository roomRepository;
     private final UserRepository userRepository;
+    private final InvoiceRepository invoiceRepository;
+    private final InvoiceDetailRepository invoiceDetailRepository;
+    private final PaymentRepository  paymentRepository;
 
     // Tận dụng lại các Service đã có
     private final UserService userService;
@@ -31,7 +36,7 @@ public class ContractService {
     private final CloudinaryService cloudinaryService;
     private final NotificationService notificationService;
     private final ContractTemplateRepository templateRepository;
-    private final PdfExportService pdfExportService;
+
     private final ContractHtmlCompiler contractHtmlCompiler;
 
 
@@ -41,20 +46,24 @@ public class ContractService {
 
         // 1. KIỂM TRA PHÒNG VÀ QUYỀN CHỦ TRỌ
         Room room = roomRepository.findById(request.getRoomId())
-                .orElseThrow(() -> new RuntimeException("Phòng không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Phòng không tồn tại"));
 
         User landlord = room.getArea().getLandlord();
         if (!landlord.getId().equals(currentUserId)) {
-            throw new RuntimeException("Bạn không có quyền tạo hợp đồng cho phòng thuộc khu trọ khác");
+            throw new AccessDeniedException("Bạn không có quyền tạo hợp đồng cho phòng thuộc khu trọ khác");
         }
 
         if (landlord.getLandlordSignature() == null || landlord.getLandlordSignature().isEmpty()) {
-            throw new RuntimeException("Vui lòng thiết lập chữ ký số cá nhân trước khi lập hợp đồng!");
+            throw new BadRequestException("Vui lòng thiết lập chữ ký số cá nhân trước khi lập hợp đồng!");
+        }
+        if (landlord.getIdCardNumber() == null || landlord.getIdCardNumber().isEmpty() ||
+                landlord.getHometown() == null || landlord.getHometown().isEmpty()) {
+            throw new BadRequestException("Vui lòng cập nhật đầy đủ số CCCD và Quê quán trong Hồ sơ cá nhân trước khi lập hợp đồng!");
         }
 
         //Chỉ cho phép tạo hợp đồng khi phòng trống hoặc phòng đã nhận cọc
         if (room.getStatus() != RoomStatus.AVAILABLE && room.getStatus() != RoomStatus.DEPOSITED) {
-            throw new RuntimeException("Phòng hiện không ở trạng thái sẵn sàng để lập hợp đồng (Đang ở, bảo trì hoặc đang chờ khách khác ký)!");
+            throw new BadRequestException("Phòng hiện không ở trạng thái sẵn sàng để lập hợp đồng (Đang ở, bảo trì hoặc đang chờ khách khác ký)!");
         }
 
         Deposit pendingDeposit = null;
@@ -62,27 +71,27 @@ public class ContractService {
         if (request.getDepositId() != null) {
             // Tìm phiếu cọc theo ID truyền vào
             pendingDeposit = depositRepository.findById(request.getDepositId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy phiếu đặt cọc với ID đã cung cấp!"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phiếu đặt cọc với ID đã cung cấp!"));
 
             // Kiểm tra chéo 1: Phiếu cọc này có đúng là của phòng đang lập hợp đồng không?
             if (!pendingDeposit.getRoom().getId().equals(room.getId())) {
-                throw new RuntimeException("Phiếu đặt cọc này không thuộc về phòng bạn đang chọn!");
+                throw new BadRequestException("Phiếu đặt cọc này không thuộc về phòng bạn đang chọn!");
             }
 
             // Kiểm tra chéo 2: Phiếu cọc còn hiệu lực không?
             if (pendingDeposit.getStatus() != DepositStatus.PENDING) {
-                throw new RuntimeException("Phiếu đặt cọc này đã được xử lý (đã lên hợp đồng) hoặc đã bị hủy!");
+                throw new BadRequestException("Phiếu đặt cọc này đã được xử lý (đã lên hợp đồng) hoặc đã bị hủy!");
             }
 
             // Kiểm tra chéo 3: SĐT người làm hợp đồng có khớp với SĐT người đã cọc không?
             if (!pendingDeposit.getPhone().equals(request.getTenantPhone())) {
-                throw new RuntimeException("Số điện thoại khách thuê (" + request.getTenantPhone() +
+                throw new BadRequestException("Số điện thoại khách thuê (" + request.getTenantPhone() +
                         ") không khớp với số điện thoại trên phiếu cọc (" + pendingDeposit.getPhone() + ")!");
             }
         }
 
         // 3. GỌI FPT AI ĐỂ QUÉT CCCD
-        // Việc quét lỗi hay thiếu ảnh sẽ được OcrService quăng lỗi (throw RuntimeException) và dừng luồng ngay lập tức
+        // Việc quét lỗi hay thiếu ảnh sẽ được OcrService quăng lỗi (throw BadRequestException) và dừng luồng ngay lập tức
         OcrCccdResponse ocrData = ocrService.extractCccdData(frontImage, backImage);
 
         // FPT trả về ngày sinh dạng String (VD: "15/05/2001"), cần parse sang LocalDate
@@ -113,7 +122,7 @@ public class ContractService {
             UserResponse userResponse = userService.createUser(userReq, currentUserId);
 
             tenant = userRepository.findById(userResponse.getId())
-                    .orElseThrow(() -> new RuntimeException("Lỗi truy xuất tài khoản khách sau khi tạo"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Lỗi truy xuất tài khoản khách sau khi tạo"));
         } else {
             rawPassword = "Khách đã có tài khoản (Dùng mật khẩu cũ)";
         }
@@ -122,7 +131,7 @@ public class ContractService {
         // 5. LẤY MẪU HỢP ĐỒNG VÀ KHỞI TẠO
 
         ContractTemplate template = templateRepository.findByLandlordIdAndIsActiveTrue(currentUserId)
-                .orElseThrow(() -> new RuntimeException("Bạn chưa thiết lập Mẫu hợp đồng mặc định! Vui lòng vào mục Quản lý mẫu hợp đồng để kích hoạt một mẫu."));
+                .orElseThrow(() -> new ResourceNotFoundException("Bạn chưa thiết lập Mẫu hợp đồng mặc định! Vui lòng vào mục Quản lý mẫu hợp đồng để kích hoạt một mẫu."));
 
         // Khởi tạo đối tượng Hợp đồng
         Contract contract = Contract.builder()
@@ -186,38 +195,42 @@ public class ContractService {
 
         // 1. KIỂM TRA PHÒNG VÀ QUYỀN CHỦ TRỌ
         Room room = roomRepository.findById(request.getRoomId())
-                .orElseThrow(() -> new RuntimeException("Phòng không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Phòng không tồn tại"));
 
         User landlord = room.getArea().getLandlord();
         if (!landlord.getId().equals(currentUserId)) {
-            throw new RuntimeException("Bạn không có quyền tạo hợp đồng cho phòng thuộc khu trọ khác");
+            throw new AccessDeniedException("Bạn không có quyền tạo hợp đồng cho phòng thuộc khu trọ khác");
         }
 
         if (landlord.getLandlordSignature() == null || landlord.getLandlordSignature().isEmpty()) {
-            throw new RuntimeException("Vui lòng thiết lập chữ ký số cá nhân trước khi lập hợp đồng!");
+            throw new BadRequestException("Vui lòng thiết lập chữ ký số cá nhân trước khi lập hợp đồng!");
+        }
+        if (landlord.getIdCardNumber() == null || landlord.getIdCardNumber().isEmpty() ||
+                landlord.getHometown() == null || landlord.getHometown().isEmpty()) {
+            throw new BadRequestException("Vui lòng cập nhật đầy đủ số CCCD và Quê quán trong Hồ sơ cá nhân trước khi lập hợp đồng!");
         }
 
         // Chỉ cho phép tạo hợp đồng khi phòng trống hoặc phòng đã nhận cọc
         if (room.getStatus() != RoomStatus.AVAILABLE && room.getStatus() != RoomStatus.DEPOSITED) {
-            throw new RuntimeException("Phòng hiện không ở trạng thái sẵn sàng để lập hợp đồng!");
+            throw new BadRequestException("Phòng hiện không ở trạng thái sẵn sàng để lập hợp đồng!");
         }
 
         // 2. KIỂM TRA ĐẶT CỌC
         Deposit pendingDeposit = null;
         if (request.getDepositId() != null) {
             pendingDeposit = depositRepository.findById(request.getDepositId())
-                    .orElseThrow(() -> new RuntimeException("Không tìm thấy phiếu đặt cọc với ID đã cung cấp!"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phiếu đặt cọc với ID đã cung cấp!"));
 
             if (!pendingDeposit.getRoom().getId().equals(room.getId())) {
-                throw new RuntimeException("Phiếu đặt cọc này không thuộc về phòng bạn đang chọn!");
+                throw new BadRequestException("Phiếu đặt cọc này không thuộc về phòng bạn đang chọn!");
             }
 
             if (pendingDeposit.getStatus() != DepositStatus.PENDING) {
-                throw new RuntimeException("Phiếu đặt cọc này đã được xử lý hoặc đã bị hủy!");
+                throw new BadRequestException("Phiếu đặt cọc này đã được xử lý hoặc đã bị hủy!");
             }
 
             if (!pendingDeposit.getPhone().equals(request.getTenantPhone())) {
-                throw new RuntimeException("Số điện thoại khách không khớp với phiếu cọc!");
+                throw new BadRequestException("Số điện thoại khách không khớp với phiếu cọc!");
             }
         }
 
@@ -238,7 +251,7 @@ public class ContractService {
             UserResponse userResponse = userService.createUser(userReq, currentUserId);
 
             tenant = userRepository.findById(userResponse.getId())
-                    .orElseThrow(() -> new RuntimeException("Lỗi truy xuất tài khoản khách sau khi tạo"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Lỗi truy xuất tài khoản khách sau khi tạo"));
         } else {
             rawPassword = "Khách đã có tài khoản (Dùng mật khẩu cũ)";
         }
@@ -247,7 +260,7 @@ public class ContractService {
         // 5. LẤY MẪU HỢP ĐỒNG VÀ KHỞI TẠO
 
         ContractTemplate template = templateRepository.findByLandlordIdAndIsActiveTrue(currentUserId)
-                .orElseThrow(() -> new RuntimeException("Bạn chưa thiết lập Mẫu hợp đồng mặc định! Vui lòng vào mục Quản lý mẫu hợp đồng để kích hoạt một mẫu."));
+                .orElseThrow(() -> new ResourceNotFoundException("Bạn chưa thiết lập Mẫu hợp đồng mặc định! Vui lòng vào mục Quản lý mẫu hợp đồng để kích hoạt một mẫu."));
 
         // Khởi tạo đối tượng Hợp đồng
         Contract contract = Contract.builder()
@@ -308,13 +321,13 @@ public class ContractService {
     public ContractDetailResponse getContractByIdForLandlord(UUID contractId, UUID currentUserId) {
         // 1. Tìm hợp đồng dưới DB
         Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng với ID cung cấp!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hợp đồng với ID cung cấp!"));
 
         // 2. Chốt chặn bảo mật (Chỉ Chủ trọ của khu trọ đó mới được xem)
         boolean isLandlord = contract.getRoom().getArea().getLandlord().getId().equals(currentUserId);
 
         if (!isLandlord) {
-            throw new RuntimeException("Bạn không có quyền quản lý, không thể xem thông tin của hợp đồng này!");
+            throw new AccessDeniedException("Bạn không có quyền quản lý, không thể xem thông tin của hợp đồng này!");
         }
 
         return mapToDetailResponse(contract);
@@ -329,7 +342,7 @@ public class ContractService {
 
         // Tìm hợp đồng thỏa mãn điều kiện
         Contract currentContract = contractRepository.findFirstByTenantIdAndStatusInOrderByCreatedAtDesc(tenantId, validStatuses)
-                .orElseThrow(() -> new RuntimeException("Bạn hiện tại chưa có hợp đồng nào đang chờ ký hoặc đang hoạt động trong hệ thống!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Bạn hiện tại chưa có hợp đồng nào đang chờ ký hoặc đang hoạt động trong hệ thống!"));
 
         return mapToDetailResponse(currentContract);
     }
@@ -351,17 +364,17 @@ public class ContractService {
 
         // 1. Tìm hợp đồng dưới Database
         Contract contract = contractRepository.findById(request.getContractId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng với ID đã cung cấp!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hợp đồng với ID đã cung cấp!"));
 
         // 2. Chốt chặn bảo mật (Chỉ Chủ trọ quản lý phòng này mới được thêm người)
         boolean isLandlord = contract.getRoom().getArea().getLandlord().getId().equals(currentUserId);
         if (!isLandlord) {
-            throw new RuntimeException("Bạn không có quyền thêm thành viên vào hợp đồng của khu trọ khác!");
+            throw new AccessDeniedException("Bạn không có quyền thêm thành viên vào hợp đồng của khu trọ khác!");
         }
 
         // 3. Chốt chặn nghiệp vụ (Chỉ cho phép thêm khi hợp đồng đang DRAFT hoặc ACTIVE)
         if (contract.getStatus() != ContractStatus.DRAFT && contract.getStatus() != ContractStatus.SIGNED) {
-            throw new RuntimeException("Chỉ có thể thêm thành viên khi hợp đồng đang ở trạng thái Nháp hoặc Đang hoạt động!");
+            throw new BadRequestException("Chỉ có thể thêm thành viên khi hợp đồng đang ở trạng thái Nháp hoặc Đang hoạt động!");
         }
 
         // 4. Kiểm tra trùng lặp (Ngăn chặn thêm 1 người 2 lần)
@@ -369,7 +382,7 @@ public class ContractService {
                 .anyMatch(member -> member.getIdCardNumber().equals(request.getIdCardNumber())
                         || member.getPhone().equals(request.getPhone()));
         if (isExist) {
-            throw new RuntimeException("Thành viên với Số điện thoại hoặc CCCD này đã tồn tại trong hợp đồng!");
+            throw new BadRequestException("Thành viên với Số điện thoại hoặc CCCD này đã tồn tại trong hợp đồng!");
         }
 
         // 5. Khởi tạo đối tượng Thành viên mới
@@ -404,16 +417,16 @@ public class ContractService {
 
         // 1. Tìm hợp đồng
         Contract contract = contractRepository.findById(request.getContractId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hợp đồng!"));
 
         // 2. Chốt chặn bảo mật
         if (!contract.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
-            throw new RuntimeException("Bạn không có quyền thanh lý hợp đồng này!");
+            throw new AccessDeniedException("Bạn không có quyền thanh lý hợp đồng này!");
         }
 
         // 3. Kiểm tra trạng thái hợp đồng
         if (contract.getStatus() != ContractStatus.SIGNED) {
-            throw new RuntimeException("Chỉ có thể thanh lý hợp đồng đang ở trạng thái SIGNED");
+            throw new BadRequestException("Chỉ có thể thanh lý hợp đồng đang ở trạng thái SIGNED");
         }
 
         // 4. TÍNH TOÁN BÙ TRỪ CỌC
@@ -469,90 +482,243 @@ public class ContractService {
     }
     // ================= 8. CẬP NHẬT HỢP ĐỒNG (CHỈ ÁP DỤNG KHI LÀ BẢN NHÁP) =================
     @Transactional
-    public ContractDetailResponse updateContract(UUID contractId, ContractUpdateRequest request, UUID currentUserId) {
+    public ContractDetailResponse updateContract(UUID contractId, ContractUpdateRequest request, MultipartFile file, UUID currentUserId) {
 
-        // 1. Tìm hợp đồng dưới DB
+        // 1. TÌM HỢP ĐỒNG VÀ CHỐT CHẶN BẢO MẬT
         Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hợp đồng!"));
 
-        // 2. Chốt chặn bảo mật
         if (!contract.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
-            throw new RuntimeException("Bạn không có quyền chỉnh sửa hợp đồng này!");
+            throw new AccessDeniedException("Bạn không có quyền chỉnh sửa hợp đồng này!");
         }
 
-        // 3. Chốt chặn Nghiệp vụ pháp lý (CỰC KỲ QUAN TRỌNG)
         if (contract.getStatus() != ContractStatus.DRAFT) {
-            throw new RuntimeException("Lỗi: Chỉ có thể chỉnh sửa điều khoản khi hợp đồng đang là Bản Nháp. Hợp đồng đã ký không được phép thay đổi!");
+            throw new BadRequestException("Lỗi: Chỉ có thể chỉnh sửa điều khoản khi hợp đồng đang là Bản Nháp. Hợp đồng đã ký không được phép thay đổi!");
         }
 
-        // 4. Cập nhật các trường dữ liệu (Chỉ cập nhật nếu có truyền lên từ Request)
-        if (request.getStartDate() != null) {
+        boolean isDataChanged = false; // Biến cờ hiệu quyết định việc in lại HTML
+
+        // =================================================================
+        // 2. CẬP NHẬT THÔNG TIN CƠ BẢN (Ngày tháng, Tiền cọc, Mẫu hợp đồng)
+        // =================================================================
+        if (request.getStartDate() != null && !request.getStartDate().equals(contract.getStartDate())) {
             contract.setStartDate(request.getStartDate());
+            isDataChanged = true;
         }
-        if (request.getEndDate() != null) {
+        if (request.getEndDate() != null && !request.getEndDate().equals(contract.getEndDate())) {
             contract.setEndDate(request.getEndDate());
+            isDataChanged = true;
         }
-
         if (request.getDepositAmount() != null) {
-            contract.setDepositAmount(request.getDepositAmount());
+            if (contract.getDepositAmount() == null || contract.getDepositAmount().compareTo(request.getDepositAmount()) != 0) {
+                contract.setDepositAmount(request.getDepositAmount());
+                isDataChanged = true;
+            }
+        }
+        if (request.getTemplateId() != null &&
+                (contract.getTemplate() == null || !request.getTemplateId().equals(contract.getTemplate().getId()))) {
+
+            ContractTemplate newTemplate = templateRepository.findById(request.getTemplateId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy mẫu hợp đồng mới!"));
+            if (!newTemplate.getLandlord().getId().equals(currentUserId)) {
+                throw new AccessDeniedException("Mẫu hợp đồng này không thuộc quyền sở hữu của bạn!");
+            }
+            contract.setTemplate(newTemplate);
+            isDataChanged = true;
         }
 
-        // 5. Lưu xuống DB
+        // =================================================================
+        // 3. CẬP NHẬT THÔNG TIN KHÁCH THUÊ CHÍNH (MAIN TENANT)
+        // =================================================================
+        User tenant = contract.getTenant();
+        boolean isTenantChanged = false;
+
+        if (request.getTenantFullName() != null && !request.getTenantFullName().equals(tenant.getFullName())) {
+            tenant.setFullName(request.getTenantFullName());
+            isTenantChanged = true;
+        }
+        if (request.getTenantIdCardNumber() != null && !request.getTenantIdCardNumber().equals(tenant.getIdCardNumber())) {
+            tenant.setIdCardNumber(request.getTenantIdCardNumber());
+            isTenantChanged = true;
+        }
+        if (request.getTenantDob() != null && !request.getTenantDob().equals(tenant.getDob())) {
+            tenant.setDob(request.getTenantDob());
+            isTenantChanged = true;
+        }
+        if (request.getTenantHometown() != null && !request.getTenantHometown().equals(tenant.getHometown())) {
+            tenant.setHometown(request.getTenantHometown());
+            isTenantChanged = true;
+        }
+
+        if (isTenantChanged) {
+            userRepository.save(tenant);
+            isDataChanged = true;
+
+            // Đồng bộ thông tin vào bảng ContractMember (để lúc hiển thị danh sách người ở không bị lệch)
+            contract.getMembers().stream()
+                    .filter(m -> m.getPhone().equals(tenant.getPhone()))
+                    .findFirst()
+                    .ifPresent(mainMember -> {
+                        mainMember.setFullName(tenant.getFullName());
+                        mainMember.setIdCardNumber(tenant.getIdCardNumber());
+                        mainMember.setDob(tenant.getDob());
+                        mainMember.setHometown(tenant.getHometown());
+                    });
+        }
+
+        // =================================================================
+        // 4. CẬP NHẬT DANH SÁCH THÀNH VIÊN Ở GHÉP (CO-TENANTS)
+        // =================================================================
+        if (request.getMembers() != null) {
+            String mainTenantPhone = tenant.getPhone();
+
+            // Nhờ orphanRemoval = true, lệnh removeIf này sẽ ra lệnh cho Database xóa hẳn các thành viên cũ
+            contract.getMembers().removeIf(m -> !m.getPhone().equals(mainTenantPhone));
+
+            // Thêm danh sách thành viên mới từ Request
+            for (ContractMemberAddRequest memberReq : request.getMembers()) {
+                // Bỏ qua nếu frontend lỡ gửi kèm số điện thoại của người đại diện vào list này
+                if (memberReq.getPhone().equals(mainTenantPhone)) continue;
+
+                ContractMember newMember = ContractMember.builder()
+                        .contract(contract)
+                        .fullName(memberReq.getFullName())
+                        .phone(memberReq.getPhone())
+                        .idCardNumber(memberReq.getIdCardNumber())
+                        .dob(memberReq.getDob())
+                        .hometown(memberReq.getHometown())
+                        .joinedAt(LocalDate.now())
+                        .build();
+                contract.getMembers().add(newMember);
+            }
+            isDataChanged = true;
+        }
+
+        // =================================================================
+        // 5. RENDER LẠI BẢN CHỤP HTML NẾU CÓ THAY ĐỔI
+        // =================================================================
+        if (isDataChanged) {
+            String newCompiledHtml = contractHtmlCompiler.compileContractTerms(
+                    contract.getTemplate(),
+                    contract,
+                    contract.getCreator(),
+                    contract.getTenant(),
+                    contract.getRoom()
+            );
+            contract.setContractTerms(newCompiledHtml);
+        }
+
+        // =================================================================
+        // 6. XỬ LÝ FILE ĐÍNH KÈM (CLOUDINARY)
+        // =================================================================
+        if (file != null && !file.isEmpty()) {
+            String oldFileUrl = contract.getContractFileUrl();
+            if (oldFileUrl != null && !oldFileUrl.trim().isEmpty()) {
+                try {
+                    cloudinaryService.deleteFile(oldFileUrl);
+                } catch (Exception e) {
+                    System.err.println("Cảnh báo: Không thể xóa file hợp đồng cũ trên Cloud - " + e.getMessage());
+                }
+            }
+            String newFileUrl = cloudinaryService.uploadFile(file, "contract_files");
+            contract.setContractFileUrl(newFileUrl);
+        }
+
+        // =================================================================
+        // 7. LƯU DATABASE & GHI LOG
+        // =================================================================
         Contract updatedContract = contractRepository.save(contract);
 
-        // 6. Ghi log hoạt động
         String logDesc = String.format("Cập nhật thông tin bản nháp hợp đồng phòng %s", contract.getRoom().getRoomNumber());
         activityLog.createLog(contract.getRoom().getArea().getLandlord(), "UPDATE_CONTRACT", "contracts", updatedContract.getId(), logDesc);
 
-        // 7. Trả về chi tiết mới nhất
         return mapToDetailResponse(updatedContract);
     }
-    // ================= 9. XÓA HỢP ĐỒNG NHÁP (ĐÃ TỐI ƯU DỌN USER RÁC) =================
+    // ================= 9. XÓA HỢP ĐỒNG (BẢN NHÁP & QUÁ HẠN - DỌN RÁC TRIỆT ĐỂ) =================
     @Transactional
     public void deleteContract(UUID contractId, UUID currentUserId) {
 
         Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hợp đồng!"));
 
         if (!contract.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
-            throw new RuntimeException("Bạn không có quyền xóa hợp đồng của khu trọ khác!");
+            throw new AccessDeniedException("Bạn không có quyền xóa hợp đồng của khu trọ khác!");
         }
 
-        if (contract.getStatus() != ContractStatus.DRAFT) {
-            throw new RuntimeException("Chỉ được phép xóa hợp đồng Nháp!");
+        // CHỐT CHẶN: Chỉ cho xóa bản DRAFT (Nháp) hoặc EXPIRED (Quá hạn)
+        if (contract.getStatus() != ContractStatus.DRAFT && contract.getStatus() != ContractStatus.EXPIRED) {
+            throw new BadRequestException("Chỉ được phép xóa hợp đồng Nháp hoặc Hợp đồng đã Quá hạn!");
         }
 
-        //KHÁCH THUÊ TRƯỚC KHI XÓA HỢP ĐỒNG
         UUID tenantId = contract.getTenant().getId();
         Room room = contract.getRoom();
 
-
-        Optional<Deposit> linkedDeposit = depositRepository.findByContractId(contractId);
-        if (linkedDeposit.isPresent()) {
-            Deposit deposit = linkedDeposit.get();
-            deposit.setStatus(DepositStatus.PENDING);
-            deposit.setContract(null);
-            depositRepository.save(deposit);
-            room.setStatus(RoomStatus.DEPOSITED);
-        } else {
-            room.setStatus(RoomStatus.AVAILABLE);
+        // ==============================================================
+        // 1. DỌN DẸP CLOUD (XÓA FILE PDF VÀ CHỮ KÝ ĐỂ TIẾT KIỆM DUNG LƯỢNG)
+        // ==============================================================
+        try {
+            if (contract.getContractFileUrl() != null && !contract.getContractFileUrl().isEmpty()) {
+                cloudinaryService.deleteFile(contract.getContractFileUrl());
+            }
+            if (contract.getTenantSignature() != null && !contract.getTenantSignature().isEmpty()) {
+                cloudinaryService.deleteFile(contract.getTenantSignature());
+            }
+        } catch (Exception e) {
+            System.err.println("Cảnh báo: Không thể xóa file trên Cloudinary - " + e.getMessage());
         }
-        roomRepository.save(room);
 
-        // Ghi log hoạt động
-        String logDesc = String.format("Xóa bản nháp hợp đồng của phòng %s", room.getRoomNumber());
+        // ==============================================================
+        // 2. XỬ LÝ LIÊN KẾT DATABASE (CỌC & HÓA ĐƠN) DỰA THEO TRẠNG THÁI
+        // ==============================================================
+        Optional<Deposit> linkedDeposit = depositRepository.findByContractId(contractId);
+
+        if (contract.getStatus() == ContractStatus.DRAFT) {
+            // NẾU LÀ DRAFT: GIỮ LẠI CỌC, gỡ liên kết và trả phòng về DEPOSITED
+            if (linkedDeposit.isPresent()) {
+                Deposit deposit = linkedDeposit.get();
+                deposit.setStatus(DepositStatus.PENDING);
+                deposit.setContract(null);
+                depositRepository.save(deposit);
+
+                room.setStatus(RoomStatus.DEPOSITED);
+            } else {
+                // Nếu trường hợp HĐ nháp này tạo ra mà không qua bước cọc
+                room.setStatus(RoomStatus.AVAILABLE);
+            }
+            roomRepository.save(room);
+
+        } else if (contract.getStatus() == ContractStatus.EXPIRED) {
+            // NẾU LÀ EXPIRED: XÓA SẠCH CỌC
+            if (linkedDeposit.isPresent()) {
+                depositRepository.delete(linkedDeposit.get());
+            }
+
+            // DỌN RÁC 3 TẦNG: PAYMENT + INVOICE DETAIL -> INVOICE
+            List<Invoice> oldInvoices = invoiceRepository.findByContractId(contractId);
+
+            for (Invoice inv : oldInvoices) {
+                invoiceDetailRepository.deleteAllByInvoiceId(inv.getId());
+                paymentRepository.deleteAllByInvoiceId(inv.getId());
+            }
+            invoiceRepository.deleteAllByContractId(contractId);
+        }
+
+        // ==============================================================
+        // 3. GHI LOG VÀ THỰC HIỆN XÓA HỢP ĐỒNG
+        // ==============================================================
+        String logDesc = String.format("Xóa triệt để hợp đồng [%s] của phòng %s.",
+                contract.getStatus().name(), room.getRoomNumber());
         activityLog.createLog(contract.getRoom().getArea().getLandlord(), "DELETE_CONTRACT", "contracts", contract.getId(), logDesc);
 
-        // Thực hiện xóa hợp đồng
+        // Xóa Hợp đồng (Lúc này ContractMembers sẽ tự động bị xóa theo nhờ CascadeType.ALL)
         contractRepository.delete(contract);
 
-        // Sau khi tờ hợp đồng này bay màu, ta đếm xem người khách này còn tờ hợp đồng nào khác không?
+        // ==============================================================
+        // 4. DỌN DẸP USER RÁC (KHÁCH VÃNG LAI)
+        // ==============================================================
         long remainingContracts = contractRepository.countByTenantId(tenantId);
-
         if (remainingContracts == 0) {
-            // Nếu bằng 0, chứng tỏ tài khoản User này được sinh ra chỉ cho cái hợp đồng nháp vừa bị hủy.
-            // Tiến hành kích hoạt hàm deleteUser tinh gọn bên UserService để quét sạch tài khoản rác này!
-            System.out.println("Phát hiện tài khoản khách vãng lai không có hợp đồng thực tế. Tiến hành dọn dẹp...");
+            System.out.println("Phát hiện tài khoản khách vãng lai không còn hợp đồng nào. Tiến hành dọn dẹp...");
             userService.deleteUser(tenantId);
         }
     }
@@ -562,21 +728,21 @@ public class ContractService {
 
         // 1. Kiểm tra file chữ ký
         if (signatureImage == null || signatureImage.isEmpty()) {
-            throw new RuntimeException("Vui lòng cung cấp hình ảnh chữ ký hợp lệ!");
+            throw new BadRequestException("Vui lòng cung cấp hình ảnh chữ ký hợp lệ!");
         }
 
         // 2. Lấy thông tin hợp đồng
         Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hợp đồng!"));
 
         // 3. Chốt chặn bảo mật: Chỉ người đứng tên hợp đồng mới được quyền ký
         if (!contract.getTenant().getId().equals(currentUserId)) {
-            throw new RuntimeException("Truy cập bị từ chối! Bạn không phải là người đứng tên trên hợp đồng này.");
+            throw new AccessDeniedException("Truy cập bị từ chối! Bạn không phải là người đứng tên trên hợp đồng này.");
         }
 
         // 4. Chốt chặn trạng thái: Chỉ hợp đồng Nháp mới được ký
         if (contract.getStatus() != ContractStatus.DRAFT) {
-            throw new RuntimeException("Hợp đồng này đã được ký hoặc không còn ở trạng thái chờ xác nhận!");
+            throw new BadRequestException("Hợp đồng này đã được ký hoặc không còn ở trạng thái chờ xác nhận!");
         }
 
         // 5. Upload chữ ký của khách thuê lên Cloudinary
@@ -666,89 +832,134 @@ public class ContractService {
         System.out.println("Hoàn tất quét hợp đồng và gửi thông báo!");
     }
 
-    // ================= 12. GIA HẠN HỢP ĐỒNG =================
+    // ================= 12. GIA HẠN HỢP ĐỒNG (BẰNG CÁCH TẠO BẢN KẾ THIẾT MỚI) =================
     @Transactional
-    public ContractDetailResponse extendContract(UUID contractId, ContractExtendRequest request, UUID currentUserId) {
+    public ContractDetailResponse extendContract(UUID oldContractId, ContractExtendRequest request, UUID currentUserId) {
 
-        // 1. Tìm hợp đồng
-        Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng!"));
+        // 1. TÌM HỢP ĐỒNG CŨ
+        Contract oldContract = contractRepository.findById(oldContractId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hợp đồng cũ!"));
 
-        // 2. Chốt chặn bảo mật
-        if (!contract.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
-            throw new RuntimeException("Bạn không có quyền gia hạn hợp đồng của khu trọ khác!");
+        // 2. CHỐT CHẶN BẢO MẬT VÀ NGHIỆP VỤ
+        if (!oldContract.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
+            throw new AccessDeniedException("Bạn không có quyền gia hạn hợp đồng của khu trọ khác!");
         }
 
-        // 3. Chốt chặn nghiệp vụ
-        if (contract.getStatus() != ContractStatus.SIGNED && contract.getStatus() != ContractStatus.EXPIRED) {
-            throw new RuntimeException("Chỉ có thể gia hạn hợp đồng đang có hiệu lực (SIGNED) hoặc vừa hết hạn (EXPIRED)!");
+        if (oldContract.getStatus() != ContractStatus.SIGNED && oldContract.getStatus() != ContractStatus.EXPIRED) {
+            throw new BadRequestException("Chỉ có thể gia hạn khi hợp đồng cũ đang có hiệu lực (SIGNED) hoặc vừa hết hạn (EXPIRED)!");
         }
 
-        if (request.getNewEndDate() == null || !request.getNewEndDate().isAfter(contract.getEndDate())) {
-            throw new RuntimeException("Ngày gia hạn mới bắt buộc phải nằm sau ngày kết thúc cũ!");
+        if (request.getNewEndDate() == null || !request.getNewEndDate().isAfter(oldContract.getEndDate())) {
+            throw new BadRequestException("Ngày kết thúc mới bắt buộc phải nằm sau ngày kết thúc của hợp đồng cũ!");
         }
 
-        // 4. Cập nhật dữ liệu
-        contract.setEndDate(request.getNewEndDate());
+        // ==========================================================
+        // BƯỚC QUAN TRỌNG 1: ĐÓNG BĂNG HỢP ĐỒNG CŨ (LƯU VÀO LỊCH SỬ)
+        // ==========================================================
+        oldContract.setStatus(ContractStatus.EXPIRED);
+        contractRepository.save(oldContract);
 
-        // Nếu hợp đồng trước đó đã bị Cron Job quét và chuyển thành EXPIRED -> Hồi sinh nó
-        if (contract.getStatus() == ContractStatus.EXPIRED) {
-            contract.setStatus(ContractStatus.SIGNED);
+        // ==========================================================
+        // BƯỚC QUAN TRỌNG 2: KHỞI TẠO HỢP ĐỒNG MỚI DỰA TRÊN DỮ LIỆU CŨ
+        // ==========================================================
+        // Mặc định ngày bắt đầu của HĐ mới = Ngày kết thúc của HĐ cũ (hoặc tùy bạn định nghĩa thêm trong DTO)
+        LocalDate newStartDate = oldContract.getEndDate();
 
-            Room room = contract.getRoom();
-            room.setStatus(RoomStatus.RENTED); // Đóng phòng lại để không ai thuê được
-            roomRepository.save(room);
+        Contract newContract = Contract.builder()
+                .room(oldContract.getRoom())
+                .tenant(oldContract.getTenant())
+                .creator(oldContract.getCreator())
+                .template(oldContract.getTemplate())
+
+                // Cập nhật thời hạn mới
+                .startDate(newStartDate)
+                .endDate(request.getNewEndDate())
+
+                // Kế thừa dữ liệu tài chính & pháp lý
+                .depositAmount(oldContract.getDepositAmount())
+                .landlordSignature(oldContract.getLandlordSignature())
+                .creator(oldContract.getCreator())
+                //  Hợp đồng mới phải là DRAFT để đợi khách vào ký lại!
+                .status(ContractStatus.DRAFT)
+                .build();
+
+        // ==========================================================
+        // BƯỚC QUAN TRỌNG 3: SAO CHÉP DANH SÁCH KHÁCH Ở GHÉP
+        // ==========================================================
+        List<ContractMember> clonedMembers = oldContract.getMembers().stream().map(oldMember ->
+                ContractMember.builder()
+                        .contract(newContract) // Gắn vào hợp đồng mới
+                        .fullName(oldMember.getFullName())
+                        .phone(oldMember.getPhone())
+                        .dob(oldMember.getDob())
+                        .hometown(oldMember.getHometown())
+                        .idCardNumber(oldMember.getIdCardNumber())
+                        .joinedAt(oldMember.getJoinedAt()) // Giữ nguyên ngày vào ở ban đầu
+                        .build()
+        ).toList();
+        newContract.setMembers(new ArrayList<>(clonedMembers));
+
+        // ==========================================================
+        // BƯỚC QUAN TRỌNG 4: RENDER LẠI BẢN CHỤP HTML (VÌ ĐÃ ĐỔI NGÀY)
+        // ==========================================================
+        String compiledHtml = contractHtmlCompiler.compileContractTerms(
+                newContract.getTemplate(),
+                newContract,
+                newContract.getCreator(),
+                newContract.getTenant(),
+                newContract.getRoom()
+        );
+        newContract.setContractTerms(compiledHtml);
+
+        // ==========================================================
+        // BƯỚC QUAN TRỌNG 5: CHUYỂN DỊCH PHIẾU CỌC VÀ LƯU DATABASE
+        // ==========================================================
+        Contract savedNewContract = contractRepository.save(newContract);
+
+        // Tìm phiếu cọc của hợp đồng cũ và "trỏ" nó sang hợp đồng mới để bảo toàn dữ liệu
+        Optional<Deposit> linkedDeposit = depositRepository.findByContractId(oldContractId);
+        if (linkedDeposit.isPresent()) {
+            Deposit deposit = linkedDeposit.get();
+            deposit.setContract(savedNewContract);
+            depositRepository.save(deposit);
         }
 
-        contractRepository.save(contract);
+        // Chuyển phòng về trạng thái CHỜ KÝ (RESERVED) vì hợp đồng mới đang là DRAFT
+        Room room = oldContract.getRoom();
+        room.setStatus(RoomStatus.RESERVED);
+        roomRepository.save(room);
 
-        // 5. Ghi log hoạt động
-        String logDesc = String.format("Chủ trọ gia hạn hợp đồng phòng %s đến ngày %s",
-                contract.getRoom().getRoomNumber(), request.getNewEndDate().toString());
-        activityLog.createLog(contract.getRoom().getArea().getLandlord(), "EXTEND_CONTRACT", "contracts", contract.getId(), logDesc);
+        // ==========================================================
+        // BƯỚC QUAN TRỌNG 6: GHI LOG & BẮN THÔNG BÁO CHO KHÁCH
+        // ==========================================================
+        String logDesc = String.format("Chủ trọ gia hạn phòng %s (Chờ khách ký).", room.getRoomNumber());
+        activityLog.createLog(oldContract.getCreator(), "EXTEND_CONTRACT", "contracts", savedNewContract.getId(), logDesc);
 
-        // 6. Bắn thông báo báo hỉ cho Khách thuê
-        String title = "Hợp đồng đã được gia hạn";
-        String content = String.format("Chủ trọ đã gia hạn thời gian thuê phòng %s của bạn đến ngày %s. Chúc bạn có trải nghiệm lưu trú tuyệt vời!",
-                contract.getRoom().getRoomNumber(), request.getNewEndDate().toString());
+        String title = "Yêu cầu ký Hợp đồng gia hạn";
+        String content = String.format("Chủ trọ đã tạo bản Hợp đồng gia hạn mới cho phòng %s (Từ ngày %s đến %s). Vui lòng vào ứng dụng để kiểm tra và xác nhận chữ ký điện tử nhé!",
+                room.getRoomNumber(), newStartDate.toString(), request.getNewEndDate().toString());
+        notificationService.createNotification(savedNewContract.getTenant(), title, content, NotificationType.CONTRACT_EXTEND);
 
-        // (Lưu ý: Bạn có thể tạo thêm enum NotificationType.SYSTEM hoặc tái sử dụng CONTRACT_SIGNED)
-        notificationService.createNotification(contract.getTenant(), title, content, NotificationType.CONTRACT_EXTEND);
-
-        // 7. Trả về dữ liệu mới
-        return mapToDetailResponse(contract);
+        // Trả về DTO của cái hợp đồng MỚI
+        return mapToDetailResponse(savedNewContract);
     }
 
-    @Transactional(readOnly = true)
-    public byte[] downloadContractPdf(UUID contractId, UUID currentUserId) {
-        Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng!"));
-
-        boolean isLandlord = contract.getRoom().getArea().getLandlord().getId().equals(currentUserId);
-        boolean isTenant = contract.getTenant().getId().equals(currentUserId);
-
-        if (!isLandlord && !isTenant) {
-            throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền tải hợp đồng này.");
-        }
-
-        return pdfExportService.generatePdfFromHtml(contract.getContractTerms());
-    }
     // ================= 13. TẢI LÊN FILE HỢP ĐỒNG (BẢN SCAN / BẢN MỀM) =================
     @Transactional
     public ContractDetailResponse uploadContractFile(UUID contractId, MultipartFile file, UUID currentUserId) {
 
         // 1. Kiểm tra đầu vào
         if (file == null || file.isEmpty()) {
-            throw new RuntimeException("Vui lòng chọn file để tải lên!");
+            throw new BadRequestException("Vui lòng chọn file để tải lên!");
         }
 
         // 2. Tìm hợp đồng dưới DB
         Contract contract = contractRepository.findById(contractId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy hợp đồng!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hợp đồng!"));
 
         // 3. Chốt chặn bảo mật: Chỉ Chủ trọ mới được quyền tải file đính kèm lên
         if (!contract.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
-            throw new RuntimeException("Truy cập bị từ chối! Chỉ chủ trọ của hợp đồng này " +
+            throw new AccessDeniedException("Truy cập bị từ chối! Chỉ chủ trọ của hợp đồng này " +
                     "mới có quyền tải lên file cho hợp đồng này.");
         }
 
@@ -804,6 +1015,9 @@ public class ContractService {
                 .status(contract.getStatus())
                 .contractFileUrl(contract.getContractFileUrl())
                 .contractTerms(contract.getContractTerms())
+                //Thông tin khu trọ
+                .areaName(contract.getRoom().getArea().getName())
+                .areaAddress(contract.getRoom().getArea().getAddress())
 
                 // --- THÔNG TIN TEMPLATE
                 .templateId(contract.getTemplate() != null ? contract.getTemplate().getId() : null)
@@ -813,12 +1027,11 @@ public class ContractService {
                 .roomNumber(contract.getRoom().getRoomNumber())
                 .rentPrice(contract.getRoom().getRentPrice())
 
-
                 // --- THÔNG TIN NGƯỜI TẠO (CHỦ TRỌ) ---
                 .landlordName(contract.getCreator().getFullName())
                 .landlordIdCardNumber(contract.getCreator().getIdCardNumber())
-                .landlordAddress(contract.getCreator().getHometown())
-                .landlordSignatureUrl(contract.getLandlordSignature()) // Lấy chữ ký đã đóng băng lúc tạo hợp đồng
+                .landlordHometown(contract.getCreator().getHometown())
+                .landlordSignatureUrl(contract.getLandlordSignature())
 
                 // --- THÔNG TIN KHÁCH THUÊ ĐỨNG TÊN ---
                 .tenantId(contract.getTenant().getId())

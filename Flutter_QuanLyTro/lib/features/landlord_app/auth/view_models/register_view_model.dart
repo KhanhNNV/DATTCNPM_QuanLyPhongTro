@@ -4,22 +4,26 @@ import '../../../../data/repository/auth_repository.dart';
 class RegisterViewModel extends ChangeNotifier {
   final AuthRepository _authProvider = AuthRepository();
 
-  // Trạng thái Loading
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  // Trạng thái Lỗi
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
-  // Hàm xử lý đăng ký
   Future<void> register({
     required String fullName,
     required String phone,
     required String password,
+    required String idCardNumber,
+    required String hometown,
     required VoidCallback onSuccess,
   }) async {
-    if (fullName.trim().isEmpty || phone.trim().isEmpty || password.trim().isEmpty) {
+    // Kiểm tra rỗng cho tất cả các trường
+    if (fullName.trim().isEmpty ||
+        phone.trim().isEmpty ||
+        password.trim().isEmpty ||
+        idCardNumber.trim().isEmpty ||
+        hometown.trim().isEmpty) {
       _errorMessage = 'Vui lòng nhập đầy đủ thông tin.';
       notifyListeners();
       return;
@@ -36,7 +40,15 @@ class RegisterViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await _authProvider.register(fullName.trim(), phone.trim(), password.trim());
+      await _authProvider.register(
+          fullName.trim(),
+          phone.trim(),
+          password.trim(),
+          idCardNumber.trim(),
+          hometown.trim()
+      );
+
+      // Tự động đăng nhập sau khi đăng ký thành công
       await _authProvider.login(phone.trim(), password.trim());
       onSuccess();
     } catch (e) {

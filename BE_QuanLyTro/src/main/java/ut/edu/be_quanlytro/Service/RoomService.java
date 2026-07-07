@@ -1,6 +1,7 @@
 package ut.edu.be_quanlytro.Service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException; // Thêm import 403
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ut.edu.be_quanlytro.Dto.Request.RoomRequest;
@@ -10,6 +11,8 @@ import ut.edu.be_quanlytro.Entity.Enum.RoleType;
 import ut.edu.be_quanlytro.Entity.Enum.RoomStatus;
 import ut.edu.be_quanlytro.Entity.Room;
 import ut.edu.be_quanlytro.Entity.User;
+import ut.edu.be_quanlytro.Exception.BadRequestException; // Thêm import 400
+import ut.edu.be_quanlytro.Exception.ResourceNotFoundException; // Thêm import 404
 import ut.edu.be_quanlytro.Repository.AreaRepository;
 import ut.edu.be_quanlytro.Repository.RoomRepository;
 import ut.edu.be_quanlytro.Repository.UserRepository;
@@ -32,16 +35,16 @@ public class RoomService {
 
         // 1. Kiểm tra khu trọ
         Area area = areaRepository.findById(request.getAreaId())
-                .orElseThrow(() -> new RuntimeException("Khu trọ không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Khu trọ không tồn tại"));
 
         // 🔒 KIỂM TRA BẢO MẬT: Xác nhận quyền sở hữu khu trọ
         if (!area.getLandlord().getId().equals(currentUserId)) {
-            throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền thêm phòng vào khu trọ của người khác.");
+            throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền thêm phòng vào khu trọ của người khác.");
         }
 
         // 2. Kiểm tra trùng mã phòng
         if (roomRepository.existsByRoomNumberAndAreaId(request.getRoomNumber(), request.getAreaId())) {
-            throw new RuntimeException("Phòng " + request.getRoomNumber() + " đã tồn tại trong khu trọ này");
+            throw new BadRequestException("Phòng " + request.getRoomNumber() + " đã tồn tại trong khu trọ này");
         }
 
         // 3. Build Entity
@@ -79,16 +82,16 @@ public class RoomService {
 
         // 1. Lấy thông tin Khu trọ để kiểm tra quyền
         Area area = areaRepository.findById(areaId)
-                .orElseThrow(() -> new RuntimeException("Khu trọ không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Khu trọ không tồn tại"));
 
         // 2. Lấy thông tin người dùng đang gọi API
         User currentUser = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại trong hệ thống"));
+                .orElseThrow(() -> new ResourceNotFoundException("Người dùng không tồn tại trong hệ thống"));
 
         // 3. 🔒 KIỂM TRA BẢO MẬT: Nếu là Chủ trọ thì chỉ được xem phòng khu của mình
         if (currentUser.getRole() == RoleType.LANDLORD) {
             if (!area.getLandlord().getId().equals(currentUserId)) {
-                throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xem danh sách phòng của khu trọ khác.");
+                throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền xem danh sách phòng của khu trọ khác.");
             }
         }
 
@@ -107,12 +110,12 @@ public class RoomService {
 
         // 2. Lấy thông tin người dùng đang gọi API
         User currentUser = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại trong hệ thống"));
+                .orElseThrow(() -> new ResourceNotFoundException("Người dùng không tồn tại trong hệ thống"));
 
         // 3. 🔒 KIỂM TRA BẢO MẬT: Nếu là Chủ trọ thì chỉ được xem phòng thuộc khu của mình
         if (currentUser.getRole() == RoleType.LANDLORD) {
             if (!room.getArea().getLandlord().getId().equals(currentUserId)) {
-                throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xem thông tin phòng thuộc khu trọ của người khác.");
+                throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền xem thông tin phòng thuộc khu trọ của người khác.");
             }
         }
 
@@ -122,7 +125,7 @@ public class RoomService {
 
     public Room getRoomById(UUID id) {
         return roomRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy phòng với ID: " + id));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phòng với ID: " + id));
     }
 
     // ================= READ (LỌC THEO TRẠNG THÁI) =================
@@ -131,16 +134,16 @@ public class RoomService {
 
         // 1. Lấy thông tin Khu trọ để kiểm tra quyền
         Area area = areaRepository.findById(areaId)
-                .orElseThrow(() -> new RuntimeException("Khu trọ không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Khu trọ không tồn tại"));
 
         // 2. Lấy thông tin người dùng đang gọi API
         User currentUser = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại trong hệ thống"));
+                .orElseThrow(() -> new ResourceNotFoundException("Người dùng không tồn tại trong hệ thống"));
 
         // 3. 🔒 KIỂM TRA BẢO MẬT: Nếu là Chủ trọ thì chỉ được xem phòng khu của mình
         if (currentUser.getRole() == RoleType.LANDLORD) {
             if (!area.getLandlord().getId().equals(currentUserId)) {
-                throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xem danh sách phòng của khu trọ khác.");
+                throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền xem danh sách phòng của khu trọ khác.");
             }
         }
 
@@ -158,7 +161,7 @@ public class RoomService {
         // 1. 🔒 KIỂM TRA BẢO MẬT: Xác nhận quyền sở hữu
         // Từ phòng -> Gọi lên Khu trọ -> Gọi lên Chủ trọ -> Lấy ID đem so sánh
         if (!existingRoom.getArea().getLandlord().getId().equals(currentUserId)) {
-            throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền chỉnh sửa phòng thuộc khu trọ của người khác.");
+            throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền chỉnh sửa phòng thuộc khu trọ của người khác.");
         }
 
         // 2. Cập nhật các trường thông tin nếu có truyền lên
@@ -167,7 +170,7 @@ public class RoomService {
             // Chỉ kiểm tra trùng lặp nếu người dùng thực sự đổi tên phòng
             if (!existingRoom.getRoomNumber().equals(request.getRoomNumber()) &&
                     roomRepository.existsByRoomNumberAndAreaId(request.getRoomNumber(), existingRoom.getArea().getId())) {
-                throw new RuntimeException("Tên phòng này đã bị trùng trong khu trọ");
+                throw new BadRequestException("Tên phòng này đã bị trùng trong khu trọ");
             }
             existingRoom.setRoomNumber(request.getRoomNumber());
         }
@@ -200,12 +203,12 @@ public class RoomService {
         // 1. 🔒 KIỂM TRA BẢO MẬT: Xác nhận quyền sở hữu
         // Từ phòng -> Gọi lên Khu trọ -> Gọi lên Chủ trọ -> Lấy ID đem so sánh
         if (!room.getArea().getLandlord().getId().equals(currentUserId)) {
-            throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xóa phòng thuộc khu trọ của người khác.");
+            throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền xóa phòng thuộc khu trọ của người khác.");
         }
 
         // 2. Kiểm tra điều kiện nghiệp vụ: Không cho xóa phòng đang có khách
         if (room.getStatus() == RoomStatus.RENTED) {
-            throw new RuntimeException("Không thể xóa phòng đang có người thuê");
+            throw new BadRequestException("Không thể xóa phòng đang có người thuê");
         }
 
         // 3. Lấy thông tin phòng và khu trọ trước khi xóa để ghi log

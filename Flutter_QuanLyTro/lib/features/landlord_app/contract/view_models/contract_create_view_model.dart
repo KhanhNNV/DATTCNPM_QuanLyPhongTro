@@ -202,7 +202,7 @@ class ContractCreateViewModel extends ChangeNotifier {
           // Dữ liệu User
           landlordName: contractDetail.landlordName,
           landlordIdCard: contractDetail.landlordIdCardNumber,
-          landlordAddress: contractDetail.landlordAddress,
+          landlordAddress: contractDetail.landlordHometown,
 
           tenantName: contractDetail.tenantName,
           tenantIdCard: contractDetail.tenantIdCardNumber,
@@ -234,10 +234,8 @@ class ContractCreateViewModel extends ChangeNotifier {
         if (await tempFile.exists()) {
           await tempFile.delete();
         }
-        debugPrint("Flow Create -> Get -> Gen PDF -> Upload hoàn tất!");
 
       } catch (e) {
-        debugPrint("Lỗi ở luồng tạo PDF (Hợp đồng đã được tạo): $e");
       }
 
       return contractResponse;

@@ -1,6 +1,7 @@
 package ut.edu.be_quanlytro.Service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException; // Import thêm lỗi 403
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -13,12 +14,14 @@ import ut.edu.be_quanlytro.Dto.Response.UserResponse;
 import ut.edu.be_quanlytro.Entity.Area;
 import ut.edu.be_quanlytro.Entity.Enum.RoleType;
 import ut.edu.be_quanlytro.Entity.User;
+import ut.edu.be_quanlytro.Exception.BadRequestException; // Import thêm lỗi 400
+import ut.edu.be_quanlytro.Exception.ResourceNotFoundException; // Import thêm lỗi 404
+import ut.edu.be_quanlytro.Repository.ActivityLogRepository;
 import ut.edu.be_quanlytro.Repository.AreaRepository;
 import ut.edu.be_quanlytro.Repository.UserRepository;
 
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,12 +32,13 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final ActivityLogService activityLog;
     private final CloudinaryService cloudinaryService;
+    private final ActivityLogRepository activityLogRepository;
 
     // ================= CREATE =================
     @Transactional
     public UserResponse createUser(UserCreateRequest request, UUID currentUserId) {
         if (userRepository.existsByPhone(request.getPhone())) {
-            throw new RuntimeException("Số điện thoại này đã được đăng ký!");
+            throw new BadRequestException("Số điện thoại này đã được đăng ký!");
         }
 
         User user = User.builder()
@@ -65,113 +69,89 @@ public class UserService {
     }
 
     // ================= READ (XEM CHI TIẾT USER CÓ CHECK QUYỀN) =================
-    @Transactional(readOnly = true) // Đảm bảo giữ Session mở để check liên kết bảng
+    @Transactional(readOnly = true)
     public UserResponse getUserById(UUID id, UUID currentUserId) {
-        // 1. Lấy thông tin người dùng cần xem (Target User)
+        // 1. Lấy thông tin người dùng cần xem
         User targetUser = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
-        // 2. Lấy thông tin người đang thực hiện cuộc gọi (Current User)
+        // 2. Lấy thông tin người đang thực hiện cuộc gọi
         User currentUser = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại trong hệ thống"));
+                .orElseThrow(() -> new ResourceNotFoundException("Người dùng không tồn tại trong hệ thống"));
 
         // 3. KIỂM TRA BẢO MẬT BIẾN THỂ (IDOR)
-        // Trường hợp A: Nếu tự xem hồ sơ của chính mình thì luôn luôn hợp lệ
         if (id.equals(currentUserId)) {
             return mapToResponse(targetUser);
         }
 
-        // Trường hợp B: Nếu Chủ trọ muốn xem thông tin của một người khác (Khách thuê)
         if (currentUser.getRole() == RoleType.LANDLORD) {
-
-            // Tiến hành kiểm tra xem targetUser (Khách) có nằm trong bất kỳ Khu trọ nào của Chủ trọ này không
-            // Dựa trên hàm findTenantsByAreaId bạn đã viết ở bước trước, chúng ta có thể check ngược lại trong DB:
             boolean isYourTenant = userRepository.existsTenantInLandlordAreas(id, currentUserId);
-
             if (!isYourTenant) {
-                throw new RuntimeException("Truy cập bị từ chối! Khách thuê này không thuộc khu trọ nào do bạn quản lý.");
+                throw new AccessDeniedException("Truy cập bị từ chối! Khách thuê này không thuộc khu trọ nào do bạn quản lý.");
             }
         } else {
-            // Trường hợp C: Khách thuê tuyệt đối không được tự ý điền ID để xem người khác
-            throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xem thông tin của người dùng khác.");
+            throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền xem thông tin của người dùng khác.");
         }
 
-        // 4. Map sang DTO và trả về nếu hợp lệ
         return mapToResponse(targetUser);
     }
 
     // ================= READ (LẤY DANH SÁCH THEO KHU TRỌ) =================
-    @Transactional(readOnly = true) // 💡 Giữ Session mở để tránh lỗi Lazy Load khi gọi area.getLandlord()
+    @Transactional(readOnly = true)
     public List<UserResponse> getUsersByArea(UUID areaId, UUID currentUserId) {
-
-        // 1. Lấy thông tin Khu trọ để kiểm tra quyền sở hữu
-        // (Đảm bảo bạn đã inject areaRepository vào class Service này)
         Area area = areaRepository.findById(areaId)
-                .orElseThrow(() -> new RuntimeException("Khu trọ không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Khu trọ không tồn tại"));
 
-        // 2. Lấy thông tin người dùng đang gọi API để xác định Vai trò (Role)
         User currentUser = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại trong hệ thống"));
+                .orElseThrow(() -> new ResourceNotFoundException("Người dùng không tồn tại trong hệ thống"));
 
-        // 3. 🔒 KIỂM TRA BẢO MẬT: Nếu là Chủ trọ thì chỉ được xem khách thuê thuộc khu của mình
         if (currentUser.getRole() == RoleType.LANDLORD) {
             if (!area.getLandlord().getId().equals(currentUserId)) {
-                throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền xem danh sách khách thuê của khu trọ khác.");
+                throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền xem danh sách khách thuê của khu trọ khác.");
             }
         }
 
-        // 4. Nếu vượt qua vòng bảo mật, tiến hành lấy danh sách và map sang DTO
         return userRepository.findTenantsByAreaId(areaId)
                 .stream()
                 .map(this::mapToResponse)
-                .toList(); // Sử dụng .toList() thay cho .collect(Collectors.toList()) nếu dùng Java 16+ cho code ngắn gọn
+                .toList();
     }
 
     // ================= UPDATE =================
     @Transactional
     public UserResponse updateUser(UUID id, UserUpdateRequest request, UUID currentUserId) {
-        // Lấy thông tin người dùng cần chỉnh sửa (Target User)
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng"));
 
-        // KIỂM TRA BẢO MẬT: Xác nhận quyền chỉnh sửa thông tin
-        if (!id.equals(currentUserId)) { // Nếu không phải hành vi tự sửa hồ sơ của chính mình
-
-            // Lấy thông tin của người đang thực hiện cuộc gọi từ hệ thống
+        // KIỂM TRA BẢO MẬT
+        if (!id.equals(currentUserId)) {
             User currentUser = userRepository.findById(currentUserId)
-                    .orElseThrow(() -> new RuntimeException("Người dùng thực hiện thao tác không tồn tại"));
+                    .orElseThrow(() -> new ResourceNotFoundException("Người dùng thực hiện thao tác không tồn tại"));
 
             if (currentUser.getRole() == RoleType.LANDLORD) {
-                // Kiểm tra xem khách thuê này có thuộc quyền quản lý của chủ trọ thông qua hợp đồng không
                 boolean isYourTenant = userRepository.existsTenantInLandlordAreas(id, currentUserId);
                 if (!isYourTenant) {
-                    throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền chỉnh sửa thông tin của khách thuê thuộc khu trọ khác.");
+                    throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền chỉnh sửa thông tin của khách thuê thuộc khu trọ khác.");
                 }
             } else {
-                // Nếu vai trò là TENANT hoặc các vai trò khác cố tình truyền ID người khác lên
-                throw new RuntimeException("Truy cập bị từ chối! Bạn không có quyền chỉnh sửa thông tin của người dùng khác.");
+                throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền chỉnh sửa thông tin của người dùng khác.");
             }
         }
 
-        // 1. Xử lý cập nhật Số điện thoại (Tên đăng nhập)
         if (StringUtils.hasText(request.getPhone())) {
             String newPhone = request.getPhone().trim();
-            // Chỉ kiểm tra trùng nếu số điện thoại mới KHÁC với số điện thoại cũ
             if (!user.getPhone().equals(newPhone)) {
                 if (userRepository.existsByPhone(newPhone)) {
-                    throw new RuntimeException("Số điện thoại mới này đã tồn tại trong hệ thống!");
+                    throw new BadRequestException("Số điện thoại mới này đã tồn tại trong hệ thống!");
                 }
                 user.setPhone(newPhone);
             }
         }
 
-        // 2. Xử lý cập nhật/cấp lại Mật khẩu
         if (StringUtils.hasText(request.getPassword())) {
-            // TUYỆT ĐỐI KHÔNG lưu plain-text, BẮT BUỘC phải băm mã hóa lại
             user.setPassword(passwordEncoder.encode(request.getPassword()));
         }
 
-        // 3. Xử lý các trường thông tin cơ bản khác
         if (StringUtils.hasText(request.getFullName())) {
             user.setFullName(request.getFullName().trim());
         }
@@ -186,7 +166,6 @@ public class UserService {
 
         User updatedUser = userRepository.save(user);
 
-        // GHI LOG UPDATE
         User userProxy = userRepository.getReferenceById(currentUserId);
         String action = "UPDATE_USER";
         String entityName = "users";
@@ -199,55 +178,69 @@ public class UserService {
         return mapToResponse(updatedUser);
     }
 
-    // ================= DELETE (TỐI ƯU GỌI NỘI BỘ THANH LÝ/XÓA HỢP ĐỒNG) =================
+    // ================= DELETE =================
     @Transactional
     public void deleteUser(UUID id) {
         User targetUser = userRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy tài khoản cần xóa!"));
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy tài khoản cần xóa!"));
+        activityLogRepository.deleteAllByUserId(id);
         userRepository.delete(targetUser);
     }
 
-
-
+    // ================= UPDATE SIGNATURE =================
     @Transactional
     public void updateSignature(MultipartFile file, UUID currentUserId) {
         if (file.isEmpty()) {
-            throw new RuntimeException("Vui lòng chọn hoặc vẽ chữ ký trước khi tải lên!");
+            throw new BadRequestException("Vui lòng chọn hoặc vẽ chữ ký trước khi tải lên!");
         }
 
         User user = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Người dùng không tồn tại"));
 
         if (user.getRole() != RoleType.LANDLORD) {
-            throw new RuntimeException("Truy cập bị từ chối! Chỉ tài khoản Chủ trọ mới có quyền thiết lập chữ ký số.");
+            throw new AccessDeniedException("Truy cập bị từ chối! Chỉ tài khoản Chủ trọ mới có quyền thiết lập chữ ký số.");
         }
 
-        // TỰ ĐỘNG DỌN RÁC: Nếu đã có chữ ký cũ, tiến hành xóa tận gốc trên Cloudinary trước
         if (user.getLandlordSignature() != null && !user.getLandlordSignature().isEmpty()) {
             cloudinaryService.deleteFile(user.getLandlordSignature());
         }
 
-        // Sau đó mới tải ảnh mới lên như bình thường
         String signatureUrl = cloudinaryService.uploadFile(file, "signatures");
 
         user.setLandlordSignature(signatureUrl);
         userRepository.save(user);
 
         activityLog.createLog(user, "UPDATE_SIGNATURE", "users", user.getId(), "Cập nhật chữ ký số cá nhân.");
-
     }
-    // ================= LẤY CHỮ KÝ HIỆN TẠI =================
+
+    // ================= GET SIGNATURE =================
     @Transactional(readOnly = true)
     public String getSignature(UUID currentUserId) {
         User user = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new RuntimeException("Người dùng không tồn tại"));
+                .orElseThrow(() -> new ResourceNotFoundException("Người dùng không tồn tại"));
 
         if (user.getRole() != RoleType.LANDLORD) {
-            throw new RuntimeException("Truy cập bị từ chối! Chỉ tài khoản Chủ trọ mới có chữ ký số.");
+            throw new AccessDeniedException("Truy cập bị từ chối! Chỉ tài khoản Chủ trọ mới có chữ ký số.");
         }
 
-        // Trả về URL chữ ký (có thể là null hoặc chuỗi rỗng nếu chưa bao giờ cài đặt)
         return user.getLandlordSignature();
+    }
+
+    // ================= UPDATE BANK INFO =================
+    @Transactional
+    public void updateBankInfo(UUID currentUserId, BankInfoUpdateRequest request) {
+        User user = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng!"));
+
+        if (user.getRole() != RoleType.LANDLORD) {
+            throw new AccessDeniedException("Chỉ Chủ trọ mới được cấu hình tài khoản ngân hàng!");
+        }
+
+        user.setBankId(request.getBankId());
+        user.setAccountNo(request.getAccountNo());
+        user.setAccountName(request.getAccountName().toUpperCase());
+
+        userRepository.save(user);
     }
 
     // ================= HELPER / MAPPER =================
@@ -265,24 +258,4 @@ public class UserService {
                 .isFirstLogin(user.getIsFirstLogin())
                 .build();
     }
-
-    @Transactional
-    public void updateBankInfo(UUID currentUserId, BankInfoUpdateRequest request) {
-
-        User user = userRepository.findById(currentUserId)
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy người dùng!"));
-
-
-        if (user.getRole() != RoleType.LANDLORD) {
-            throw new RuntimeException("Chỉ Chủ trọ mới được cấu hình tài khoản ngân hàng!");
-        }
-
-        user.setBankId(request.getBankId());
-        user.setAccountNo(request.getAccountNo());
-        user.setAccountName(request.getAccountName().toUpperCase());
-
-        userRepository.save(user);
-    }
-
-
 }

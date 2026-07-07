@@ -12,6 +12,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import ut.edu.be_quanlytro.Dto.Response.OcrCccdResponse;
+import ut.edu.be_quanlytro.Exception.BadRequestException; // Import thêm lỗi 400
 
 @Service
 @RequiredArgsConstructor
@@ -30,7 +31,7 @@ public class OcrService {
 
         // Vì chỉ đọc thông tin mặt trước (Tên, số CCCD, ngày sinh...) nên chỉ cần bắt buộc có ảnh mặt trước
         if (frontImage == null || frontImage.isEmpty()) {
-            throw new RuntimeException("Vui lòng cung cấp ảnh mặt trước CCCD!");
+            throw new BadRequestException("Vui lòng cung cấp ảnh mặt trước CCCD!");
         }
 
         String idNumber = "";
@@ -64,12 +65,12 @@ public class OcrService {
             JsonNode root = objectMapper.readTree(response.getBody());
 
             if (root.path("errorCode").asInt() != 0) {
-                throw new RuntimeException("Lỗi từ FPT AI: " + root.path("errorMessage").asText());
+                throw new BadRequestException("Lỗi từ FPT AI: " + root.path("errorMessage").asText());
             }
 
             JsonNode dataNode = root.path("data").get(0);
             if (dataNode == null || dataNode.isEmpty()) {
-                throw new RuntimeException("FPT AI không tìm thấy thông tin CCCD trong ảnh này!");
+                throw new BadRequestException("FPT AI không tìm thấy thông tin CCCD trong ảnh này!");
             }
 
             // 5. BÓC TÁCH DỮ LIỆU THẬT
@@ -80,8 +81,11 @@ public class OcrService {
 
             System.out.println("Nhận diện thành công khách hàng: " + fullName);
 
+        } catch (BadRequestException e) {
+            // Bắt và ném lại đúng BadRequestException để không bị gói 2 lần
+            throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Lỗi trong quá trình quét CCCD: " + e.getMessage());
+            throw new BadRequestException("Lỗi trong quá trình quét CCCD: " + e.getMessage());
         }
 
         // 7. TRẢ KẾT QUẢ VỀ CHO FRONTEND (Các trường URL ảnh sẽ mang giá trị null)
