@@ -1,5 +1,7 @@
 package ut.edu.be_quanlytro.Service;
 
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.Message;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException; // Thêm import 403
 import org.springframework.stereotype.Service;
@@ -10,8 +12,11 @@ import ut.edu.be_quanlytro.Dto.Response.NotificationResponse;
 import ut.edu.be_quanlytro.Entity.Enum.NotificationType;
 import ut.edu.be_quanlytro.Entity.Notification;
 import ut.edu.be_quanlytro.Entity.User;
+import ut.edu.be_quanlytro.Entity.UserFcmToken;
 import ut.edu.be_quanlytro.Exception.ResourceNotFoundException; // Thêm import 404
 import ut.edu.be_quanlytro.Repository.NotificationRepository;
+import ut.edu.be_quanlytro.Repository.UserFcmTokenRepository;
+import ut.edu.be_quanlytro.Repository.UserRepository;
 
 import java.util.List;
 import java.util.UUID;
@@ -21,6 +26,8 @@ import java.util.UUID;
 public class NotificationService {
 
     private final NotificationRepository notificationRepository;
+    private final UserFcmTokenRepository fcmTokenRepository;
+    private final UserRepository userRepository;
 
     // Tiêm công cụ bắn dữ liệu Real-time (WebSocket)
     // private final SimpMessagingTemplate messagingTemplate; // 🌟 Mở ra khi cấu hình xong WebSocket
@@ -48,6 +55,9 @@ public class NotificationService {
         //         "/queue/notifications",
         //         mapToResponse(savedNotification)
         // );
+        // 4.  FIREBASE TỰ ĐỘNG NGAY TẠI ĐÂY!
+        // Lưu DB xong là tự động móc token ra bắn popup rung điện thoại luôn
+        sendNotificationToUser(user.getId(), title, content);
     }
 
     // ================= 2. LẤY DANH SÁCH THÔNG BÁO =================
@@ -89,6 +99,68 @@ public class NotificationService {
 
         unreadList.forEach(n -> n.setIsRead(true));
         notificationRepository.saveAll(unreadList);
+    }
+
+    /**
+     * LƯU FCM TOKEN CỦA THIẾT BỊ VÀO DATABASE
+     */
+    @Transactional
+    public void saveFcmToken(UUID userId, String token) {
+        // Kiểm tra xem Token này đã tồn tại trong DB chưa để tránh lưu trùng
+        if (!fcmTokenRepository.existsByFcmToken(token)) {
+
+            // Tìm User
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy User!"));
+
+            // Lưu Token mới
+            UserFcmToken newToken = UserFcmToken.builder()
+                    .user(user)
+                    .fcmToken(token)
+                    .build();
+
+            fcmTokenRepository.save(newToken);
+            System.out.println("🚀 Đã lưu FCM Token mới cho User: " + user.getPhone());
+        }
+    }
+    /**
+     * 1. HÀM CƠ BẢN: BẮN THÔNG BÁO TỚI 1 THIẾT BỊ (TOKEN)
+     */
+    /**
+     * 1. HÀM CƠ BẢN: BẮN THÔNG BÁO TỚI 1 THIẾT BỊ (TOKEN)
+     */
+    public void sendPushNotification(String fcmToken, String title, String body) {
+        try {
+            //  Ghi rõ họ tên của class Notification thuộc thư viện Firebase ra
+            com.google.firebase.messaging.Notification firebaseNotification = com.google.firebase.messaging.Notification.builder()
+                    .setTitle(title)
+                    .setBody(body)
+                    .build();
+
+            Message message = Message.builder()
+                    .setToken(fcmToken)
+                    .setNotification(firebaseNotification) // 🚀 Nhét đúng đối tượng Firebase vào
+                    .build();
+
+            String response = FirebaseMessaging.getInstance().send(message);
+            System.out.println("✅ Đã bắn FCM thành công tới thiết bị: " + response);
+        } catch (Exception e) {
+            System.err.println("❌ Lỗi bắn thông báo FCM: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 2. HÀM NÂNG CAO: TÌM TẤT CẢ THIẾT BỊ CỦA KHÁCH THUÊ ĐỂ BẮN
+     * (Dùng hàm này để gọi ở các chỗ duyệt hóa đơn)
+     */
+    public void sendNotificationToUser(UUID userId, String title, String body) {
+        // Lấy danh sách tất cả điện thoại/tablet mà Khách thuê đang đăng nhập
+        List<UserFcmToken> tokens = fcmTokenRepository.findByUserId(userId);
+
+        // Quét vòng lặp: Có bao nhiêu máy đang đăng nhập thì bắn thông báo hết!
+        for (UserFcmToken token : tokens) {
+            sendPushNotification(token.getFcmToken(), title, body);
+        }
     }
 
     // ================= MAPPER =================

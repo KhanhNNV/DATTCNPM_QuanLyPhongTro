@@ -18,6 +18,10 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.oauth2.jwt.Jwt;
+import ut.edu.be_quanlytro.Service.NotificationService;
+
+import java.util.Map;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/auth")
@@ -25,6 +29,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 public class AuthController {
 
     private final AuthenticationService authenticationService;
+    private final NotificationService notificationService;
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
@@ -85,5 +90,15 @@ public class AuthController {
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
+    }
+    @PostMapping("/fcm-token")
+    public ResponseEntity<?> saveFcmToken(@RequestBody Map<String, String> request, @AuthenticationPrincipal Jwt jwt) {
+        UUID userId = UUID.fromString(jwt.getClaimAsString("userId"));
+        String token = request.get("token");
+
+        // Logic: Kiểm tra nếu user chưa có token này dưới DB thì lưu mới vào bảng user_fcm_tokens
+        notificationService.saveFcmToken(userId, token);
+
+        return ResponseEntity.ok(Map.of("message", "Lưu FCM Token thành công!"));
     }
 }
