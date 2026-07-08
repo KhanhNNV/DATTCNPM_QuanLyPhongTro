@@ -724,7 +724,7 @@ public class ContractService {
     }
     // ================= 10. KHÁCH THUÊ KÝ HỢP ĐỒNG ĐIỆN TỬ =================
     @Transactional
-    public ContractDetailResponse signContract(UUID contractId, MultipartFile signatureImage, UUID currentUserId) {
+    public ContractDetailResponse signContract(UUID contractId, MultipartFile signatureImage, MultipartFile pdfFile, UUID currentUserId) {
 
         // 1. Kiểm tra file chữ ký
         if (signatureImage == null || signatureImage.isEmpty()) {
@@ -761,6 +761,24 @@ public class ContractService {
             contract.setContractTerms(signedTerms);
         }
 
+        // =================================================================
+        // BỔ SUNG: XỬ LÝ REPLACE FILE PDF HỢP ĐỒNG (GIỐNG BÊN UPDATE)
+        // =================================================================
+        if (pdfFile != null && !pdfFile.isEmpty()) {
+            String oldFileUrl = contract.getContractFileUrl();
+            // Nếu trước đó bản nháp đã có file PDF cũ thì tiến hành xóa dọn rác
+            if (oldFileUrl != null && !oldFileUrl.trim().isEmpty()) {
+                try {
+                    cloudinaryService.deleteFile(oldFileUrl);
+                } catch (Exception e) {
+                    System.err.println("Cảnh báo: Không thể xóa file hợp đồng cũ trên Cloud - " + e.getMessage());
+                }
+            }
+            // Upload bản PDF có chữ ký mới lên thư mục contract_files
+            String newFileUrl = cloudinaryService.uploadFile(pdfFile, "contract_files");
+            contract.setContractFileUrl(newFileUrl);
+        }
+
         // 7. Cập nhật dữ liệu Phòng
         Room room = contract.getRoom();
         room.setStatus(RoomStatus.RENTED);
@@ -774,17 +792,13 @@ public class ContractService {
                 room.getRoomNumber());
         activityLog.createLog(contract.getTenant(), "SIGN_CONTRACT", "contracts", contract.getId(), logDesc);
 
-
         // 10. BẮN THÔNG BÁO CHO CHỦ TRỌ
-
         User landlord = room.getArea().getLandlord();
         String tenantName = contract.getTenant().getFullName();
         String roomNumber = room.getRoomNumber();
 
         String title = "Hợp đồng đã được ký";
         String content = String.format("Khách thuê %s đã xác nhận chữ ký điện tử cho phòng %s. Hợp đồng đã chính thức có hiệu lực!", tenantName, roomNumber);
-
-        // Chỉ cần gọi duy nhất 1 dòng này!
         notificationService.createNotification(landlord, title, content, NotificationType.CONTRACT_SIGNED);
 
         // 11. Trả về hợp đồng đã cập nhật

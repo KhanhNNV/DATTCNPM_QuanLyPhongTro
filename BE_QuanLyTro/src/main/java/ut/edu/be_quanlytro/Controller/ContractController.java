@@ -169,15 +169,18 @@ public class ContractController {
     }
 
     // ================= KHÁCH THUÊ KÝ HỢP ĐỒNG =================
-    @PutMapping("/sign/{contractId}")
+    @PutMapping(value = "/sign/{contractId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('TENANT')") // Khóa chặt: Chỉ có Khách thuê mới được ký
     public ResponseEntity<ContractDetailResponse> signContract(
             @PathVariable UUID contractId,
             @RequestParam("signature") MultipartFile signatureImage,
+            @RequestParam(value = "file", required = false) MultipartFile pdfFile, // BỔ SUNG NHẬN FILE PDF
             @AuthenticationPrincipal Jwt jwt) {
 
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
-        ContractDetailResponse response = contractService.signContract(contractId, signatureImage, currentUserId);
+
+        // Truyền thêm biến pdfFile vào Service
+        ContractDetailResponse response = contractService.signContract(contractId, signatureImage, pdfFile, currentUserId);
 
         return ResponseEntity.ok(response);
     }
