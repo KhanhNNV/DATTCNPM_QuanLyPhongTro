@@ -35,3 +35,6 @@ build/
 .env
 application-prod.properties
 application-local.properties
+
+BE_QuanLyTro/src/main/resources/serviceAccountKey.json
+**/serviceAccountKey.json
