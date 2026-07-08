@@ -13,10 +13,7 @@ import ut.edu.be_quanlytro.Entity.Enum.RoomStatus;
 import ut.edu.be_quanlytro.Entity.Room;
 import ut.edu.be_quanlytro.Entity.User;
 import ut.edu.be_quanlytro.Exception.ResourceNotFoundException; // Thêm import 404
-import ut.edu.be_quanlytro.Repository.AreaRepository;
-import ut.edu.be_quanlytro.Repository.AreaServiceRepository;
-import ut.edu.be_quanlytro.Repository.RoomRepository;
-import ut.edu.be_quanlytro.Repository.UserRepository;
+import ut.edu.be_quanlytro.Repository.*;
 import ut.edu.be_quanlytro.Entity.Enum.RoleType;
 
 import java.text.Normalizer;
@@ -34,6 +31,7 @@ public class AreaManagementService {
     private final ActivityLogService activityLog;
     private final AreaServiceRepository areaServiceRepository;
     private final RoomRepository roomRepository;
+    private final ContractRepository contractRepository;
 
 
     //==============TẠO KHU TRỌ, PHÒNG, DỊCH VỤ===========
@@ -147,23 +145,27 @@ public class AreaManagementService {
     }
 
     public AreaResponse getAreaById(UUID id, UUID currentUserId) {
-        // 1. Lấy thông tin Khu trọ từ Database
         Area area = getAreaEntityById(id);
 
         // 2. Tìm thông tin người dùng đang gọi API
         User currentUser = userRepository.findById(currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("Người dùng không tồn tại trong hệ thống"));
 
-        // 3. KIỂM TRA BẢO MẬT: Nếu là Chủ trọ thì chỉ được xem khu của mình
+        // 3. KIỂM TRA BẢO MẬT: Phân quyền theo Role
         if (currentUser.getRole() == RoleType.LANDLORD) {
             // So sánh ID của chủ khu trọ với ID của người đang đăng nhập
             if (!area.getLandlord().getId().equals(currentUserId)) {
                 throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền xem khu trọ của người khác.");
             }
         }
+        else if (currentUser.getRole() == RoleType.TENANT) {
+            // KIỂM TRA CHO KHÁCH THUÊ: Có hợp đồng ở khu trọ này không?
+            boolean hasAccessToArea = contractRepository.existsByTenantIdAndRoom_Area_Id(currentUserId, id);
 
-        // (Tùy chọn cho tương lai: Nếu Role là TENANT, bạn cũng có thể thêm logic
-        // kiểm tra xem Khách đó có đang thuê phòng thuộc khu này hay không).
+            if (!hasAccessToArea) {
+                throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có hợp đồng thuê nào tại khu trọ này.");
+            }
+        }
 
         // 4. Nếu qua được vòng kiểm tra, map sang DTO và trả về
         return mapToResponse(area);

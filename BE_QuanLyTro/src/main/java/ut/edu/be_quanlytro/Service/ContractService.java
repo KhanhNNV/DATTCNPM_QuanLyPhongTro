@@ -1030,6 +1030,7 @@ public class ContractService {
                 .contractFileUrl(contract.getContractFileUrl())
                 .contractTerms(contract.getContractTerms())
                 //Thông tin khu trọ
+                .areaId(contract.getRoom().getArea().getId())
                 .areaName(contract.getRoom().getArea().getName())
                 .areaAddress(contract.getRoom().getArea().getAddress())
 
@@ -1053,6 +1054,7 @@ public class ContractService {
                 .tenantPhone(contract.getTenant().getPhone())
                 .tenantIdCardNumber(contract.getTenant().getIdCardNumber())
                 .tenantHometown(contract.getTenant().getHometown())
+                .tenantSignatureUrl(contract.getTenantSignature())
 
                 // --- DANH SÁCH THÀNH VIÊN ---
                 .members(memberResponses)

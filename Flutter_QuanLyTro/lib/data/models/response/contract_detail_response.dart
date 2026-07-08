@@ -5,6 +5,7 @@ class ContractDetailResponse {
   final String? templateId;
   final String roomId;
   final String roomNumber;
+  final String areaId;
   final String areaName;
   final String areaAddress;
 
@@ -13,6 +14,7 @@ class ContractDetailResponse {
   final String tenantPhone;
   final String tenantIdCardNumber;
   final String tenantHometown;
+  final String? tenantSignatureUrl;
 
   final String startDate;
   final String endDate;
@@ -35,6 +37,7 @@ class ContractDetailResponse {
     this.templateId,
     required this.roomId,
     required this.roomNumber,
+    required this.areaId,
     required this.areaName,
     required this.areaAddress,
     required this.tenantId,
@@ -55,6 +58,7 @@ class ContractDetailResponse {
     required this.landlordIdCardNumber,
     required this.landlordHometown,
     this.landlordSignatureUrl,
+    this.tenantSignatureUrl,
   });
 
   factory ContractDetailResponse.fromJson(Map<String, dynamic> json) {
@@ -63,6 +67,7 @@ class ContractDetailResponse {
       templateId: json['templateId'],
       roomId: json['roomId'] ?? '',
       roomNumber: json['roomNumber'] ?? '',
+      areaId: json['areaId'] ?? '',
       areaName: json['areaName'] ?? '',
       areaAddress: json['areaAddress'] ?? '',
 
@@ -88,6 +93,7 @@ class ContractDetailResponse {
       landlordIdCardNumber: json['landlordIdCardNumber'] ?? '',
       landlordHometown: json['landlordHometown'] ?? '',
       landlordSignatureUrl: json['landlordSignatureUrl'],
+      tenantSignatureUrl: json['tenantSignatureUrl'],
     );
   }
 }

@@ -154,22 +154,46 @@ class ContractRepository {
     throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 
-  Future<ContractDetailResponse> signContract(String contractId, Uint8List signatureBytes) async {
-    final streamedResponse = await _apiClient.putMultipart(
-        '/api/contracts/sign/$contractId',
-        'signature',
-        signatureBytes,
-        'contract_signature.png'
-    );
 
-    final response = await http.Response.fromStream(streamedResponse);
+  Future<ContractDetailResponse> signContract({
+    required String contractId,
+    required Uint8List signatureBytes,
+    File? pdfFile,
+  }) async {
+    final endpoint = '/api/contracts/sign/$contractId';
 
-    if (response.statusCode == 200 || response.statusCode == 201) {
-      final json = jsonDecode(utf8.decode(response.bodyBytes));
-      return ContractDetailResponse.fromJson(json);
+    // Tạo file tạm cho chữ ký từ Uint8List vì putMultipartForm yêu cầu kiểu dữ liệu File
+    final tempDir = Directory.systemTemp;
+    final signatureFile = File('${tempDir.path}/sig_$contractId.png');
+    await signatureFile.writeAsBytes(signatureBytes);
+
+    final Map<String, File> files = {
+      'signature': signatureFile,
+    };
+
+    if (pdfFile != null) {
+      files['file'] = pdfFile;
     }
 
-    final rawError = utf8.decode(response.bodyBytes);
-    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+    try {
+      final response = await _apiClient.putMultipartForm(
+        endpoint,
+        fields: {},
+        files: files,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        final json = jsonDecode(utf8.decode(response.bodyBytes));
+        return ContractDetailResponse.fromJson(json);
+      }
+
+      final rawError = utf8.decode(response.bodyBytes);
+      throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+    } finally {
+      // dọn dẹp file chữ ký tạm sau khi request chạy xong
+      if (await signatureFile.exists()) {
+        await signatureFile.delete();
+      }
+    }
   }
 }

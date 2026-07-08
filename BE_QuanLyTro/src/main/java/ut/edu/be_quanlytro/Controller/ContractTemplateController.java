@@ -38,7 +38,7 @@ public class ContractTemplateController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('LANDLORD')")
+    @PreAuthorize("hasAnyRole('LANDLORD','TENANT')")
     public ResponseEntity<ContractTemplateResponse> getTemplateById(@PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
         return ResponseEntity.ok(templateService.getTemplateById(id, getCurrentUserId(jwt)));
     }

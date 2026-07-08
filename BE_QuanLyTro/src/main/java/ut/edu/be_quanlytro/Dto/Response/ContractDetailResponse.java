@@ -23,8 +23,10 @@
         private String tenantPhone;
         private String tenantIdCardNumber;
         private String tenantHometown;
+        private String tenantSignatureUrl;
 
         // --- Bổ sung thông tin Khu trọ ---
+        private UUID areaId;
         private String areaName;
         private String areaAddress;
 

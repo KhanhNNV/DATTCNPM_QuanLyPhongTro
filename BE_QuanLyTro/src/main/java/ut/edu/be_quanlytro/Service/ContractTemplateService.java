@@ -63,8 +63,8 @@ public class ContractTemplateService {
     // ================= 3. XEM CHI TIẾT 1 MẪU =================
     @Transactional(readOnly = true)
     public ContractTemplateResponse getTemplateById(UUID id, UUID landlordId) {
-        ContractTemplate template = templateRepository.findByIdAndLandlordId(id, landlordId)
-                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy mẫu hợp đồng hoặc bạn không có quyền xem!"));
+        ContractTemplate template = templateRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy mẫu hợp đồng "));
 
         return mapToResponse(template);
     }

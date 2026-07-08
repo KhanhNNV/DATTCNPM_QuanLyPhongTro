@@ -25,6 +25,8 @@ class ContractPdfService {
     required String roomAddress,
     required DateTime createdDate,
     String? landlordSignatureUrl,
+    String? tenantSignatureUrl,
+    Uint8List? tenantSignatureBytes,
 
     // CÁC TRƯỜNG THÊM VÀO ĐỂ REPLACE
     required String roomNumber,
@@ -63,6 +65,17 @@ class ContractPdfService {
         landlordSignatureImage = await networkImage(landlordSignatureUrl);
       } catch (e) {
         debugPrint('Không thể tải chữ ký: $e');
+      }
+    }
+
+    pw.ImageProvider? tenantSignatureImage;
+    if (tenantSignatureBytes != null && tenantSignatureBytes.isNotEmpty) {
+      tenantSignatureImage = pw.MemoryImage(tenantSignatureBytes);
+    } else if (tenantSignatureUrl != null && tenantSignatureUrl.isNotEmpty) {
+      try {
+        tenantSignatureImage = await networkImage(tenantSignatureUrl);
+      } catch (e) {
+        debugPrint('Không thể tải chữ ký Bên B: $e');
       }
     }
 
@@ -144,15 +157,6 @@ class ContractPdfService {
               children: [
                 pw.Column(
                   children: [
-                    pw.Text('Bên B', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                    pw.SizedBox(height: 6),
-                    pw.Text('(Ký, ghi rõ họ tên)', style: const pw.TextStyle(fontSize: 11)),
-                    pw.SizedBox(height: 50),
-                    pw.Text(tenantName, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
-                  ],
-                ),
-                pw.Column(
-                  children: [
                     pw.Text('Bên A', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
                     pw.SizedBox(height: 6),
                     pw.Text('(Ký, ghi rõ họ tên)', style: const pw.TextStyle(fontSize: 11)),
@@ -162,6 +166,19 @@ class ContractPdfService {
                     else
                       pw.SizedBox(height: 60),
                     pw.Text(landlordName, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                  ],
+                ),
+                pw.Column(
+                  children: [
+                    pw.Text('Bên B', style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
+                    pw.SizedBox(height: 6),
+                    pw.Text('(Ký, ghi rõ họ tên)', style: const pw.TextStyle(fontSize: 11)),
+                    pw.SizedBox(height: 10),
+                    if (tenantSignatureImage != null)
+                      pw.Image(tenantSignatureImage, height: 60, width: 100, fit: pw.BoxFit.contain)
+                    else
+                      pw.SizedBox(height: 60),
+                    pw.Text(tenantName, style: pw.TextStyle(fontSize: 12, fontWeight: pw.FontWeight.bold)),
                   ],
                 ),
               ],

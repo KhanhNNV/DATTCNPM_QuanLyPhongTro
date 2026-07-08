@@ -12,12 +12,12 @@ import 'view_models/tenant_contract_view_model.dart';
 class TenantContractPdfViewerScreen extends StatelessWidget {
   const TenantContractPdfViewerScreen({super.key});
 
-  void _navigateToSignatureScreen(BuildContext context, String contractId, TenantContractViewModel vm) async {
+  void _navigateToSignatureScreen(BuildContext context, ContractDetailResponse contract, TenantContractViewModel vm) async {
     final success = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
         builder: (_) => ChangeNotifierProvider(
-          create: (_) => ContractSignatureViewModel(contractId: contractId),
+          create: (_) => ContractSignatureViewModel(currentContract: contract,areaId: contract.areaId),
           child: const ContractSignatureScreen(),
         ),
       ),
@@ -88,7 +88,7 @@ class TenantContractPdfViewerScreen extends StatelessWidget {
       ),
       child: SafeArea(
         child: ElevatedButton.icon(
-          onPressed: () => _navigateToSignatureScreen(context, contract.id, vm),
+          onPressed: () => _navigateToSignatureScreen(context, contract, vm),
           icon: const Icon(Icons.draw, color: Colors.white),
           label: const Text(
             'Ký hợp đồng ngay',

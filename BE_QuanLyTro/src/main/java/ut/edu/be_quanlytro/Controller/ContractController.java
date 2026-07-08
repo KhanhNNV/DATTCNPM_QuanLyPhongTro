@@ -203,7 +203,7 @@ public class ContractController {
 
     // ================= UPLOAD FILE HỢP ĐỒNG =================
     @PostMapping(value = "/upload/file/{id}", consumes = "multipart/form-data")
-    @PreAuthorize("hasRole('LANDLORD')")
+    @PreAuthorize("hasAnyRole('LANDLORD','TENANT')")
     public ResponseEntity<ContractDetailResponse> uploadContractFile(
             @PathVariable UUID id,
             @RequestParam("file") MultipartFile file,

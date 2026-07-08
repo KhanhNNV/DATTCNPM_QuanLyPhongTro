@@ -50,7 +50,7 @@ public class AreaController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('LANDLORD')")// Khách và Chủ đều dùng API này
+    @PreAuthorize("hasAnyRole('LANDLORD','TENANT')")
     public ResponseEntity<AreaResponse> getAreaById(
             @PathVariable UUID id,
             @AuthenticationPrincipal Jwt jwt) { // Bổ sung tham số đọc Token
