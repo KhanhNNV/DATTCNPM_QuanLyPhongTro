@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:http/http.dart' as http;
+
 import '../../../core/network/api_client.dart';
 import '../models/request/contract_create_manual_request.dart';
 import '../models/request/contract_create_request.dart';
 import '../models/response/contract_create_response.dart';
 import '../models/response/contract_detail_response.dart';
-import '../../../core/utils/api_error_handler.dart'; // Import bộ xử lý lỗi
+import '../../../core/utils/api_error_handler.dart';
 
 class ContractRepository {
   final ApiClient _apiClient = ApiClient();
@@ -129,6 +132,37 @@ class ContractRepository {
       fields: fields,
       files: files.isNotEmpty ? files : null,
     );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final json = jsonDecode(utf8.decode(response.bodyBytes));
+      return ContractDetailResponse.fromJson(json);
+    }
+
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+  }
+
+  Future<ContractDetailResponse> getMyCurrentContract() async {
+    final response = await _apiClient.get('/api/contracts/current');
+
+    if (response.statusCode == 200) {
+      final json = jsonDecode(utf8.decode(response.bodyBytes));
+      return ContractDetailResponse.fromJson(json);
+    }
+
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+  }
+
+  Future<ContractDetailResponse> signContract(String contractId, Uint8List signatureBytes) async {
+    final streamedResponse = await _apiClient.putMultipart(
+        '/api/contracts/sign/$contractId',
+        'signature',
+        signatureBytes,
+        'contract_signature.png'
+    );
+
+    final response = await http.Response.fromStream(streamedResponse);
 
     if (response.statusCode == 200 || response.statusCode == 201) {
       final json = jsonDecode(utf8.decode(response.bodyBytes));

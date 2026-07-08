@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../data/repository/auth_repository.dart';
-import '../../../../data/repository/user_repository.dart';
-import '../../../../data/models/response/user_model.dart';
 
-class LoginViewModel extends ChangeNotifier {
+class TenantLoginViewModel extends ChangeNotifier {
   final AuthRepository _authProvider = AuthRepository();
 
   // Trạng thái Loading
@@ -13,8 +11,6 @@ class LoginViewModel extends ChangeNotifier {
   // Trạng thái Lỗi
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
-
-
 
   // Hàm xử lý đăng nhập
   Future<void> login(String phone, String password, {required VoidCallback onSuccess}) async {
@@ -31,21 +27,20 @@ class LoginViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 3. Gọi API lấy Token
+      // 3. Gọi API lấy Token từ AuthRepository dùng chung
       await _authProvider.login(
         phone.trim(),
         password.trim(),
-        expectedRole: 'LANDLORD',
+        expectedRole: 'TENANT',
       );
 
-
-      // 5. Thành công -> Kích hoạt callback để View chuyển trang
+      // 4. Thành công -> Kích hoạt callback để View chuyển trang
       onSuccess();
     } catch (e) {
-      // 6. Thất bại -> Lưu lỗi lại
+      // 5. Thất bại -> Lưu lỗi lại
       _errorMessage = e.toString().replaceAll('Exception: ', '');
     } finally {
-      // 7. Tắt loading dù thành công hay thất bại
+      // 6. Tắt loading dù thành công hay thất bại
       _isLoading = false;
       notifyListeners();
     }

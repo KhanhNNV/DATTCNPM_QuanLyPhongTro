@@ -1,22 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_quanlytro/features/landlord_app/welcome/welcome_screen.dart';
 import 'package:provider/provider.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../../../../core/utils/token_manager.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/token_manager.dart';
+// Bạn nhớ kiểm tra lại đường dẫn import này cho khớp với cấu trúc thư mục nhé
 import '../../../../data/repository/user_repository.dart';
-import '../home_page/home_page_screen.dart';
-import '../main_layout/main_layout_screen.dart';
-import '../main_layout/view_models/main_layout_view_model.dart';
-import 'login_screen.dart';
+import '../main_layout/tenant_main_layout_screen.dart';
+import '../main_layout/view_models/tenant_main_layout_view_model.dart';
+import 'tenant_login_screen.dart';
 
-class SplashScreen extends StatefulWidget {
-  const SplashScreen({super.key});
+class TenantSplashScreen extends StatefulWidget {
+  const TenantSplashScreen({super.key});
 
   @override
-  State<SplashScreen> createState() => _SplashScreenState();
+  State<TenantSplashScreen> createState() => _TenantSplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _TenantSplashScreenState extends State<TenantSplashScreen> {
   final UserRepository _userProvider = UserRepository();
 
   @override
@@ -26,33 +25,31 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAuthentication() async {
-    // Chờ 1 khoảng ngắn để tránh việc màn hình bị nháy quá nhanh
     await Future.delayed(const Duration(seconds: 1));
 
-    // Lấy accessToken từ Secure Storage
     final token = await TokenManager.getAccessToken();
 
-    // ko có Token -> Chuyển sang trang chào mừng
+    // Không có Token -> Chuyển thẳng sang trang Đăng nhập
     if (token == null) {
-      _navigateToWelcome();
+      _navigateToLogin();
       return;
     }
 
-    // Trường hợp CÓ Token -> Gọi API check xem còn hạn không
     try {
+      // Gọi API để xác thực Token.
       await _userProvider.getCurrentUser();
       _navigateToHome();
     } catch (e) {
       await TokenManager.clearAuthData();
-      _navigateToWelcome();
+      _navigateToLogin();
     }
   }
 
-  void _navigateToWelcome() {
+  void _navigateToLogin() {
     if (mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const WelcomeScreen()),
+        MaterialPageRoute(builder: (context) => const TenantLoginScreen()),
       );
     }
   }
@@ -62,9 +59,9 @@ class _SplashScreenState extends State<SplashScreen> {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => ChangeNotifierProvider(
-            create: (_) => MainLayoutViewModel()..fetchInitialData(),
-            child: const MainLayoutScreen(),
+          builder: (context) => ChangeNotifierProvider(
+            create: (_) => TenantMainLayoutViewModel()..fetchInitialData(),
+            child: const TenantMainLayoutScreen(),
           ),
         ),
       );
@@ -79,7 +76,7 @@ class _SplashScreenState extends State<SplashScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.home_work_outlined, size: 80, color: AppColors.primary),
+            Icon(Icons.meeting_room_outlined, size: 80, color: AppColors.primary),
             SizedBox(height: 24),
             CircularProgressIndicator(
               valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),

@@ -5,6 +5,8 @@ class ContractDetailResponse {
   final String? templateId;
   final String roomId;
   final String roomNumber;
+  final String areaName;
+  final String areaAddress;
 
   final String tenantId;
   final String tenantName;
@@ -33,6 +35,8 @@ class ContractDetailResponse {
     this.templateId,
     required this.roomId,
     required this.roomNumber,
+    required this.areaName,
+    required this.areaAddress,
     required this.tenantId,
     required this.tenantName,
     required this.tenantPhone,
@@ -59,6 +63,8 @@ class ContractDetailResponse {
       templateId: json['templateId'],
       roomId: json['roomId'] ?? '',
       roomNumber: json['roomNumber'] ?? '',
+      areaName: json['areaName'] ?? '',
+      areaAddress: json['areaAddress'] ?? '',
 
       tenantId: json['tenantId'] ?? '',
       tenantName: json['tenantName'] ?? '',
