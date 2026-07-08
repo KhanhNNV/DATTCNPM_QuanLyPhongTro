@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_quanlytro/features/landlord_app/auth/register_screen.dart';
 import 'package:flutter_quanlytro/features/landlord_app/auth/view_models/login_view_model.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../home_page/home_page_screen.dart';
 import '../main_layout/main_layout_screen.dart';
+import '../main_layout/view_models/main_layout_view_model.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -19,7 +21,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
 
   final LoginViewModel _viewModel = LoginViewModel();
-
 
   @override
   void initState() {
@@ -47,12 +48,18 @@ class _LoginScreenState extends State<LoginScreen> {
       _phoneController.text,
       _passwordController.text,
       onSuccess: () {
-        // Chuyển hướng sang trang chủ
-        Navigator.pushReplacement(
+        // Gọi nạp dữ liệu ngay khi vừa đăng nhập thành công
+        Provider.of<MainLayoutViewModel>(
           context,
-          MaterialPageRoute(
-            builder: (context) => MainLayoutScreen(),
-          ),
+          listen: false,
+        ).fetchInitialData();
+
+        // Chuyển hướng sang trang chủ
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const MainLayoutScreen()),
+          (Route<dynamic> route) =>
+              false, // Trả về false để xóa tất cả các route cũ
         );
       },
     );
@@ -90,7 +97,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 20),
                   const Text(
                     'Đăng nhập',
-                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.primary),
+                    style: TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.primary,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   const Text(
@@ -108,7 +119,9 @@ class _LoginScreenState extends State<LoginScreen> {
                       labelText: 'Số điện thoại',
                       hintText: 'Nhập số điện thoại của bạn',
                       prefixIcon: const Icon(Icons.phone_outlined),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -123,10 +136,15 @@ class _LoginScreenState extends State<LoginScreen> {
                       hintText: 'Nhập mật khẩu',
                       prefixIcon: const Icon(Icons.lock_outline),
                       suffixIcon: IconButton(
-                        icon: Icon(_isObscure ? Icons.visibility_off : Icons.visibility),
-                        onPressed: () => setState(() => _isObscure = !_isObscure),
+                        icon: Icon(
+                          _isObscure ? Icons.visibility_off : Icons.visibility,
+                        ),
+                        onPressed: () =>
+                            setState(() => _isObscure = !_isObscure),
                       ),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -135,7 +153,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     alignment: Alignment.centerRight,
                     child: TextButton(
                       onPressed: _viewModel.isLoading ? null : () {},
-                      child: const Text('Quên mật khẩu?', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600)),
+                      child: const Text(
+                        'Quên mật khẩu?',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -149,16 +173,27 @@ class _LoginScreenState extends State<LoginScreen> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                         elevation: 0,
                       ),
                       child: _viewModel.isLoading
                           ? const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-                      )
-                          : const Text('Đăng nhập', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text(
+                              'Đăng nhập',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -166,16 +201,29 @@ class _LoginScreenState extends State<LoginScreen> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('Chưa có tài khoản? ', style: TextStyle(color: Colors.black54, fontSize: 15)),
+                      const Text(
+                        'Chưa có tài khoản? ',
+                        style: TextStyle(color: Colors.black54, fontSize: 15),
+                      ),
                       GestureDetector(
                         onTap: _viewModel.isLoading
                             ? null
                             : () {
-                          Navigator.push(context, MaterialPageRoute(builder: (context) => const RegisterScreen()));
-                        },
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const RegisterScreen(),
+                                  ),
+                                );
+                              },
                         child: const Text(
                           'Đăng ký ngay',
-                          style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 15),
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 15,
+                          ),
                         ),
                       ),
                     ],

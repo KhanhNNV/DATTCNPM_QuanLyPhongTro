@@ -56,13 +56,12 @@ class _TenantSplashScreenState extends State<TenantSplashScreen> {
 
   void _navigateToHome() {
     if (mounted) {
+      Provider.of<TenantMainLayoutViewModel>(context, listen: false).fetchInitialData();
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (context) => ChangeNotifierProvider(
-            create: (_) => TenantMainLayoutViewModel()..fetchInitialData(),
-            child: const TenantMainLayoutScreen(),
-          ),
+          builder: (context) => const TenantMainLayoutScreen(),
         ),
       );
     }

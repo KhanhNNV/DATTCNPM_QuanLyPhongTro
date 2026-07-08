@@ -75,4 +75,29 @@ class AuthRepository {
       throw Exception(response.body);
     }
   }
+  Future<void> logout() async {
+    try {
+      final accessToken = await TokenManager.getAccessToken();
+      final refreshToken = await TokenManager.getRefreshToken();
+
+      final response = await http.post(
+        Uri.parse('${ApiClient.baseUrl}/auth/logout'),
+        headers: {
+          'Content-Type': 'application/json',
+          if (accessToken != null) 'Authorization': 'Bearer $accessToken',
+        },
+        body: jsonEncode({
+          'refreshToken': refreshToken,
+        }),
+      );
+
+      if (response.statusCode != 200) {
+        print("Log: Backend báo lỗi logout hoặc token đã hết hạn trước đó.");
+      }
+    } catch (e) {
+      print("LỖI GỌI API LOGOUT: $e");
+    } finally {
+      await TokenManager.clearAuthData();
+    }
+  }
 }

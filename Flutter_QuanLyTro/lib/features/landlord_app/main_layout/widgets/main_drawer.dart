@@ -9,6 +9,8 @@ import '../../area_management/edit_area_screen.dart';
 import '../../onboarding/view_models/onboarding_view_model.dart';
 import '../../setting_page/settings_screen.dart';
 import '../../setting_page/view_models/settings_viewmodel.dart';
+import '../../welcome/welcome_screen.dart';
+import '../view_models/main_layout_view_model.dart';
 
 class MainDrawer extends StatelessWidget {
   final UserModel? currentUser;
@@ -70,7 +72,7 @@ class MainDrawer extends StatelessWidget {
               Navigator.pop(context);
 
               final AreaModel? newArea = await Navigator.push<AreaModel>(
-                  context,
+                context,
                 MaterialPageRoute(
                   builder: (_) => ChangeNotifierProvider(
                     create: (_) => OnboardingViewModel(),
@@ -101,6 +103,41 @@ class MainDrawer extends StatelessWidget {
               );
             },
           ),
+
+          const Spacer(),
+          const Divider(),
+
+          // Nút Đăng xuất
+          ListTile(
+            leading: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+            title: const Text(
+              'Đăng xuất',
+              style: TextStyle(
+                color: Colors.redAccent,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            onTap: () async {
+              // 1. Lưu lại Navigator và ViewModel TRƯỚC KHI đóng Drawer
+              final navigator = Navigator.of(context);
+              final mainViewModel = Provider.of<MainLayoutViewModel>(context, listen: false);
+
+              // 2. Đóng Drawer
+              navigator.pop();
+
+              // 3. Đợi logic clear data và API chạy xong
+              await mainViewModel.logout();
+
+              // 4. Dùng navigator đã lưu để chuyển trang và xóa sạch lịch sử
+              navigator.pushAndRemoveUntil(
+                MaterialPageRoute(
+                  builder: (context) => const WelcomeScreen(),
+                ),
+                    (route) => false, // Xóa toàn bộ stack
+              );
+            },
+          ),
+          const SizedBox(height: 16),
         ],
       ),
     );

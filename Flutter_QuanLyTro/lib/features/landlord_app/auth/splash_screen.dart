@@ -59,14 +59,14 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void _navigateToHome() {
     if (mounted) {
-      Navigator.pushReplacement(
+      Provider.of<MainLayoutViewModel>(context, listen: false).fetchInitialData();
+
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
-          builder: (_) => ChangeNotifierProvider(
-            create: (_) => MainLayoutViewModel()..fetchInitialData(),
-            child: const MainLayoutScreen(),
-          ),
+          builder: (context) => const MainLayoutScreen(),
         ),
+            (route) => false, // Dọn sạch ngăn xếp
       );
     }
   }

@@ -5,6 +5,7 @@ import '../../../../data/models/response/contract_detail_response.dart';
 import '../../../../data/models/response/room_model.dart';
 import '../../../../data/models/response/user_model.dart';
 import '../../../../data/repository/area_repository.dart';
+import '../../../../data/repository/auth_repository.dart';
 import '../../../../data/repository/contract_repository.dart';
 import '../../../../data/repository/room_repository.dart';
 import '../../../../data/repository/user_repository.dart';
@@ -13,6 +14,7 @@ import '../../../../core/utils/token_manager.dart';
 class TenantMainLayoutViewModel extends ChangeNotifier {
   final UserRepository _userRepo = UserRepository();
   final ContractRepository _contractRepo = ContractRepository();
+  final AuthRepository _authRepo = AuthRepository();
 
   // --- QUẢN LÝ TAB ---
   int _currentIndex = 0;
@@ -70,6 +72,14 @@ class TenantMainLayoutViewModel extends ChangeNotifier {
 
   // Hàm Đăng xuất
   Future<void> logout() async {
-    await TokenManager.clearAuthData();
+    _isLoading = true;
+    notifyListeners();
+    await _authRepo.logout();
+    _currentUser = null;
+    _currentContract = null;
+    _currentIndex = 0;
+
+    _isLoading = false;
+    notifyListeners();
   }
 }

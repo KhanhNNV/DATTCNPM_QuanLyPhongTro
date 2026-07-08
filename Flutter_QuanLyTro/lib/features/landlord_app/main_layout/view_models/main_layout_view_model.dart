@@ -4,10 +4,12 @@ import 'package:flutter_quanlytro/data/repository/user_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../data/models/response/area_model.dart';
 import '../../../../data/repository/area_repository.dart';
+import '../../../../data/repository/auth_repository.dart';
 
 class MainLayoutViewModel extends ChangeNotifier {
   final AreaRepository _areaProvider = AreaRepository();
   final UserRepository _userProvider = UserRepository();
+  final AuthRepository _authProvider = AuthRepository();
 
   // Key dùng để lưu và đọc ID khu trọ dưới bộ nhớ máy
   static const String _selectedAreaKey = 'SELECTED_AREA_ID';
@@ -86,6 +88,26 @@ class MainLayoutViewModel extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
+  }
+  Future<void> logout() async {
+    _isLoading = true;
+    notifyListeners();
+
+    // Gọi API xóa token phía Backend + Xóa Local Storage
+    await _authProvider.logout();
+
+    // Xóa bộ nhớ lưu ID Khu trọ
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_selectedAreaKey);
+
+    // Reset lại toàn bộ dữ liệu trên RAM
+    _currentUser = null;
+    _selectedArea = null;
+    _areas = [];
+    _currentIndex = 0;
+
+    _isLoading = false;
+    notifyListeners();
   }
 
   // Chuyển Tab BottomBar

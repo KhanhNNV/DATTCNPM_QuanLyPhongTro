@@ -42,12 +42,6 @@ class SettingsScreen extends StatelessWidget {
     }
   }
 
-  void _handleLogout(BuildContext context, SettingsViewModel vm) {
-    vm.logout();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Đã nhấn Đăng xuất')),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -159,21 +153,6 @@ class SettingsScreen extends StatelessWidget {
             const Divider(),
             const SizedBox(height: 16),
 
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: OutlinedButton.icon(
-                onPressed: () => _handleLogout(context, viewModel),
-                icon: const Icon(Icons.logout, color: Colors.red),
-                label: const Text(
-                  'Đăng xuất',
-                  style: TextStyle(color: Colors.red, fontSize: 16),
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.red),
-                ),
-              ),
-            ),
           ],
         ),
       ),

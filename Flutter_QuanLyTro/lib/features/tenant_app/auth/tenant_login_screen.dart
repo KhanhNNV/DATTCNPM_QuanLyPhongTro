@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../main_layout/tenant_main_layout_screen.dart';
+import '../main_layout/view_models/tenant_main_layout_view_model.dart';
 import 'view_models/tenant_login_view_model.dart';
 
 class TenantLoginScreen extends StatefulWidget {
@@ -41,6 +43,8 @@ class _TenantLoginScreenState extends State<TenantLoginScreen> {
       _phoneController.text,
       _passwordController.text,
       onSuccess: () {
+        Provider.of<TenantMainLayoutViewModel>(context, listen: false).fetchInitialData();
+
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
