@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../../../core/network/api_client.dart';
 import '../models/request/contract_create_manual_request.dart';
 import '../models/request/contract_create_request.dart';
+import '../models/request/contract_member_add_request.dart';
 import '../models/response/contract_create_response.dart';
 import '../models/response/contract_detail_response.dart';
 import '../../../core/utils/api_error_handler.dart';
@@ -195,5 +196,20 @@ class ContractRepository {
         await signatureFile.delete();
       }
     }
+  }
+
+  Future<ContractDetailResponse> addContractMember(ContractMemberAddRequest request) async {
+    final response = await _apiClient.post(
+      '/api/contracts/add/member',
+      request.toJson(),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final json = jsonDecode(utf8.decode(response.bodyBytes));
+      return ContractDetailResponse.fromJson(json);
+    }
+
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 }

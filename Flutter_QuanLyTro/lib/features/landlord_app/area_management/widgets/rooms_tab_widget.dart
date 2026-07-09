@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/currency_input_formatter.dart';
+import '../room_detail_screen.dart';
 import '../view_models/area_config_view_model.dart';
+import '../view_models/room_detail_view_model.dart';
 
 class RoomsTabWidget extends StatefulWidget {
   final String areaId;
@@ -16,11 +19,9 @@ class RoomsTabWidget extends StatefulWidget {
 }
 
 class _RoomsTabWidgetState extends State<RoomsTabWidget> {
-  // --- TRẠNG THÁI CỦA BỘ LỌC ---
   String _selectedFloor = 'All';
   String _selectedStatus = 'All';
 
-  // --- CÁC HÀM TIỆN ÍCH UI ---
   String formatCurrency(dynamic value) {
     if (value == null) return '0';
     final number = double.tryParse(value.toString()) ?? 0;
@@ -31,6 +32,7 @@ class _RoomsTabWidgetState extends State<RoomsTabWidget> {
     switch (status) {
       case 'AVAILABLE': return 'Trống';
       case 'DEPOSITED': return 'Đã cọc';
+      case 'RESERVED': return 'Giữ chỗ';
       case 'RENTED': return 'Đã thuê';
       case 'MAINTENANCE': return 'Bảo trì';
       default: return status ?? 'Không rõ';
@@ -40,23 +42,20 @@ class _RoomsTabWidgetState extends State<RoomsTabWidget> {
   Color _getStatusColor(String? status) {
     switch (status) {
       case 'AVAILABLE': return Colors.green;
-      case 'DEPOSITED': return Colors.redAccent;
+      case 'DEPOSITED': return Colors.orange;
+      case 'RESERVED': return Colors.blueAccent;
       case 'RENTED': return Colors.redAccent;
-      case 'MAINTENANCE': return Colors.orange;
-      default: return Colors.grey;
+      case 'MAINTENANCE': return Colors.grey;
+      default: return Colors.black87;
     }
   }
 
   double parseMoney(String value) {
-    return double.tryParse(
-      value.replaceAll('.', '').replaceAll(',', ''),
-    ) ??
-        0;
+    return double.tryParse(value.replaceAll('.', '').replaceAll(',', '')) ?? 0;
   }
 
   @override
   Widget build(BuildContext context) {
-    // 1. TÌM TẦNG LỚN NHẤT DỰA VÀO DANH SÁCH PHÒNG
     int maxFloor = 1;
     if (widget.vm.rooms.isNotEmpty) {
       maxFloor = widget.vm.rooms
@@ -64,16 +63,13 @@ class _RoomsTabWidgetState extends State<RoomsTabWidget> {
           .reduce((a, b) => a > b ? a : b);
     }
 
-    // 2. TẠO DANH SÁCH TẦNG CHO BỘ LỌC (Từ 1 -> maxFloor)
     List<String> filterFloors = List.generate(maxFloor, (index) => (index + 1).toString());
 
-    // Đảm bảo tầng đang được chọn luôn có trong danh sách để tránh lỗi Crash UI khi tầng đó bị xóa hết phòng
     if (_selectedFloor != 'All' && !filterFloors.contains(_selectedFloor)) {
       filterFloors.add(_selectedFloor);
       filterFloors.sort((a, b) => int.parse(a).compareTo(int.parse(b)));
     }
 
-    // 3. LỌC DANH SÁCH PHÒNG
     final filteredRooms = widget.vm.rooms.where((room) {
       final matchFloor = _selectedFloor == 'All' || room['floor'].toString() == _selectedFloor;
       final matchStatus = _selectedStatus == 'All' || room['status'] == _selectedStatus;
@@ -89,12 +85,10 @@ class _RoomsTabWidgetState extends State<RoomsTabWidget> {
       ),
       body: Column(
         children: [
-          // ================= BỘ LỌC =================
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
             child: Row(
               children: [
-                // Lọc theo Tầng
                 Expanded(
                   child: Container(
                     height: 45,
@@ -125,7 +119,6 @@ class _RoomsTabWidgetState extends State<RoomsTabWidget> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                // Lọc theo Trạng thái
                 Expanded(
                   child: Container(
                     height: 45,
@@ -145,6 +138,7 @@ class _RoomsTabWidgetState extends State<RoomsTabWidget> {
                           DropdownMenuItem(value: 'All', child: Text('Tất cả trạng thái')),
                           DropdownMenuItem(value: 'AVAILABLE', child: Text('Trống')),
                           DropdownMenuItem(value: 'DEPOSITED', child: Text('Đã cọc')),
+                          DropdownMenuItem(value: 'RESERVED', child: Text('Giữ chỗ')),
                           DropdownMenuItem(value: 'RENTED', child: Text('Đã thuê')),
                           DropdownMenuItem(value: 'MAINTENANCE', child: Text('Bảo trì')),
                         ],
@@ -158,8 +152,6 @@ class _RoomsTabWidgetState extends State<RoomsTabWidget> {
               ],
             ),
           ),
-
-          // ================= DANH SÁCH PHÒNG =================
           Expanded(
             child: filteredRooms.isEmpty
                 ? const Center(
@@ -177,123 +169,139 @@ class _RoomsTabWidgetState extends State<RoomsTabWidget> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 18,
-                                  backgroundColor: AppColors.primary.withOpacity(0.1),
-                                  child: Text(
-                                    'T${room['floor']}',
-                                    style: const TextStyle(
-                                      color: AppColors.primary,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Text(
-                                  'Phòng ${room['roomNumber']}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                              ],
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChangeNotifierProvider(
+                            create: (_) => RoomDetailViewModel()..fetchRoomAndMembers(room['id'].toString()),
+                            child: RoomDetailScreen(
+                              roomId: room['id'].toString(),
+                              roomNumber: room['roomNumber'].toString(),
                             ),
-                            PopupMenuButton<String>(
-                              icon: const Icon(Icons.more_vert, color: Colors.grey),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              onSelected: (String value) {
-                                if (value == 'edit') {
-                                  _showRoomFormDialog(context, room, maxFloor);
-                                } else if (value == 'delete') {
-                                  _confirmDeleteRoom(
-                                    context,
-                                    room['id'].toString(),
-                                    room['roomNumber'].toString(),
-                                  );
-                                }
-                              },
-                              itemBuilder: (BuildContext context) =>
-                              <PopupMenuEntry<String>>[
-                                const PopupMenuItem<String>(
-                                  value: 'edit',
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.edit, color: Colors.orange, size: 20),
-                                      SizedBox(width: 8),
-                                      Text('Sửa phòng'),
-                                    ],
-                                  ),
-                                ),
-                                const PopupMenuItem<String>(
-                                  value: 'delete',
-                                  child: Row(
-                                    children: [
-                                      Icon(Icons.delete, color: Colors.redAccent, size: 20),
-                                      SizedBox(width: 8),
-                                      Text('Xóa phòng'),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
+                          ),
                         ),
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 8.0),
-                          child: Divider(height: 1, thickness: 0.5),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Row(
                                 children: [
-                                  Text(
-                                    'Giá thuê: ',
-                                    style: TextStyle(fontSize: 14, color: Colors.grey[800]),
+                                  CircleAvatar(
+                                    radius: 18,
+                                    backgroundColor: AppColors.primary.withOpacity(0.1),
+                                    child: Text(
+                                      'T${room['floor']}',
+                                      style: const TextStyle(
+                                        color: AppColors.primary,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13,
+                                      ),
+                                    ),
                                   ),
+                                  const SizedBox(width: 12),
                                   Text(
-                                    '${formatCurrency(room['rentPrice'])}đ',
+                                    'Phòng ${room['roomNumber']}',
                                     style: const TextStyle(
-                                      fontSize: 15,
                                       fontWeight: FontWeight.bold,
-                                      color: Colors.blue,
+                                      fontSize: 16,
                                     ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 6),
-                              Text(
-                                'Tiền cọc: ${formatCurrency(room['depositAmount'])}đ',
-                                style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                              PopupMenuButton<String>(
+                                icon: const Icon(Icons.more_vert, color: Colors.grey),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                onSelected: (String value) {
+                                  if (value == 'edit') {
+                                    _showRoomFormDialog(context, room, maxFloor);
+                                  } else if (value == 'delete') {
+                                    _confirmDeleteRoom(
+                                      context,
+                                      room['id'].toString(),
+                                      room['roomNumber'].toString(),
+                                    );
+                                  }
+                                },
+                                itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                                  const PopupMenuItem<String>(
+                                    value: 'edit',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.edit, color: Colors.orange, size: 20),
+                                        SizedBox(width: 8),
+                                        Text('Sửa phòng'),
+                                      ],
+                                    ),
+                                  ),
+                                  const PopupMenuItem<String>(
+                                    value: 'delete',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.delete, color: Colors.redAccent, size: 20),
+                                        SizedBox(width: 8),
+                                        Text('Xóa phòng'),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ),
                             ],
                           ),
-                        ),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            _buildBadge(Icons.aspect_ratio, '${formatCurrency(room['areaSize'])}m²', Colors.teal),
-                            _buildBadge(Icons.people, 'Tối đa: ${room['maxOccupants']} người', Colors.purple),
-                            _buildBadge(Icons.info_outline, _getStatusText(room['status']), _getStatusColor(room['status']), isFilled: true),
-                          ],
-                        ),
-                      ],
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 8.0),
+                            child: Divider(height: 1, thickness: 0.5),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12.0),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Text(
+                                      'Giá thuê: ',
+                                      style: TextStyle(fontSize: 14, color: Colors.grey[800]),
+                                    ),
+                                    Text(
+                                      '${formatCurrency(room['rentPrice'])}đ',
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Tiền cọc: ${formatCurrency(room['depositAmount'])}đ',
+                                  style: TextStyle(fontSize: 14, color: Colors.grey[700]),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              _buildBadge(Icons.aspect_ratio, '${formatCurrency(room['areaSize'])}m²', Colors.teal),
+                              _buildBadge(Icons.people, 'Tối đa: ${room['maxOccupants']} người', Colors.purple),
+                              _buildBadge(Icons.info_outline, _getStatusText(room['status']), _getStatusColor(room['status']), isFilled: true),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -331,7 +339,6 @@ class _RoomsTabWidgetState extends State<RoomsTabWidget> {
     );
   }
 
-  // --- CÁC HỘP THOẠI CHỨC NĂNG ---
   void _showRoomFormDialog(BuildContext context, dynamic room, int currentMaxFloor) {
     final isEdit = room != null;
 
@@ -344,7 +351,6 @@ class _RoomsTabWidgetState extends State<RoomsTabWidget> {
     String currentFloor = widget.vm.floorController.text.trim();
     if (currentFloor.isEmpty) currentFloor = '1';
 
-    // Khi thêm sửa phòng, cho phép chọn tối đa tới (maxFloor + 1) để có thể tạo tầng mới
     final List<String> floorOptions = List.generate(currentMaxFloor + 1, (index) => (index + 1).toString());
 
     if (!floorOptions.contains(currentFloor)) {
@@ -427,7 +433,6 @@ class _RoomsTabWidgetState extends State<RoomsTabWidget> {
             ),
             onPressed: () async {
               Navigator.pop(dialogContext);
-
 
               final payload = {
                 "areaId": widget.areaId,
