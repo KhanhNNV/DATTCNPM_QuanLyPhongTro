@@ -35,6 +35,7 @@ public class ContractService {
     private final OcrService  ocrService;
     private final CloudinaryService cloudinaryService;
     private final NotificationService notificationService;
+    private final CloudinaryCleanupService  cloudinaryCleanupService;
     private final ContractTemplateRepository templateRepository;
 
     private final ContractHtmlCompiler contractHtmlCompiler;
@@ -634,6 +635,8 @@ public class ContractService {
 
         return mapToDetailResponse(updatedContract);
     }
+    // Đừng quên Inject CloudinaryCleanupService vào ContractService nhé!
+
     // ================= 9. XÓA HỢP ĐỒNG (BẢN NHÁP & QUÁ HẠN - DỌN RÁC TRIỆT ĐỂ) =================
     @Transactional
     public void deleteContract(UUID contractId, UUID currentUserId) {
@@ -645,7 +648,6 @@ public class ContractService {
             throw new AccessDeniedException("Bạn không có quyền xóa hợp đồng của khu trọ khác!");
         }
 
-        // CHỐT CHẶN: Chỉ cho xóa bản DRAFT (Nháp) hoặc EXPIRED (Quá hạn)
         if (contract.getStatus() != ContractStatus.DRAFT && contract.getStatus() != ContractStatus.EXPIRED) {
             throw new BadRequestException("Chỉ được phép xóa hợp đồng Nháp hoặc Hợp đồng đã Quá hạn!");
         }
@@ -654,18 +656,14 @@ public class ContractService {
         Room room = contract.getRoom();
 
         // ==============================================================
-        // 1. DỌN DẸP CLOUD (XÓA FILE PDF VÀ CHỮ KÝ ĐỂ TIẾT KIỆM DUNG LƯỢNG)
+        // 1. GIAO VIỆC DỌN DẸP CLOUD CHO BACKGROUND THREAD (CHẠY NGẦM)
         // ==============================================================
-        try {
-            if (contract.getContractFileUrl() != null && !contract.getContractFileUrl().isEmpty()) {
-                cloudinaryService.deleteFile(contract.getContractFileUrl());
-            }
-            if (contract.getTenantSignature() != null && !contract.getTenantSignature().isEmpty()) {
-                cloudinaryService.deleteFile(contract.getTenantSignature());
-            }
-        } catch (Exception e) {
-            System.err.println("Cảnh báo: Không thể xóa file trên Cloudinary - " + e.getMessage());
-        }
+        // Rút trích URL ra trước khi object contract bị xóa khỏi DB
+        String fileUrlToDelete = contract.getContractFileUrl();
+        String sigUrlToDelete = contract.getTenantSignature();
+
+        // Ném 2 cái URL này cho thợ phụ xử lý, luồng chính lập tức chạy tiếp dòng dưới mà không cần đợi
+        cloudinaryCleanupService.deleteContractFilesAsync(fileUrlToDelete, sigUrlToDelete);
 
         // ==============================================================
         // 2. XỬ LÝ LIÊN KẾT DATABASE (CỌC & HÓA ĐƠN) DỰA THEO TRẠNG THÁI
@@ -673,7 +671,6 @@ public class ContractService {
         Optional<Deposit> linkedDeposit = depositRepository.findByContractId(contractId);
 
         if (contract.getStatus() == ContractStatus.DRAFT) {
-            // NẾU LÀ DRAFT: GIỮ LẠI CỌC, gỡ liên kết và trả phòng về DEPOSITED
             if (linkedDeposit.isPresent()) {
                 Deposit deposit = linkedDeposit.get();
                 deposit.setStatus(DepositStatus.PENDING);
@@ -682,20 +679,16 @@ public class ContractService {
 
                 room.setStatus(RoomStatus.DEPOSITED);
             } else {
-                // Nếu trường hợp HĐ nháp này tạo ra mà không qua bước cọc
                 room.setStatus(RoomStatus.AVAILABLE);
             }
             roomRepository.save(room);
 
         } else if (contract.getStatus() == ContractStatus.EXPIRED) {
-            // NẾU LÀ EXPIRED: XÓA SẠCH CỌC
             if (linkedDeposit.isPresent()) {
                 depositRepository.delete(linkedDeposit.get());
             }
 
-            // DỌN RÁC 3 TẦNG: PAYMENT + INVOICE DETAIL -> INVOICE
             List<Invoice> oldInvoices = invoiceRepository.findByContractId(contractId);
-
             for (Invoice inv : oldInvoices) {
                 invoiceDetailRepository.deleteAllByInvoiceId(inv.getId());
                 paymentRepository.deleteAllByInvoiceId(inv.getId());
@@ -710,7 +703,6 @@ public class ContractService {
                 contract.getStatus().name(), room.getRoomNumber());
         activityLog.createLog(contract.getRoom().getArea().getLandlord(), "DELETE_CONTRACT", "contracts", contract.getId(), logDesc);
 
-        // Xóa Hợp đồng (Lúc này ContractMembers sẽ tự động bị xóa theo nhờ CascadeType.ALL)
         contractRepository.delete(contract);
 
         // ==============================================================
