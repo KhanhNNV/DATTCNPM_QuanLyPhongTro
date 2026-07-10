@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../../core/network/api_client.dart';
 import '../../../core/utils/token_manager.dart';
+import '../../core/utils/api_error_handler.dart';
 
 class AuthRepository {
+  final ApiClient _apiClient = ApiClient();
 
   // Giải mã JWT Token để đọc dữ liệu (Payload) bên trong
   Map<String, dynamic> _parseJwtPayLoad(String token) {
@@ -98,6 +100,44 @@ class AuthRepository {
       print("LỖI GỌI API LOGOUT: $e");
     } finally {
       await TokenManager.clearAuthData();
+    }
+  }
+
+  Future<void> saveFcmToken(String fcmToken) async {
+    try {
+      final response = await _apiClient.post(
+        '/auth/fcm-token',
+        {'token': fcmToken},
+      );
+
+      // Trường hợp Backend trả về status code không phải 200 (ví dụ: 400 Bad Request, 500 Server Error)
+      if (response.statusCode == 200) {
+        print("Gửi FCM Token thành công lên server!");
+      } else {
+        throw Exception(response.body);
+      }
+    } catch (e) {
+      String errorMessage = ApiErrorHandler.extractErrorMessage(e);
+      print("Lỗi xử lý saveFcmToken: $errorMessage");
+
+      throw Exception(errorMessage);
+    }
+  }
+
+  Future<void> triggerTestPushNotification() async {
+    try {
+      // Gọi API test-push vừa tạo (truyền body rỗng {})
+      final response = await _apiClient.post('/auth/test-push', {});
+
+      if (response.statusCode == 200) {
+        print("✅ Đã gọi lệnh API test push thành công!");
+      } else {
+        throw Exception(response.body);
+      }
+    } catch (e) {
+      print("❌ Lỗi khi gọi API test-push: $e");
+      // Sử dụng công cụ dịch lỗi đã viết của bạn
+      throw Exception(ApiErrorHandler.extractErrorMessage(e));
     }
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_quanlytro/data/models/response/user_model.dart';
 import 'package:flutter_quanlytro/data/repository/user_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/services/fcm_service.dart';
 import '../../../../data/models/response/area_model.dart';
 import '../../../../data/repository/area_repository.dart';
 import '../../../../data/repository/auth_repository.dart';
@@ -43,10 +44,7 @@ class MainLayoutViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Lấy id đang chọn hiện tại
       String? targetAreaId = _selectedArea?.id;
-
-      // Nếu là lần đầu mở app (targetAreaId chưa có), thử đọc ID đã lưu từ SharedPreferences
       if (targetAreaId == null) {
         final prefs = await SharedPreferences.getInstance();
         targetAreaId = prefs.getString(_selectedAreaKey);
@@ -66,22 +64,24 @@ class MainLayoutViewModel extends ChangeNotifier {
       if (_areas.isNotEmpty) {
         if (targetAreaId != null) {
           try {
-            // Kiểm tra xem ID đã lưu có thực sự tồn tại trong danh sách mới tải về không
-            _selectedArea = _areas.firstWhere(
-                  (a) => a.id == targetAreaId,
-            );
+            _selectedArea = _areas.firstWhere((a) => a.id == targetAreaId);
           } catch (_) {
-            // Nếu không tìm thấy (Khu trọ đã bị xóa ở thiết bị khác), fallback về khu đầu tiên
             _selectedArea = _areas.first;
           }
         } else {
           _selectedArea = selectLast ? _areas.last : _areas.first;
         }
 
-        // Đồng bộ lại ID thực tế được chọn vào bộ nhớ
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(_selectedAreaKey, _selectedArea!.id);
       }
+
+      // ==========================================
+      // 🚀 1. GỌI KHỞI TẠO FCM TẠI ĐÂY
+      // Xảy ra ngay sau khi đã có thông tin _currentUser
+      // ==========================================
+      await _setupFCM();
+
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
     } finally {
@@ -89,6 +89,29 @@ class MainLayoutViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+  Future<void> _setupFCM() async {
+    try {
+      final fcmService = FCMService();
+
+      // Khởi tạo các cấu hình (xin quyền, lắng nghe sự kiện)
+      await fcmService.initFCM();
+
+      // Lấy Token của thiết bị hiện tại
+      String? deviceToken = await fcmService.getDeviceToken();
+
+      if (deviceToken != null && _currentUser != null) {
+        debugPrint("FCM Token lấy được: $deviceToken");
+
+        // Gọi API gửi deviceToken lên Backend
+        await _authProvider.saveFcmToken(deviceToken);
+      }
+    } catch (e) {
+      debugPrint("Lỗi khi cấu hình FCM: $e");
+    }
+  }
+
+
   Future<void> logout() async {
     _isLoading = true;
     notifyListeners();
