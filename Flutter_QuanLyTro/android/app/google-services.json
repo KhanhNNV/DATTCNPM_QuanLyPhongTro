@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "744024889096",
+    "project_id": "quanlytro-be",
+    "storage_bucket": "quanlytro-be.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744024889096:android:03d9496d85543df3f23ebd",
+        "android_client_info": {
+          "package_name": "com.example.flutter_quanlytro"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDEYLO3YbmlrsFHP-pw0hLcYE53f4GycH0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744024889096:android:755a27c9b3712de7f23ebd",
+        "android_client_info": {
+          "package_name": "com.example.flutter_quanlytro.landlord"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDEYLO3YbmlrsFHP-pw0hLcYE53f4GycH0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:744024889096:android:b42f2e6e893c0cbcf23ebd",
+        "android_client_info": {
+          "package_name": "com.example.flutter_quanlytro.tenant"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDEYLO3YbmlrsFHP-pw0hLcYE53f4GycH0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

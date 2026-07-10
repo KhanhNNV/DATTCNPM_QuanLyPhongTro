@@ -131,7 +131,6 @@ public class NotificationService {
      */
     public void sendPushNotification(String fcmToken, String title, String body) {
         try {
-            //  Ghi rõ họ tên của class Notification thuộc thư viện Firebase ra
             com.google.firebase.messaging.Notification firebaseNotification = com.google.firebase.messaging.Notification.builder()
                     .setTitle(title)
                     .setBody(body)
@@ -139,7 +138,9 @@ public class NotificationService {
 
             Message message = Message.builder()
                     .setToken(fcmToken)
-                    .setNotification(firebaseNotification) // 🚀 Nhét đúng đối tượng Firebase vào
+                    .setNotification(firebaseNotification) // Hiển thị popup bên ngoài máy
+                    .putData("title", title)               // GỬI THÊM DATA NGẦM ĐỂ ÉP ĐÁNH THỨC FLUTTER
+                    .putData("body", body)                 // GỬI THÊM DATA NGẦM ĐỂ ÉP ĐÁNH THỨC FLUTTER
                     .build();
 
             String response = FirebaseMessaging.getInstance().send(message);
