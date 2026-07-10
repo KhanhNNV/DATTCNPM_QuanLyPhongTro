@@ -256,6 +256,9 @@ public class UserService {
                 .hometown(user.getHometown())
                 .idCardNumber(user.getIdCardNumber())
                 .isFirstLogin(user.getIsFirstLogin())
+                .bankId(user.getBankId())
+                .accountNo(user.getAccountNo())
+                .accountName(user.getAccountName())
                 .build();
     }
 }

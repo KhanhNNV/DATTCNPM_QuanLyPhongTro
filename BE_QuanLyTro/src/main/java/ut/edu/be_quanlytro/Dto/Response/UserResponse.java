@@ -19,4 +19,7 @@ public class UserResponse {
     private String hometown;
     private String idCardNumber;
     private Boolean isFirstLogin;
+    private String bankId;
+    private String accountNo;
+    private String accountName;
 }

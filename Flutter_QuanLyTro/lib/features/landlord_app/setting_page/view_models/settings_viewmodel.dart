@@ -1,16 +1,23 @@
 import 'package:flutter/material.dart';
 import '../../../../data/models/request/user_update_request.dart';
+import '../../../../data/models/request/bank_info_update_request.dart';
 import '../../../../data/models/response/user_model.dart';
 import '../../../../data/repository/user_repository.dart';
 
 class SettingsViewModel extends ChangeNotifier {
   final UserRepository _userProvider = UserRepository();
 
+  // Controllers Thông tin cá nhân
   final fullNameController = TextEditingController();
   final phoneController = TextEditingController();
   final passwordController = TextEditingController();
   final hometownController = TextEditingController();
   DateTime? selectedDob;
+
+  // Controllers Thông tin ngân hàng
+  final bankIdController = TextEditingController();
+  final accountNoController = TextEditingController();
+  final accountNameController = TextEditingController();
 
   UserModel? currentUser;
   bool isLoading = false;
@@ -25,6 +32,7 @@ class SettingsViewModel extends ChangeNotifier {
       currentUser = await _userProvider.getCurrentUser();
 
       if (currentUser != null) {
+        // Gán dữ liệu Cá nhân
         fullNameController.text = currentUser!.fullName ?? '';
         phoneController.text = currentUser!.phone ?? '';
         hometownController.text = currentUser!.hometown ?? '';
@@ -32,6 +40,11 @@ class SettingsViewModel extends ChangeNotifier {
         if (currentUser!.dob != null && currentUser!.dob!.isNotEmpty) {
           selectedDob = DateTime.tryParse(currentUser!.dob!);
         }
+
+        // Gán dữ liệu Ngân hàng (Yêu cầu UserModel phải có các field này)
+        bankIdController.text = currentUser!.bankId ?? '';
+        accountNoController.text = currentUser!.accountNo ?? '';
+        accountNameController.text = currentUser!.accountName ?? '';
       }
     } catch (e) {
       errorMessage = e.toString();
@@ -87,9 +100,36 @@ class SettingsViewModel extends ChangeNotifier {
     }
   }
 
-  void logout() {
+  // --- CẬP NHẬT NGÂN HÀNG ---
+  Future<bool> updateBankInfo() async {
+    isLoading = true;
+    errorMessage = null;
+    notifyListeners();
 
+    try {
+      final request = BankInfoUpdateRequest(
+        bankId: bankIdController.text.trim(),
+        accountNo: accountNoController.text.trim(),
+        accountName: accountNameController.text.trim(),
+      );
+
+      await _userProvider.updateBankInfo(request);
+
+      // Load lại user để lấy thông tin mới nhất
+      await fetchCurrentUser();
+
+      isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      errorMessage = e.toString();
+      isLoading = false;
+      notifyListeners();
+      return false;
+    }
   }
+
+  void logout() {}
 
   @override
   void dispose() {
@@ -97,6 +137,9 @@ class SettingsViewModel extends ChangeNotifier {
     phoneController.dispose();
     passwordController.dispose();
     hometownController.dispose();
+    bankIdController.dispose();
+    accountNoController.dispose();
+    accountNameController.dispose();
     super.dispose();
   }
 }

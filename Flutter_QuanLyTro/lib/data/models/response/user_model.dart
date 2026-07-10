@@ -5,6 +5,9 @@ class UserModel {
   final String role;
   final String? dob;
   final String? hometown;
+  final String? bankId;
+  final String? accountNo;
+  final String? accountName;
 
   UserModel({
     required this.id,
@@ -13,6 +16,9 @@ class UserModel {
     required this.role,
     this.dob,
     this.hometown,
+    this.bankId,
+    this.accountNo,
+    this.accountName,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -23,6 +29,9 @@ class UserModel {
       role: json['role'] ?? '',
       dob: json['dob'],
       hometown: json['hometown'],
+      bankId: json['bankId'],
+      accountNo: json['accountNo'],
+      accountName: json['accountName'],
     );
   }
 
@@ -34,6 +43,9 @@ class UserModel {
       'role': role,
       'dob': dob,
       'hometown': hometown,
+      'bankId': bankId,
+      'accountNo': accountNo,
+      'accountName': accountName,
     };
   }
 }

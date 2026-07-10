@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import '../../../core/network/api_client.dart';
+import '../models/request/bank_info_update_request.dart';
 import '../models/request/user_update_request.dart';
 import '../models/response/user_model.dart';
 import 'package:http/http.dart' as http;
@@ -50,6 +51,21 @@ class UserRepository {
     if (response.statusCode == 200) {
       final data = jsonDecode(utf8.decode(response.bodyBytes));
       return UserModel.fromJson(data);
+    }
+
+    // Ném lỗi qua Handler
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+  }
+
+  Future<String> updateBankInfo(BankInfoUpdateRequest request) async {
+    final response = await _apiClient.put(
+      '/api/users/profile/bank-info',
+      request.toJson(),
+    );
+
+    if (response.statusCode == 200) {
+      return utf8.decode(response.bodyBytes);
     }
 
     // Ném lỗi qua Handler
