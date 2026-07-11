@@ -448,7 +448,7 @@ public class InvoiceService {
         for (Invoice invoice : remindInvoices) {
             // 🚀 LƯU THÔNG BÁO VÀO DATABASE
             String title = "Nhắc nhở hạn chót thanh toán";
-            String content = "Hôm nay là hạn chót đóng tiền phòng " + invoice.getRoom().getRoomNumber()
+            String content = "Ngày mai là hạn chót đóng tiền phòng " + invoice.getRoom().getRoomNumber()
                     + " (Tổng: " + invoice.getTotalAmount() + "đ). Bạn nhớ thanh toán nhé!";
             notificationService.createNotification(
                     invoice.getContract().getTenant(), // Gửi cho Khách thuê
