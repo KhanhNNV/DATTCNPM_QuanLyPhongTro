@@ -5,6 +5,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:number_to_vietnamese_words/number_to_vietnamese_words.dart';
+import 'package:intl/intl.dart'; // Bổ sung thư viện intl để format ngày tháng
 
 class ContractPdfService {
   static Future<Uint8List> generateContractPdf({
@@ -34,9 +35,23 @@ class ContractPdfService {
     required double depositAmount,
     required int durationMonths,
     required int paymentDay,
+
+    // --> BỔ SUNG THÊM START DATE VÀ END DATE
+    required String startDate,
+    required String endDate,
   }) async {
 
-    // 1. CHUẨN BỊ DỮ LIỆU ĐỂ REPLACE
+    // 1. FORMAT LẠI NGÀY BẮT ĐẦU VÀ KẾT THÚC CHO ĐÚNG ĐỊNH DẠNG dd/MM/yyyy
+    String formattedStartDate = startDate;
+    String formattedEndDate = endDate;
+    try {
+      formattedStartDate = DateFormat('dd/MM/yyyy').format(DateTime.parse(startDate));
+      formattedEndDate = DateFormat('dd/MM/yyyy').format(DateTime.parse(endDate));
+    } catch (_) {
+      // Nếu lỗi parse, giữ nguyên chuỗi gốc
+    }
+
+    // 2. CHUẨN BỊ DỮ LIỆU ĐỂ REPLACE
     final Map<String, dynamic> realData = {
       'SO_PHONG': roomNumber,
       'DIA_CHI_NHA': roomAddress,
@@ -46,15 +61,17 @@ class ContractPdfService {
       'TIEN_COC': TemplateCompiler.formatCurrency(depositAmount),
       'TIEN_COC_CHU': depositAmount.toInt().toVietnameseWords(),
       'NGAY_THANH_TOAN': paymentDay.toString().padLeft(2, '0'),
+      'NGAY_BAT_DAU': formattedStartDate, // THÊM BIẾN NÀY
+      'NGAY_KET_THUC': formattedEndDate,  // THÊM BIẾN NÀY
     };
 
-    // 2. BIÊN DỊCH NỘI DUNG TỪ TEMPLATE SANG TEXT THẬT
+    // 3. BIÊN DỊCH NỘI DUNG TỪ TEMPLATE SANG TEXT THẬT
     final finalRentalContent = TemplateCompiler.compileText(rentalContent, realData);
     final finalLandlordDuty = TemplateCompiler.compileText(landlordDuty, realData);
     final finalTenantDuty = TemplateCompiler.compileText(tenantDuty, realData);
     final finalExecutionTerms = TemplateCompiler.compileText(executionTerms, realData);
 
-    // 3. VẼ PDF
+    // 4. VẼ PDF
     final notoSerifRegular = await PdfGoogleFonts.notoSerifRegular();
     final notoSerifBold = await PdfGoogleFonts.notoSerifBold();
     final pdf = pw.Document();

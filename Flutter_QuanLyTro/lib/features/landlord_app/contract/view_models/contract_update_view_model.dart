@@ -92,6 +92,8 @@ class ContractUpdateViewModel extends ChangeNotifier {
         depositAmount: double.tryParse(depositAmountController.text.trim()) ?? 0.0,
         durationMonths: durationMonths,
         paymentDay: paymentDay,
+        startDate: DateFormat('yyyy-MM-dd').format(startDate!),
+        endDate: DateFormat('yyyy-MM-dd').format(endDate!),
         createdDate: currentContract.createdAt != null
             ? DateTime.tryParse(currentContract.createdAt!) ?? DateTime.now()
             : DateTime.now(),

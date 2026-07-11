@@ -215,6 +215,8 @@ class ContractCreateViewModel extends ChangeNotifier {
           depositAmount: contractDetail.depositAmount,
           durationMonths: durationMonths,
           paymentDay: paymentDay,
+          startDate: contractDetail.startDate,
+          endDate: contractDetail.endDate,
 
           createdDate: contractDetail.createdAt != null
               ? DateTime.tryParse(contractDetail.createdAt!) ?? DateTime.now()

@@ -16,11 +16,9 @@ class ContractSignatureViewModel extends ChangeNotifier {
   final AreaRepository _areaRepo = AreaRepository();
 
   final String areaId;
-
-  // Nhận nguyên Object để lấy thông tin kết xuất PDF
   final ContractDetailResponse currentContract;
 
-  ContractSignatureViewModel({required this.currentContract,required this.areaId});
+  ContractSignatureViewModel({required this.currentContract, required this.areaId});
 
   final SignatureController signatureController = SignatureController(
     penStrokeWidth: 4,
@@ -48,11 +46,9 @@ class ContractSignatureViewModel extends ChangeNotifier {
     File? tempFile;
 
     try {
-      // 1. Xuất ảnh vẽ tay ra định dạng Bytes
       final Uint8List? imageBytes = await signatureController.toPngBytes();
       if (imageBytes == null) throw Exception('Không thể xuất dữ liệu chữ ký!');
 
-      // 2. Tạo file PDF đã ký lưu tạm ở bộ nhớ máy (Tương tự logic update của Landlord)
       if (currentContract.templateId != null) {
         try {
           final templateDetail = await _contractTemplateRepository.getTemplateById(currentContract.templateId!);
@@ -82,6 +78,8 @@ class ContractSignatureViewModel extends ChangeNotifier {
             depositAmount: currentContract.depositAmount,
             durationMonths: durationMonths,
             paymentDay: paymentDay,
+            startDate: currentContract.startDate,
+            endDate: currentContract.endDate,
             createdDate: currentContract.createdAt != null
                 ? DateTime.tryParse(currentContract.createdAt!) ?? DateTime.now()
                 : DateTime.now(),
@@ -101,7 +99,6 @@ class ContractSignatureViewModel extends ChangeNotifier {
         }
       }
 
-      // 3. Đẩy dữ liệu lên Server xử lý
       await _contractRepo.signContract(
         contractId: currentContract.id,
         signatureBytes: imageBytes,
@@ -113,7 +110,6 @@ class ContractSignatureViewModel extends ChangeNotifier {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       return false;
     } finally {
-      // Dọn dẹp file tạm tránh tràn bộ nhớ cache thiết bị
       if (tempFile != null && await tempFile.exists()) {
         await tempFile.delete();
       }
@@ -122,8 +118,15 @@ class ContractSignatureViewModel extends ChangeNotifier {
     }
   }
 
-  void clearSignature() => {signatureController.clear(), notifyListeners()};
-  void clearError() => {_errorMessage = null, notifyListeners()};
+  void clearSignature() {
+    signatureController.clear();
+    notifyListeners();
+  }
+
+  void clearError() {
+    _errorMessage = null;
+    notifyListeners();
+  }
 
   @override
   void dispose() {

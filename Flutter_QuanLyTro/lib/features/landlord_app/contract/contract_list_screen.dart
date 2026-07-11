@@ -10,6 +10,7 @@ import 'contract_pdf_viewer_screen.dart';
 import 'contract_update_screen.dart';
 import 'view_models/contract_list_view_model.dart';
 import 'view_models/contract_update_view_model.dart';
+import 'view_models/contract_extend_view_model.dart';
 
 class ContractListScreen extends StatelessWidget {
   const ContractListScreen({super.key});
@@ -108,11 +109,130 @@ class ContractListScreen extends StatelessWidget {
     }
   }
 
+  // HÀM XỬ LÝ GIA HẠN HỢP ĐỒNG
+  void _handleExtendContract(BuildContext context, ContractListViewModel listVm, ContractDetailResponse contract) {
+    final currentAreaId = context.read<MainLayoutViewModel>().selectedAreaId;
+    if (currentAreaId == null || currentAreaId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Lỗi: Chưa xác định được Khu trọ hiện tại!')),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return ChangeNotifierProvider(
+          create: (_) => ContractExtendViewModel(),
+          child: Consumer<ContractExtendViewModel>(
+            builder: (ctx, extendVm, child) {
+              return AlertDialog(
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                title: const Text('Gia hạn hợp đồng', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Chọn ngày kết thúc mới cho phòng ${contract.roomNumber}:'),
+                    const SizedBox(height: 16),
+                    InkWell(
+                      onTap: () async {
+                        DateTime oldEndDate = DateTime.parse(contract.endDate);
+                        final picked = await showDatePicker(
+                          context: ctx,
+                          initialDate: extendVm.newEndDate ?? oldEndDate.add(const Duration(days: 180)), // Mặc định +6 tháng
+                          firstDate: oldEndDate.add(const Duration(days: 1)),
+                          lastDate: DateTime(2100),
+                          helpText: 'CHỌN NGÀY KẾT THÚC MỚI',
+                        );
+                        if (picked != null) extendVm.changeNewEndDate(picked);
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey[400]!),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              extendVm.newEndDate == null
+                                  ? 'Nhấn để chọn ngày'
+                                  : DateFormat('dd/MM/yyyy').format(extendVm.newEndDate!),
+                              style: TextStyle(
+                                color: extendVm.newEndDate == null ? Colors.grey[600] : Colors.black87,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const Icon(Icons.calendar_today, size: 18, color: AppColors.primary),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (extendVm.errorMessage != null) ...[
+                      const SizedBox(height: 12),
+                      Text(extendVm.errorMessage!, style: const TextStyle(color: Colors.redAccent, fontSize: 13)),
+                    ]
+                  ],
+                ),
+                actions: [
+                  if (extendVm.isLoading)
+                    const Padding(
+                      padding: EdgeInsets.only(right: 16.0, bottom: 8.0),
+                      child: SizedBox(
+                        width: 24, height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                      ),
+                    )
+                  else ...[
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                      ),
+                      onPressed: () async {
+                        final success = await extendVm.submitExtendContract(
+                          oldContractId: contract.id,
+                          currentAreaId: currentAreaId,
+                        );
+                        if (success && ctx.mounted) {
+                          Navigator.pop(ctx, true);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Gia hạn hợp đồng thành công!'), backgroundColor: Colors.green),
+                          );
+                        }
+                      },
+                      child: const Text('Xác nhận'),
+                    ),
+                  ]
+                ],
+              );
+            },
+          ),
+        );
+      },
+    ).then((isSuccess) {
+      if (isSuccess == true) {
+        listVm.fetchContracts(); // Gọi lại API reload danh sách
+      }
+    });
+  }
+
   void _showActionSheet(BuildContext context, ContractListViewModel vm, ContractDetailResponse contract) {
     final canEdit = contract.status == 'DRAFT';
     final canDelete = contract.status == 'DRAFT' || contract.status == 'EXPIRED';
+    final canExtend = contract.status == 'SIGNED' || contract.status == 'EXPIRED';
 
-    if (!canEdit && !canDelete) return;
+    if (!canEdit && !canDelete && !canExtend) return;
 
     showModalBottomSheet(
       context: context,
@@ -124,6 +244,15 @@ class ContractListScreen extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (canExtend)
+                ListTile(
+                  leading: const Icon(Icons.autorenew, color: Colors.green),
+                  title: const Text('Gia hạn hợp đồng'),
+                  onTap: () {
+                    Navigator.pop(bottomSheetContext);
+                    _handleExtendContract(context, vm, contract);
+                  },
+                ),
               if (canEdit)
                 ListTile(
                   leading: const Icon(Icons.edit_outlined, color: Colors.blueAccent),

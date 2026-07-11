@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import '../../../core/network/api_client.dart';
 import '../models/request/contract_create_manual_request.dart';
 import '../models/request/contract_create_request.dart';
+import '../models/request/contract_extend_request.dart';
 import '../models/request/contract_member_add_request.dart';
 import '../models/response/contract_create_response.dart';
 import '../models/response/contract_detail_response.dart';
@@ -209,6 +210,22 @@ class ContractRepository {
       return ContractDetailResponse.fromJson(json);
     }
 
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+  }
+
+  Future<ContractDetailResponse> extendContract(String contractId, ContractExtendRequest request) async {
+    final response = await _apiClient.put(
+      '/api/contracts/extend/$contractId',
+      request.toJson(),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final json = jsonDecode(utf8.decode(response.bodyBytes));
+      return ContractDetailResponse.fromJson(json);
+    }
+
+    // Ném lỗi qua Handler
     final rawError = utf8.decode(response.bodyBytes);
     throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }

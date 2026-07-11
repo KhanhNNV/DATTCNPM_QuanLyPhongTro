@@ -35,7 +35,7 @@ class ContractTemplateFormViewModel extends ChangeNotifier {
 
   final executionTermsController = TextEditingController(
       text: '- Hai bên nghiêm túc thực hiện những quy định trên trong thời hạn cho thuê, nếu bên A lấy phòng phải báo cho bên B ít nhất 01 tháng, hoặc ngược lại.\n'
-          '- Sau thời hạn cho thuê {{THOI_HAN}} tháng nếu bên B có nhu cầu hai bên tiếp tục thương lượng giá thuê để gia hạn hợp đồng bằng miệng hoặc thực hiện ký gia hạn mới.'
+          '- Sau thời hạn cho thuê {{THOI_HAN}} tháng (từ ngày {{NGAY_BAT_DAU}} đến ngày {{NGAY_KET_THUC}}) nếu bên B có nhu cầu hai bên tiếp tục thương lượng giá thuê để gia hạn hợp đồng bằng miệng hoặc thực hiện ký gia hạn mới.'
   );
 
   bool isLoading = false;
