@@ -18,6 +18,7 @@ import ut.edu.be_quanlytro.Exception.BadRequestException;
 
 import jakarta.validation.Valid;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -101,5 +102,18 @@ public class InvoiceController {
 
         InvoiceResponse response = invoiceService.rejectPaymentProof(id, reason, currentUserId);
         return ResponseEntity.ok(response);
+    }
+    /**
+     * API: Lấy danh sách TOÀN BỘ hóa đơn của Chủ Trọ
+     */
+    @GetMapping("/landlord")
+    @PreAuthorize("hasRole('LANDLORD')")
+    public ResponseEntity<List<InvoiceResponse>> getAllInvoicesForLandlord(
+            @AuthenticationPrincipal Jwt jwt) {
+        
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+
+        List<InvoiceResponse> responses = invoiceService.getAllInvoicesForLandlord(currentUserId);
+        return ResponseEntity.ok(responses);
     }
 }
