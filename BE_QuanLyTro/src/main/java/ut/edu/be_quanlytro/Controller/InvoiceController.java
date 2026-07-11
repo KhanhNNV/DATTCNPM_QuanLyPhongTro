@@ -110,7 +110,7 @@ public class InvoiceController {
     @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<List<InvoiceResponse>> getAllInvoicesForLandlord(
             @AuthenticationPrincipal Jwt jwt) {
-        
+
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
 
         List<InvoiceResponse> responses = invoiceService.getAllInvoicesForLandlord(currentUserId);
