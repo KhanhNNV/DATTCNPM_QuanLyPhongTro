@@ -30,6 +30,8 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
     @Query("SELECT i FROM Invoice i WHERE i.room.area.id = :areaId AND i.room.area.landlord.id = :landlordId AND i.invoicePeriod = :period")
     List<Invoice> findAllByAreaAndLandlordAndPeriod(@Param("areaId") UUID areaId, @Param("landlordId") UUID landlordId, @Param("period") LocalDate period);
     void deleteAllByContractId(UUID contractId);
+    // Sắp xếp theo kỳ hóa đơn mới nhất giảm dần
+    List<Invoice> findByRoomAreaLandlordIdOrderByInvoicePeriodDesc(UUID landlordId);
 
     List<Invoice> findByContractId(UUID contractId);
 }

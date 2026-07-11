@@ -13,6 +13,7 @@ import ut.edu.be_quanlytro.Entity.*;
 import ut.edu.be_quanlytro.Entity.Enum.ContractStatus;
 import ut.edu.be_quanlytro.Entity.Enum.InvoiceStatus;
 import ut.edu.be_quanlytro.Entity.Enum.NotificationType;
+import ut.edu.be_quanlytro.Entity.Enum.ServiceCalculationType;
 import ut.edu.be_quanlytro.Repository.*;
 import org.springframework.security.access.AccessDeniedException;
 import ut.edu.be_quanlytro.Exception.BadRequestException;
@@ -91,6 +92,29 @@ public class InvoiceService {
         LocalDate today = LocalDate.now();
         int daysToPay = area.getDueDate() != null ? area.getDueDate() : 5;
 
+        // Lấy danh sách dịch vụ của khu trọ
+        List<AreaService> areaServices = areaServiceRepository.findByAreaIdAndIsActiveTrue(area.getId());
+
+        // =========================================================================
+        // 1. CHỐT CHẶN: KIỂM TRA ĐIỆN NƯỚC TRƯỚC KHI TẠO HÓA ĐƠN
+        // =========================================================================
+        for (AreaService service : areaServices) {
+            if (service.getCalcType() == ServiceCalculationType.BY_INDEX) {
+                // Kiểm tra xem tháng này đã chốt số cho dịch vụ này chưa
+                boolean hasReading = meterReadingRepository
+                        .findFirstByRoomIdAndServiceIdAndIsInvoicedFalse(room.getId(), service.getId())
+                        .isPresent();
+
+                if (!hasReading) {
+                    // Nếu chưa chốt, ném thẳng lỗi, DỪNG NGAY LẬP TỨC, KHÔNG LƯU gì vào DB cả!
+                    throw new BadRequestException("Chưa chốt số " + service.getName() + " cho phòng " + room.getRoomNumber() + "!");
+                }
+            }
+        }
+
+        // =========================================================================
+        // 2. QUA ĐƯỢC CHỐT CHẶN -> BẮT ĐẦU LƯU HÓA ĐƠN
+        // =========================================================================
         Invoice invoice = Invoice.builder()
                 .contract(contract)
                 .room(room)
@@ -100,21 +124,22 @@ public class InvoiceService {
                 .status(InvoiceStatus.UNPAID)
                 .build();
 
-        invoice = invoiceRepository.save(invoice);
+        invoice = invoiceRepository.save(invoice); // Giờ mới lưu cái vỏ hóa đơn nè
         BigDecimal totalAmount = room.getRentPrice();
 
-        List<AreaService> areaServices = areaServiceRepository.findByAreaIdAndIsActiveTrue(area.getId());
+        // 3. Tính tiền chi tiết (Điện, Nước, Rác, Wifi...)
         for (AreaService service : areaServices) {
             InvoiceDetail detail = InvoiceDetail.builder()
                     .invoice(invoice)
                     .serviceName(service.getName())
                     .price(service.getPrice())
                     .build();
+
             switch (service.getCalcType()) {
                 case BY_INDEX:
                     MeterReading reading = meterReadingRepository.
-                            findFirstByRoomIdAndServiceIdAndIsInvoicedFalse(room.getId(), service.getId())
-                            .orElseThrow(() -> new BadRequestException("Chưa chốt số " + service.getName() + " cho phòng này!"));
+                            findFirstByRoomIdAndServiceIdAndIsInvoicedFalse(room.getId(), service.getId()).get();
+
                     int usage = reading.getNewIndex() - reading.getOldIndex();
                     detail.setOldIndex(reading.getOldIndex());
                     detail.setNewIndex(reading.getNewIndex());
@@ -138,11 +163,11 @@ public class InvoiceService {
             invoiceDetailRepository.save(detail);
             totalAmount = totalAmount.add(detail.getTotalAmount());
         }
-        
-        invoice.setTotalAmount(totalAmount);
-        // 2. TỰ ĐỘNG SINH MÃ VIETQR NGAY LÚC NÀY
-        User landlord = area.getLandlord();
 
+        invoice.setTotalAmount(totalAmount);
+
+        // 4. Sinh mã VietQR
+        User landlord = area.getLandlord();
         if (landlord.getBankId() != null && landlord.getAccountNo() != null && landlord.getAccountName() != null) {
             String content = String.format("P%s THANH TOAN T%d",
                     room.getRoomNumber(),
@@ -155,11 +180,26 @@ public class InvoiceService {
                     content.replace(" ", "%20"),
                     landlord.getAccountName().replace(" ", "%20"));
 
-            // Gắn link QR vào entity
             invoice.setVietqrUrl(qrUrl);
         }
 
-        return invoiceRepository.save(invoice);
+        invoice = invoiceRepository.save(invoice); // Lưu cập nhật tổng tiền
+
+        // =========================================================================
+        // 5. 🚀 BẮN THÔNG BÁO TỨC THÌ (REAL-TIME) CHO KHÁCH THUÊ
+        // =========================================================================
+        String title = "Hóa đơn tháng " + normalizedPeriod.getMonthValue() + " đã có!";
+        String content = String.format("Chủ trọ đã chốt hóa đơn phòng %s. Tổng cộng: %,.0f đ. Vui lòng kiểm tra và thanh toán nhé!",
+                room.getRoomNumber(), totalAmount);
+
+        notificationService.createNotification(
+                contract.getTenant(),
+                title,
+                content,
+                NotificationType.INVOICE_REMINDER // Ông có thể đổi type khác nếu muốn
+        );
+
+        return invoice;
     }
 
     private InvoiceResponse convertToResponse(Invoice invoice) {
@@ -419,5 +459,18 @@ public class InvoiceService {
 
             System.out.println(" Đã lưu thông báo nhắc nợ cho phòng " + invoice.getRoom().getRoomNumber());
         }
+    }
+
+    /**
+     * API: Lấy danh sách TOÀN BỘ hóa đơn của Chủ Trọ
+     */
+    @Transactional(readOnly = true)
+    public List<InvoiceResponse> getAllInvoicesForLandlord(UUID currentUserId) {
+
+        List<Invoice> invoices = invoiceRepository.findByRoomAreaLandlordIdOrderByInvoicePeriodDesc(currentUserId);
+
+        return invoices.stream()
+                .map(this::convertToResponse)
+                .toList();
     }
 }
