@@ -24,25 +24,4 @@ class TenantInvoiceDetailViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
-
-  // TODO: Hàm xử lý thanh toán (Tích hợp VNPay, MoMo, hoặc báo cáo thanh toán)
-  Future<void> payInvoice() async {
-    if (invoiceDetail == null) return;
-
-    isPaying = true;
-    notifyListeners();
-
-    try {
-      // Giả lập gọi API thanh toán mất 2 giây
-      await Future.delayed(const Duration(seconds: 2));
-
-      // Thành công thì load lại dữ liệu để cập nhật trạng thái PAID
-      await fetchInvoiceDetail(invoiceDetail!.id);
-    } catch (e) {
-      errorMessage = e.toString();
-    } finally {
-      isPaying = false;
-      notifyListeners();
-    }
-  }
 }

@@ -31,6 +31,7 @@ class TenantInvoiceDetailScreen extends StatelessWidget {
       case 'UNPAID': return Colors.orange;
       case 'PAID': return Colors.green;
       case 'OVERDUE': return Colors.red;
+      case 'PENDING': return Colors.blue;
       default: return Colors.grey;
     }
   }
@@ -40,6 +41,7 @@ class TenantInvoiceDetailScreen extends StatelessWidget {
       case 'UNPAID': return 'Chưa thanh toán';
       case 'PAID': return 'Đã thanh toán';
       case 'OVERDUE': return 'Quá hạn';
+      case 'PENDING': return 'Chờ xác nhận';
       default: return status;
     }
   }
@@ -52,7 +54,6 @@ class TenantInvoiceDetailScreen extends StatelessWidget {
       backgroundColor: Colors.grey[50],
       appBar: const CustomAppBar(title: 'Chi tiết Hóa đơn'),
       body: _buildBody(vm, context),
-      // Đưa nút Thanh toán xuống cố định ở dưới cùng (bottomNavigationBar)
       bottomNavigationBar: _buildBottomPaymentBar(vm, context),
     );
   }
@@ -131,7 +132,7 @@ class TenantInvoiceDetailScreen extends StatelessWidget {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                headingRowColor: WidgetStateProperty.all(Colors.grey[100]), // Sửa MaterialStateProperty thành WidgetStateProperty ở Flutter mới
+                headingRowColor: WidgetStateProperty.all(Colors.grey[100]),
                 columns: const [
                   DataColumn(label: Text('Dịch vụ', style: TextStyle(fontWeight: FontWeight.bold))),
                   DataColumn(label: Text('Chỉ số', style: TextStyle(fontWeight: FontWeight.bold))),
@@ -172,7 +173,7 @@ class TenantInvoiceDetailScreen extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 16), // Khoảng trống cho phần bottomBar không che mất
+          const SizedBox(height: 16),
         ],
       ),
     );
@@ -188,12 +189,12 @@ class TenantInvoiceDetailScreen extends StatelessWidget {
     );
   }
 
-  // --- NÚT THANH TOÁN (Cập nhật sang màn QR) ---
+  // --- NÚT THANH TOÁN ---
   Widget? _buildBottomPaymentBar(TenantInvoiceDetailViewModel vm, BuildContext context) {
     final detail = vm.invoiceDetail;
 
-    // Nếu chưa có dữ liệu hoặc đã thanh toán thì không hiển thị nút
-    if (detail == null || detail.status == 'PAID') {
+    // Ẩn nút nếu hóa đơn Đã thanh toán hoặc Đang chờ xác nhận (PENDING)
+    if (detail == null || detail.status == 'PAID' || detail.status == 'PENDING') {
       return null;
     }
 
@@ -228,9 +229,9 @@ class TenantInvoiceDetailScreen extends StatelessWidget {
               color: Colors.white,
             ),
           ),
-          onPressed: () {
-            // Chuyển hướng sang màn hình QR Payment
-            Navigator.push(
+          onPressed: () async {
+            // Chuyển hướng sang màn hình QR Payment và chờ kết quả
+            final result = await Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (_) => ChangeNotifierProvider(
@@ -239,6 +240,11 @@ class TenantInvoiceDetailScreen extends StatelessWidget {
                 ),
               ),
             );
+            // Nếu upload thành công, result sẽ là true (được truyền từ Navigator.pop)
+            // tiến hành gọi API load lại dữ liệu để cập nhật trạng thái PENDING
+            if (result == true) {
+              vm.fetchInvoiceDetail(detail.id);
+            }
           },
         ),
       ),

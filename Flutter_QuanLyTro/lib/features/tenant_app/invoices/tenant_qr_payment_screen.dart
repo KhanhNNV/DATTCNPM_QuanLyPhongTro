@@ -1,7 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import 'view_models/tenant_qr_payment_view_model.dart';
@@ -11,6 +14,53 @@ class TenantQrPaymentScreen extends StatelessWidget {
 
   String _formatCurrency(double amount) {
     return NumberFormat('#,###', 'vi_VN').format(amount).replaceAll(',', '.');
+  }
+
+  // --- HÀM XỬ LÝ CHỌN ẢNH VÀ UPLOAD ---
+  Future<void> _pickAndUploadImage(BuildContext context, TenantQrPaymentViewModel vm) async {
+    final ImagePicker picker = ImagePicker();
+    try {
+      // Mở thư viện ảnh để chọn
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 50,
+        maxWidth: 1080,
+        maxHeight: 1920,
+      );
+
+      if (image != null) {
+        File file = File(image.path);
+
+        bool isSuccess = await vm.uploadProofImage(file);
+
+        // Xử lý kết quả trả về
+        if (context.mounted) {
+          if (isSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Gửi minh chứng thành công! Đang chờ chủ trọ duyệt.'),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 2),
+              ),
+            );
+            Navigator.pop(context, true);
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Có lỗi xảy ra khi tải ảnh lên. Vui lòng thử lại!'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Không thể truy cập ảnh.')),
+        );
+      }
+    }
   }
 
   @override
@@ -172,23 +222,28 @@ class TenantQrPaymentScreen extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: () {
-                // TODO: Triển khai chức năng chọn ảnh và gửi lên API ở đây
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Chức năng tải ảnh lên đang được cập nhật!')),
-                );
-              },
-              icon: const Icon(Icons.upload_file, color: Colors.white),
+              // Nếu đang upload thì khóa nút bấm
+              onPressed: vm.isUploading ? null : () => _pickAndUploadImage(context, vm),
+              // Thay đổi Icon thành vòng xoay loading khi đang upload
+              icon: vm.isUploading
+                  ? const SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+              )
+                  : const Icon(Icons.upload_file, color: Colors.white),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
+                disabledBackgroundColor: AppColors.primary.withOpacity(0.6), // Màu mờ đi khi bị khóa
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              label: const Text(
-                  'Gửi ảnh xác nhận',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)
+              // Đổi text linh hoạt
+              label: Text(
+                  vm.isUploading ? 'Đang tải lên...' : 'Gửi ảnh xác nhận',
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)
               ),
             ),
           ),

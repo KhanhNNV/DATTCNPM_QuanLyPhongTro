@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import '../../../core/network/api_client.dart';
 import '../../core/utils/api_error_handler.dart';
 import '../models/response/invoice_response.dart';
@@ -102,6 +103,25 @@ class InvoiceRepository {
     if (response.statusCode == 200) {
       return PaymentQrResponse.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
     }
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+  }
+
+  Future<void> uploadPaymentProof(String id, File file) async {
+    final path = '/api/invoices/$id/upload-proof';
+
+    final response = await _apiClient.postMultipart(
+      path,
+      fields: {},
+      files: {
+        'file': file,
+      },
+    );
+
+    if (response.statusCode == 200) {
+      return;
+    }
+
     final rawError = utf8.decode(response.bodyBytes);
     throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }

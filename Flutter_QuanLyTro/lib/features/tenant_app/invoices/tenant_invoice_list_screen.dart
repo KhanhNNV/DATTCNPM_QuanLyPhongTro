@@ -199,6 +199,7 @@ class TenantInvoiceListScreen extends StatelessWidget {
       case 'UNPAID': return Colors.orange;
       case 'PAID': return Colors.green;
       case 'OVERDUE': return Colors.red;
+      case 'PENDING': return Colors.blue;
       default: return Colors.grey;
     }
   }
@@ -208,6 +209,7 @@ class TenantInvoiceListScreen extends StatelessWidget {
       case 'UNPAID': return 'Chưa thanh toán';
       case 'PAID': return 'Đã thanh toán';
       case 'OVERDUE': return 'Quá hạn';
+      case 'PENDING': return 'Chờ xác nhận';
       default: return status;
     }
   }

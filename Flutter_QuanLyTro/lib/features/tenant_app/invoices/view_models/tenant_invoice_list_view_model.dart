@@ -25,6 +25,7 @@ class TenantInvoiceListViewModel extends ChangeNotifier {
     'UNPAID': 'Chưa thanh toán',
     'PAID': 'Đã thanh toán',
     'OVERDUE': 'Quá hạn',
+    'PENDING': 'Chờ xác nhận',
   };
 
   Future<void> fetchInvoices({bool isRefresh = true}) async {
