@@ -5,6 +5,10 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
 import 'view_models/tenant_invoice_detail_view_model.dart';
 
+// Import thêm Màn hình và ViewModel của QR Payment
+import 'tenant_qr_payment_screen.dart';
+import 'view_models/tenant_qr_payment_view_model.dart';
+
 class TenantInvoiceDetailScreen extends StatelessWidget {
   const TenantInvoiceDetailScreen({super.key});
 
@@ -127,7 +131,7 @@ class TenantInvoiceDetailScreen extends StatelessWidget {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                headingRowColor: MaterialStateProperty.all(Colors.grey[100]),
+                headingRowColor: WidgetStateProperty.all(Colors.grey[100]), // Sửa MaterialStateProperty thành WidgetStateProperty ở Flutter mới
                 columns: const [
                   DataColumn(label: Text('Dịch vụ', style: TextStyle(fontWeight: FontWeight.bold))),
                   DataColumn(label: Text('Chỉ số', style: TextStyle(fontWeight: FontWeight.bold))),
@@ -184,7 +188,7 @@ class TenantInvoiceDetailScreen extends StatelessWidget {
     );
   }
 
-  // --- NÚT THANH TOÁN ---
+  // --- NÚT THANH TOÁN (Cập nhật sang màn QR) ---
   Widget? _buildBottomPaymentBar(TenantInvoiceDetailViewModel vm, BuildContext context) {
     final detail = vm.invoiceDetail;
 
@@ -206,7 +210,7 @@ class TenantInvoiceDetailScreen extends StatelessWidget {
         ],
       ),
       child: SafeArea(
-        child: ElevatedButton(
+        child: ElevatedButton.icon(
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.primary,
             padding: const EdgeInsets.symmetric(vertical: 16),
@@ -215,24 +219,8 @@ class TenantInvoiceDetailScreen extends StatelessWidget {
             ),
             elevation: 0,
           ),
-          onPressed: vm.isPaying
-              ? null // Khóa nút khi đang thực hiện giao dịch
-              : () async {
-            // Gọi hàm thanh toán trong ViewModel
-            await vm.payInvoice();
-            if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Chức năng thanh toán đang được xử lý!')),
-              );
-            }
-          },
-          child: vm.isPaying
-              ? const SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
-          )
-              : const Text(
+          icon: const Icon(Icons.qr_code_2, color: Colors.white),
+          label: const Text(
             'Thanh toán ngay',
             style: TextStyle(
               fontSize: 16,
@@ -240,6 +228,18 @@ class TenantInvoiceDetailScreen extends StatelessWidget {
               color: Colors.white,
             ),
           ),
+          onPressed: () {
+            // Chuyển hướng sang màn hình QR Payment
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ChangeNotifierProvider(
+                  create: (_) => TenantQrPaymentViewModel(invoiceId: detail.id),
+                  child: const TenantQrPaymentScreen(),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

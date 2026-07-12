@@ -3,6 +3,7 @@ import '../../../core/network/api_client.dart';
 import '../../core/utils/api_error_handler.dart';
 import '../models/response/invoice_response.dart';
 import '../models/response/invoice_detail_response.dart';
+import '../models/response/payment_qr_response.dart';
 
 class InvoiceRepository {
   final ApiClient _apiClient = ApiClient();
@@ -92,6 +93,15 @@ class InvoiceRepository {
       };
     }
 
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+  }
+
+  Future<PaymentQrResponse> getPaymentQrCode(String id) async {
+    final response = await _apiClient.get('/api/invoices/$id/qr-code');
+    if (response.statusCode == 200) {
+      return PaymentQrResponse.fromJson(jsonDecode(utf8.decode(response.bodyBytes)));
+    }
     final rawError = utf8.decode(response.bodyBytes);
     throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
