@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_quanlytro/features/landlord_app/invoices/view_models/invoice_detail_view_model.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
+import 'invoice_detail_screen.dart';
 import 'view_models/invoice_list_view_model.dart';
 
 class InvoiceListScreen extends StatelessWidget {
@@ -89,11 +91,15 @@ class InvoiceListScreen extends StatelessWidget {
                     selectedColor: AppColors.primary.withOpacity(0.2),
                     labelStyle: TextStyle(
                       color: isSelected ? AppColors.primary : Colors.grey[700],
-                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                     ),
                     backgroundColor: Colors.grey[100],
                     side: BorderSide(
-                      color: isSelected ? AppColors.primary : Colors.transparent,
+                      color: isSelected
+                          ? AppColors.primary
+                          : Colors.transparent,
                     ),
                     onSelected: (_) => vm.changeStatus(entry.key),
                   ),
@@ -121,7 +127,7 @@ class InvoiceListScreen extends StatelessWidget {
             ElevatedButton(
               onPressed: () => vm.fetchInvoices(),
               child: const Text('Thử lại'),
-            )
+            ),
           ],
         ),
       );
@@ -129,7 +135,10 @@ class InvoiceListScreen extends StatelessWidget {
 
     if (vm.displayedInvoices.isEmpty) {
       return const Center(
-        child: Text('Không tìm thấy hóa đơn nào.', style: TextStyle(color: Colors.grey)),
+        child: Text(
+          'Không tìm thấy hóa đơn nào.',
+          style: TextStyle(color: Colors.grey),
+        ),
       );
     }
 
@@ -141,46 +150,83 @@ class InvoiceListScreen extends StatelessWidget {
         final invoice = vm.displayedInvoices[index];
         final statusColor = _getStatusColor(invoice.status);
 
-        return Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Phòng ${invoice.roomNumber}',
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.primary),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: statusColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        vm.statusMap[invoice.status] ?? invoice.status,
-                        style: TextStyle(color: statusColor, fontWeight: FontWeight.bold, fontSize: 12),
-                      ),
-                    ),
-                  ],
+        return InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () {
+            // ĐIỀU HƯỚNG SANG MÀN CHI TIẾT
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ChangeNotifierProvider(
+                  create: (_) =>
+                      InvoiceDetailViewModel()..fetchInvoiceDetail(invoice.id),
+                  child: const InvoiceDetailScreen(),
                 ),
-                const Divider(height: 24),
-                _buildInfoRow(Icons.calendar_today, 'Kỳ hóa đơn:', _formatDate(invoice.invoicePeriod)),
-                const SizedBox(height: 8),
-                _buildInfoRow(Icons.event_busy, 'Hạn đóng:', _formatDate(invoice.dueDate)),
-                const SizedBox(height: 8),
-                _buildInfoRow(
-                  Icons.monetization_on,
-                  'Tổng tiền:',
-                  '${_formatCurrency(invoice.totalAmount)} VNĐ',
-                  isHighlight: true,
-                ),
-              ],
+              ),
+            );
+          },
+          child: Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Phòng ${invoice.roomNumber}',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: statusColor.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          vm.statusMap[invoice.status] ?? invoice.status,
+                          style: TextStyle(
+                            color: statusColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 24),
+                  _buildInfoRow(
+                    Icons.calendar_today,
+                    'Kỳ hóa đơn:',
+                    _formatDate(invoice.invoicePeriod),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildInfoRow(
+                    Icons.event_busy,
+                    'Hạn đóng:',
+                    _formatDate(invoice.dueDate),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildInfoRow(
+                    Icons.monetization_on,
+                    'Tổng tiền:',
+                    '${_formatCurrency(invoice.totalAmount)} VNĐ',
+                    isHighlight: true,
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -188,7 +234,12 @@ class InvoiceListScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildInfoRow(IconData icon, String label, String value, {bool isHighlight = false}) {
+  Widget _buildInfoRow(
+    IconData icon,
+    String label,
+    String value, {
+    bool isHighlight = false,
+  }) {
     return Row(
       children: [
         Icon(icon, size: 18, color: Colors.grey[600]),
