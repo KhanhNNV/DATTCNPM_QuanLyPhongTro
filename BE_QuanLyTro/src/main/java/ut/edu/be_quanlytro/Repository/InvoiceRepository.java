@@ -6,6 +6,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import ut.edu.be_quanlytro.Entity.Enum.InvoiceStatus;
 import ut.edu.be_quanlytro.Entity.Invoice;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -34,4 +36,9 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
     List<Invoice> findByRoomAreaLandlordIdOrderByInvoicePeriodDesc(UUID landlordId);
 
     List<Invoice> findByContractId(UUID contractId);
+    // 1. Dùng khi Frontend CÓ TRUYỀN trạng thái (vd: ?status=UNPAID)
+    Page<Invoice> findByRoomAreaLandlordIdAndStatusOrderByInvoicePeriodDesc(UUID landlordId, InvoiceStatus status, Pageable pageable);
+
+    // 2. Dùng khi Frontend KHÔNG TRUYỀN trạng thái (lấy tất cả)
+    Page<Invoice> findByRoomAreaLandlordIdOrderByInvoicePeriodDesc(UUID landlordId, Pageable pageable);
 }

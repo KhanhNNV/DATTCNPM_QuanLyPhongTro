@@ -5,10 +5,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import ut.edu.be_quanlytro.Dto.Request.InvoiceCreateRequest;
-import ut.edu.be_quanlytro.Dto.Response.InvoiceDetailResponse;
-import ut.edu.be_quanlytro.Dto.Response.InvoiceItemResponse;
-import ut.edu.be_quanlytro.Dto.Response.InvoiceResponse;
-import ut.edu.be_quanlytro.Dto.Response.PaymentQrResponse;
+import ut.edu.be_quanlytro.Dto.Response.*;
 import ut.edu.be_quanlytro.Entity.*;
 import ut.edu.be_quanlytro.Entity.Enum.ContractStatus;
 import ut.edu.be_quanlytro.Entity.Enum.InvoiceStatus;
@@ -18,6 +15,9 @@ import ut.edu.be_quanlytro.Repository.*;
 import org.springframework.security.access.AccessDeniedException;
 import ut.edu.be_quanlytro.Exception.BadRequestException;
 import ut.edu.be_quanlytro.Exception.ResourceNotFoundException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -472,5 +472,37 @@ public class InvoiceService {
         return invoices.stream()
                 .map(this::convertToResponse)
                 .toList();
+    }
+    /**
+     * API: Lấy danh sách TOÀN BỘ hóa đơn của Chủ Trọ (Có phân trang & lọc Status chuẩn Enterprise)
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<InvoiceResponse> getAllInvoicesForLandlord(UUID currentUserId, InvoiceStatus status, int page, int size) {
+
+        // 1. Phân trang
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Invoice> invoicePage;
+
+        // 2. Lọc theo trạng thái
+        if (status != null) {
+            invoicePage = invoiceRepository.findByRoomAreaLandlordIdAndStatusOrderByInvoicePeriodDesc(currentUserId, status, pageable);
+        } else {
+            invoicePage = invoiceRepository.findByRoomAreaLandlordIdOrderByInvoicePeriodDesc(currentUserId, pageable);
+        }
+
+        // 3. Map sang DTO
+        List<InvoiceResponse> content = invoicePage.getContent().stream()
+                .map(this::convertToResponse)
+                .toList();
+
+        // 4. Bọc vào PageResponse
+        return PageResponse.<InvoiceResponse>builder()
+                .content(content)
+                .pageNumber(invoicePage.getNumber())
+                .pageSize(invoicePage.getSize())
+                .totalElements(invoicePage.getTotalElements())
+                .totalPages(invoicePage.getTotalPages())
+                .isLast(invoicePage.isLast())
+                .build();
     }
 }
