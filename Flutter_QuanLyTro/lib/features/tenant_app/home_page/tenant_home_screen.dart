@@ -4,6 +4,8 @@ import '../../../core/constants/app_colors.dart';
 import '../../landlord_app/home_page/quick_action_item.dart';
 import '../contract/tenant_contract_pdf_viewer_screen.dart';
 import '../contract/view_models/tenant_contract_view_model.dart';
+import '../invoices/tenant_invoice_list_screen.dart';
+import '../invoices/view_models/tenant_invoice_list_view_model.dart';
 import '../main_layout/view_models/tenant_main_layout_view_model.dart';
 
 class TenantHomeScreen extends StatefulWidget {
@@ -51,8 +53,18 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
       QuickActionItem(
         title: 'Hóa đơn & Thanh toán',
         icon: Icons.receipt_long_outlined,
-        badgeText: 'Mới', // Ví dụ hiển thị badge khi có hóa đơn chưa thanh toán
-        onTap: () => _navigateTo('Màn hình Danh sách hóa đơn tháng'),
+        badgeText: 'Mới',
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => TenantInvoiceListViewModel()..fetchInvoices(isRefresh: true),
+                child: const TenantInvoiceListScreen(),
+              ),
+            ),
+          );
+        },
       ),
       QuickActionItem(
         title: 'Bạn cùng phòng',
