@@ -23,4 +23,26 @@ class InvoiceDetailViewModel extends ChangeNotifier {
       notifyListeners();
     }
   }
+
+
+  Future<String?> confirmPayment(String id) async {
+    try {
+      await _repository.confirmPayment(id);
+      await fetchInvoiceDetail(id);
+      return null;
+    } catch (e) {
+      return e.toString().replaceAll('Exception: ', '');
+    }
+  }
+
+  Future<String?> rejectPayment(String id, String reason) async {
+    try {
+      await _repository.rejectPayment(id, reason);
+      await fetchInvoiceDetail(id);
+      return null;
+    } catch (e) {
+      return e.toString().replaceAll('Exception: ', '');
+    }
+  }
+
 }

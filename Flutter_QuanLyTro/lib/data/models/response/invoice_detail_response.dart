@@ -8,6 +8,7 @@ class InvoiceDetailResponse {
   final double roomPrice;
   final double totalAmount;
   final String status;
+  final String? paymentProofUrl;
   final List<InvoiceItemResponse> items;
 
   InvoiceDetailResponse({
@@ -18,6 +19,7 @@ class InvoiceDetailResponse {
     required this.roomPrice,
     required this.totalAmount,
     required this.status,
+    this.paymentProofUrl,
     required this.items,
   });
 
@@ -34,6 +36,7 @@ class InvoiceDetailResponse {
       roomPrice: (json['roomPrice'] as num?)?.toDouble() ?? 0.0,
       totalAmount: (json['totalAmount'] as num?)?.toDouble() ?? 0.0,
       status: json['status'] ?? 'UNPAID',
+      paymentProofUrl: json['paymentProofUrl'],
       items: itemsList,
     );
   }

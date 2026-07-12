@@ -31,6 +31,7 @@ class InvoiceListViewModel extends ChangeNotifier {
     'UNPAID': 'Chưa thanh toán',
     'PAID': 'Đã thanh toán',
     'OVERDUE': 'Quá hạn',
+    'PENDING': 'Chờ xác nhận'
   };
 
   /// Lấy danh sách hóa đơn từ Server

@@ -192,62 +192,150 @@ class TenantInvoiceDetailScreen extends StatelessWidget {
   // --- NÚT THANH TOÁN ---
   Widget? _buildBottomPaymentBar(TenantInvoiceDetailViewModel vm, BuildContext context) {
     final detail = vm.invoiceDetail;
+    if (detail == null) return null;
 
-    // Ẩn nút nếu hóa đơn Đã thanh toán hoặc Đang chờ xác nhận (PENDING)
-    if (detail == null || detail.status == 'PAID' || detail.status == 'PENDING') {
-      return null;
+    // Trạng thái chưa thanh toán hoặc quá hạn -> Hiện nút "Thanh toán ngay"
+    if (detail.status == 'UNPAID' || detail.status == 'OVERDUE') {
+      return Container(
+        padding: const EdgeInsets.all(16.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              offset: const Offset(0, -4),
+              blurRadius: 8,
+            ),
+          ],
+        ),
+        child: SafeArea(
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 0,
+            ),
+            icon: const Icon(Icons.qr_code_2, color: Colors.white),
+            label: const Text(
+              'Thanh toán ngay',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ChangeNotifierProvider(
+                    create: (_) => TenantQrPaymentViewModel(invoiceId: detail.id),
+                    child: const TenantQrPaymentScreen(),
+                  ),
+                ),
+              );
+              if (result == true) {
+                vm.fetchInvoiceDetail(detail.id);
+              }
+            },
+          ),
+        ),
+      );
     }
 
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            offset: const Offset(0, -4),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-      child: SafeArea(
-        child: ElevatedButton.icon(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primary,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+    // Trạng thái PENDING hoặc PAID và đã có ảnh minh chứng -> Hiện nút "Xem minh chứng"
+    if (detail.paymentProofUrl != null && detail.paymentProofUrl!.isNotEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(16.0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              offset: const Offset(0, -4),
+              blurRadius: 8,
             ),
-            elevation: 0,
-          ),
-          icon: const Icon(Icons.qr_code_2, color: Colors.white),
-          label: const Text(
-            'Thanh toán ngay',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
+          ],
+        ),
+        child: SafeArea(
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blueGrey,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              elevation: 0,
             ),
+            icon: const Icon(Icons.receipt_long, color: Colors.white),
+            label: const Text(
+              'Xem minh chứng đã gửi',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            onPressed: () {
+              _showProofDialog(context, detail.paymentProofUrl!);
+            },
           ),
-          onPressed: () async {
-            // Chuyển hướng sang màn hình QR Payment và chờ kết quả
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ChangeNotifierProvider(
-                  create: (_) => TenantQrPaymentViewModel(invoiceId: detail.id),
-                  child: const TenantQrPaymentScreen(),
+        ),
+      );
+    }
+
+    return null;
+  }
+
+  void _showProofDialog(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final size = MediaQuery.of(ctx).size;
+
+        return AlertDialog(
+          title: const Text('Minh chứng thanh toán', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: size.height * 0.6,
+              maxWidth: double.maxFinite,
+            ),
+            child: InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text('Không thể tải ảnh', style: TextStyle(color: Colors.red)),
+                  ),
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return const Padding(
+                      padding: EdgeInsets.all(32.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  },
                 ),
               ),
-            );
-            // Nếu upload thành công, result sẽ là true (được truyền từ Navigator.pop)
-            // tiến hành gọi API load lại dữ liệu để cập nhật trạng thái PENDING
-            if (result == true) {
-              vm.fetchInvoiceDetail(detail.id);
-            }
-          },
-        ),
-      ),
+            ),
+          ),
+          actionsAlignment: MainAxisAlignment.end,
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Đóng', style: TextStyle(color: Colors.grey, fontSize: 16)),
+            )
+          ],
+        );
+      },
     );
   }
 }

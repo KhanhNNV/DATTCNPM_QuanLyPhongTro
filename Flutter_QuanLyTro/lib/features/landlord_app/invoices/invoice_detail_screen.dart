@@ -27,6 +27,7 @@ class InvoiceDetailScreen extends StatelessWidget {
       case 'UNPAID': return Colors.orange;
       case 'PAID': return Colors.green;
       case 'OVERDUE': return Colors.red;
+      case 'PENDING': return Colors.blue;
       default: return Colors.grey;
     }
   }
@@ -36,6 +37,7 @@ class InvoiceDetailScreen extends StatelessWidget {
       case 'UNPAID': return 'Chưa thanh toán';
       case 'PAID': return 'Đã thanh toán';
       case 'OVERDUE': return 'Quá hạn';
+      case 'PENDING': return 'Chờ xác nhận';
       default: return status;
     }
   }
@@ -48,6 +50,7 @@ class InvoiceDetailScreen extends StatelessWidget {
       backgroundColor: Colors.grey[50],
       appBar: const CustomAppBar(title: 'Chi tiết Hóa đơn'),
       body: _buildBody(vm, context),
+      bottomNavigationBar: _buildBottomAction(vm, context),
     );
   }
 
@@ -125,7 +128,7 @@ class InvoiceDetailScreen extends StatelessWidget {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                headingRowColor: MaterialStateProperty.all(Colors.grey[100]),
+                headingRowColor: WidgetStateProperty.all(Colors.grey[100]),
                 columns: const [
                   DataColumn(label: Text('Dịch vụ', style: TextStyle(fontWeight: FontWeight.bold))),
                   DataColumn(label: Text('Chỉ số', style: TextStyle(fontWeight: FontWeight.bold))),
@@ -179,6 +182,192 @@ class InvoiceDetailScreen extends StatelessWidget {
         Text(label, style: TextStyle(color: Colors.grey[700], fontSize: 15)),
         Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15)),
       ],
+    );
+  }
+
+  Widget? _buildBottomAction(InvoiceDetailViewModel vm, BuildContext context) {
+    final detail = vm.invoiceDetail;
+
+    if (detail == null || detail.paymentProofUrl == null || detail.paymentProofUrl!.isEmpty) {
+      return null;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            offset: const Offset(0, -4),
+            blurRadius: 8,
+          ),
+        ],
+      ),
+      child: SafeArea(
+        child: ElevatedButton.icon(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primary,
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            elevation: 0,
+          ),
+          icon: const Icon(Icons.receipt_long, color: Colors.white),
+          label: const Text(
+            'Xem minh chứng thanh toán',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+          ),
+          onPressed: () {
+            _showProofDialog(context, vm, detail.id, detail.paymentProofUrl!, detail.status);
+          },
+        ),
+      ),
+    );
+  }
+
+  void _showProofDialog(BuildContext context, InvoiceDetailViewModel vm, String invoiceId, String imageUrl, String status) {
+    showDialog(
+      context: context,
+      builder: (ctx) {
+        final size = MediaQuery.of(ctx).size;
+        final isPending = status == 'PENDING';
+
+        return AlertDialog(
+          title: const Text('Minh chứng thanh toán', style: TextStyle(fontWeight: FontWeight.bold)),
+          content: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: size.height * 0.6,
+              maxWidth: double.maxFinite,
+            ),
+            child: InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                  errorBuilder: (context, error, stackTrace) => const Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: Text('Không thể tải ảnh', style: TextStyle(color: Colors.red)),
+                  ),
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return const Padding(
+                      padding: EdgeInsets.all(32.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ),
+          actionsAlignment: isPending ? MainAxisAlignment.spaceEvenly : MainAxisAlignment.end,
+
+          // Nếu là PENDING thì hiện Từ chối, Xác nhận, ngược lại chỉ hiện Đóng
+          actions: isPending
+              ? [
+            OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+              ),
+              onPressed: () {
+                Navigator.pop(ctx);
+                _showRejectDialog(context, vm, invoiceId);
+              },
+              child: const Text('Từ chối'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green),
+              onPressed: () async {
+                Navigator.pop(ctx);
+
+                String? errorMsg = await vm.confirmPayment(invoiceId);
+
+                if (context.mounted) {
+                  if (errorMsg == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Xác nhận thanh toán thành công!', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green),
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+                    );
+                  }
+                }
+              },
+              child: const Text('Xác nhận', style: TextStyle(color: Colors.white)),
+            ),
+          ]
+              : [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Đóng', style: TextStyle(color: Colors.grey)),
+            )
+          ],
+        );
+      },
+    );
+  }
+
+  // --- Dialog nhập lý do từ chối ---
+  void _showRejectDialog(BuildContext context, InvoiceDetailViewModel vm, String invoiceId) {
+    final TextEditingController reasonController = TextEditingController();
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Lý do từ chối', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+          content: TextField(
+            controller: reasonController,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              hintText: 'Nhập lý do từ chối thanh toán...',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Hủy', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () async {
+                String reason = reasonController.text.trim();
+                if (reason.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Vui lòng nhập lý do từ chối!'), backgroundColor: Colors.orange),
+                  );
+                  return;
+                }
+
+                Navigator.pop(ctx);
+
+                // Gọi API từ chối
+                String? errorMsg = await vm.rejectPayment(invoiceId, reason);
+
+                if (context.mounted) {
+                  if (errorMsg == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Đã từ chối thanh toán.', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green),
+                    );
+                  } else { // Thất bại
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+                    );
+                  }
+                }
+              },
+              child: const Text('Gửi', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
     );
   }
 }

@@ -125,4 +125,27 @@ class InvoiceRepository {
     final rawError = utf8.decode(response.bodyBytes);
     throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
+
+  Future<void> confirmPayment(String id) async {
+    final response = await _apiClient.put('/api/invoices/$id/confirm-payment',{});
+
+    if (response.statusCode != 200) {
+      final rawError = utf8.decode(response.bodyBytes);
+      throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+    }
+  }
+
+  Future<void> rejectPayment(String id, String reason) async {
+    final uri = Uri(
+      path: '/api/invoices/$id/reject-payment',
+      queryParameters: {'reason': reason},
+    );
+
+    final response = await _apiClient.put(uri.toString(),{});
+
+    if (response.statusCode != 200) {
+      final rawError = utf8.decode(response.bodyBytes);
+      throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+    }
+  }
 }
