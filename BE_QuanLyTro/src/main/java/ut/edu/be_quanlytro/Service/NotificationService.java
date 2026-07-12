@@ -106,21 +106,32 @@ public class NotificationService {
      */
     @Transactional
     public void saveFcmToken(UUID userId, String token) {
-        // Kiểm tra xem Token này đã tồn tại trong DB chưa để tránh lưu trùng
-        if (!fcmTokenRepository.existsByFcmToken(token)) {
+        // 1. Tìm User hiện tại đang đăng nhập
+        User currentUser = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy User!"));
 
-            // Tìm User
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy User!"));
+        // 2. Tìm xem Token này đã nằm trong DB chưa
+        var existingTokenOpt = fcmTokenRepository.findByFcmToken(token);
 
-            // Lưu Token mới
+        if (existingTokenOpt.isPresent()) {
+            UserFcmToken existingToken = existingTokenOpt.get();
+
+            // Nếu Token này đang bị gán cho một User KHÁC (VD: nick cũ chưa đăng xuất)
+            if (!existingToken.getUser().getId().equals(userId)) {
+                existingToken.setUser(currentUser); // Chuyển chủ cho Token
+                fcmTokenRepository.save(existingToken);
+                System.out.println("🔄 Đã CẬP NHẬT chủ sở hữu FCM Token cho User: " + currentUser.getPhone());
+            } else {
+                System.out.println("✅ FCM Token đã tồn tại và đúng chủ sở hữu: " + currentUser.getPhone());
+            }
+        } else {
+            // 3. Nếu Token hoàn toàn mới chưa từng có trong DB -> Lưu mới
             UserFcmToken newToken = UserFcmToken.builder()
-                    .user(user)
+                    .user(currentUser)
                     .fcmToken(token)
                     .build();
-
             fcmTokenRepository.save(newToken);
-            System.out.println("🚀 Đã lưu FCM Token mới cho User: " + user.getPhone());
+            System.out.println("🚀 Đã LƯU MỚI FCM Token cho User: " + currentUser.getPhone());
         }
     }
     /**

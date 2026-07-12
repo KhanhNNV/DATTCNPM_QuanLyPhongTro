@@ -122,5 +122,24 @@ public class InvoiceController {
         PageResponse<InvoiceResponse> responses = invoiceService.getAllInvoicesForLandlord(currentUserId, status, page, size);
         return ResponseEntity.ok(responses);
     }
+    /**
+     * API: Lấy danh sách hóa đơn cho Khách Thuê (Có phân trang & lọc)
+     * URL ví dụ: /api/invoices/tenant?page=0&size=10&status=UNPAID
+     */
+    @GetMapping("/tenant")
+    @PreAuthorize("hasRole('TENANT')")
+    public ResponseEntity<PageResponse<InvoiceResponse>> getMyInvoices(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) InvoiceStatus status,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        // Lấy ID của ông Khách thuê đang đăng nhập
+        UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+
+        // Đẩy xuống Service
+        PageResponse<InvoiceResponse> responses = invoiceService.getMyInvoices(currentUserId, status, page, size);
+        return ResponseEntity.ok(responses);
+    }
 
 }
