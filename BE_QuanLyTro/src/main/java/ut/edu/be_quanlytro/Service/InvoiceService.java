@@ -505,4 +505,35 @@ public class InvoiceService {
                 .isLast(invoicePage.isLast())
                 .build();
     }
+    /**
+     * API: Khách thuê lấy danh sách hóa đơn của chính mình
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<InvoiceResponse> getMyInvoices(UUID tenantId, InvoiceStatus status, int page, int size) {
+
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Invoice> invoicePage;
+
+        // Gọi Repository của Khách thuê
+        if (status != null) {
+            invoicePage = invoiceRepository.findByContractTenantIdAndStatusOrderByInvoicePeriodDesc(tenantId, status, pageable);
+        } else {
+            invoicePage = invoiceRepository.findByContractTenantIdOrderByInvoicePeriodDesc(tenantId, pageable);
+        }
+
+        // Map sang DTO
+        List<InvoiceResponse> content = invoicePage.getContent().stream()
+                .map(this::convertToResponse)
+                .toList();
+
+        // Bọc vào PageResponse
+        return PageResponse.<InvoiceResponse>builder()
+                .content(content)
+                .pageNumber(invoicePage.getNumber())
+                .pageSize(invoicePage.getSize())
+                .totalElements(invoicePage.getTotalElements())
+                .totalPages(invoicePage.getTotalPages())
+                .isLast(invoicePage.isLast())
+                .build();
+    }
 }
