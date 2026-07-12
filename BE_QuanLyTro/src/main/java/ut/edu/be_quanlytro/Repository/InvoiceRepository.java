@@ -41,4 +41,10 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
 
     // 2. Dùng khi Frontend KHÔNG TRUYỀN trạng thái (lấy tất cả)
     Page<Invoice> findByRoomAreaLandlordIdOrderByInvoicePeriodDesc(UUID landlordId, Pageable pageable);
+    // ================= DÀNH CHO KHÁCH THUÊ =================
+    // 1. Tìm tất cả hóa đơn của 1 khách thuê (Có lọc Status)
+    Page<Invoice> findByContractTenantIdAndStatusOrderByInvoicePeriodDesc(UUID tenantId, InvoiceStatus status, Pageable pageable);
+
+    // 2. Tìm tất cả hóa đơn của 1 khách thuê (Không lọc)
+    Page<Invoice> findByContractTenantIdOrderByInvoicePeriodDesc(UUID tenantId, Pageable pageable);
 }
