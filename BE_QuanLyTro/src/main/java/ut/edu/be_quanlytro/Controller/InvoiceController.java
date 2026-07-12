@@ -1,6 +1,7 @@
 package ut.edu.be_quanlytro.Controller;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -12,7 +13,9 @@ import org.springframework.web.multipart.MultipartFile;
 import ut.edu.be_quanlytro.Dto.Request.InvoiceCreateRequest;
 import ut.edu.be_quanlytro.Dto.Response.InvoiceDetailResponse;
 import ut.edu.be_quanlytro.Dto.Response.InvoiceResponse;
+import ut.edu.be_quanlytro.Dto.Response.PageResponse;
 import ut.edu.be_quanlytro.Dto.Response.PaymentQrResponse;
+import ut.edu.be_quanlytro.Entity.Enum.InvoiceStatus;
 import ut.edu.be_quanlytro.Service.InvoiceService;
 import ut.edu.be_quanlytro.Exception.BadRequestException;
 
@@ -108,12 +111,16 @@ public class InvoiceController {
      */
     @GetMapping("/landlord")
     @PreAuthorize("hasRole('LANDLORD')")
-    public ResponseEntity<List<InvoiceResponse>> getAllInvoicesForLandlord(
+    public ResponseEntity<PageResponse<InvoiceResponse>> getAllInvoicesForLandlord(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) InvoiceStatus status,
             @AuthenticationPrincipal Jwt jwt) {
 
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
 
-        List<InvoiceResponse> responses = invoiceService.getAllInvoicesForLandlord(currentUserId);
+        PageResponse<InvoiceResponse> responses = invoiceService.getAllInvoicesForLandlord(currentUserId, status, page, size);
         return ResponseEntity.ok(responses);
     }
+
 }
