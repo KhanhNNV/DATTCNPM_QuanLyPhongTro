@@ -17,6 +17,8 @@ import 'package:provider/provider.dart';
 import 'package:flutter_quanlytro/features/landlord_app/main_layout/view_models/main_layout_view_model.dart';
 
 import '../deposit_page/view_models/deposit_list_view_model.dart';
+import '../invoices/invoice_list_screen.dart';
+import '../invoices/view_models/invoice_list_view_model.dart';
 import '../meter_reading_page/view_models/meter_reading_view_model.dart';
 import '../signature/signature_screen.dart';
 import '../signature/view_models/signature_view_model.dart';
@@ -105,7 +107,17 @@ class _HomeScreenState extends State<HomeScreen> {
       QuickActionItem(
         title: 'Xem hóa đơn',
         icon: Icons.calculate_outlined,
-        onTap: () => _navigateTo('Nút: Chốt số điện nước & Xuất hóa đơn tự động'),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => InvoiceListViewModel()..fetchInvoices(),
+                child: const InvoiceListScreen(),
+              ),
+            ),
+          );
+        },
       ),
       QuickActionItem(
         title: 'Hóa đơn cần thu tiền',

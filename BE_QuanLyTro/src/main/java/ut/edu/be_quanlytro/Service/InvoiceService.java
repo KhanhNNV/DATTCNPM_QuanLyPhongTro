@@ -249,6 +249,7 @@ public class InvoiceService {
                 .roomPrice(invoice.getRoomPrice())
                 .totalAmount(invoice.getTotalAmount())
                 .status(invoice.getStatus().name())
+                .paymentProofUrl(invoice.getPaymentProofUrl())
                 .items(itemResponses)
                 .build();
     }
@@ -326,6 +327,7 @@ public class InvoiceService {
 
         // 3. Cập nhật Invoice sang PENDING để Chủ trọ biết mà vào duyệt
         invoice.setStatus(InvoiceStatus.PENDING);
+        invoice.setPaymentProofUrl(fileUrl);
         invoiceRepository.save(invoice);
 
         // 4. Bắn thông báo

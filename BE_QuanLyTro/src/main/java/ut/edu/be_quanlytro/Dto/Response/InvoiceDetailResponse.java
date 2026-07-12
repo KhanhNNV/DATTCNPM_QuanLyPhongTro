@@ -17,5 +17,6 @@ public class InvoiceDetailResponse {
     private BigDecimal roomPrice;
     private BigDecimal totalAmount;
     private String status;
+    private String paymentProofUrl;
     private List<InvoiceItemResponse> items;
 }
