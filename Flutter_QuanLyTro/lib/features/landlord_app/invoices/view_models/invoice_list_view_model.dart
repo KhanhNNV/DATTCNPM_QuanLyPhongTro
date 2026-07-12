@@ -2,23 +2,30 @@ import 'package:flutter/material.dart';
 import '../../../../data/models/response/invoice_response.dart';
 import '../../../../data/repository/invoice_repository.dart';
 
+/// Quản lý trạng thái và logic của màn hình Danh sách Hóa đơn.
+/// Hỗ trợ phân trang (Pagination), tìm kiếm nội bộ và lọc theo trạng thái.
 class InvoiceListViewModel extends ChangeNotifier {
   final InvoiceRepository _repository = InvoiceRepository();
 
+  // Trạng thái UI
   bool isLoading = false;
+  bool isFetchingMore = false;
   String? errorMessage;
 
-  // Lưu danh sách gốc từ API
+  // Dữ liệu
   List<InvoiceResponse> _allInvoices = [];
-
-  // Danh sách thực tế sẽ hiển thị lên màn hình (sau khi tìm kiếm & lọc status)
   List<InvoiceResponse> displayedInvoices = [];
 
-  // Trạng thái lọc hiện tại
+  // Phân trang
+  int currentPage = 0;
+  int totalPages = 1;
+  final int pageSize = 3;
+  bool get hasMore => currentPage < totalPages - 1;
+
+  // Trạng thái bộ lọc
   String selectedStatus = 'ALL';
   String searchQuery = '';
 
-  // Ánh xạ trạng thái để hiển thị UI (Tùy chỉnh theo Enum của Backend)
   final Map<String, String> statusMap = {
     'ALL': 'Tất cả',
     'UNPAID': 'Chưa thanh toán',
@@ -26,66 +33,77 @@ class InvoiceListViewModel extends ChangeNotifier {
     'OVERDUE': 'Quá hạn',
   };
 
-  Future<void> fetchInvoices() async {
-    try {
+  /// Lấy danh sách hóa đơn từ Server
+  /// [isRefresh] = true: Tải lại từ trang 0.
+  /// [isRefresh] = false: Tải tiếp trang tiếp theo (Load more).
+  Future<void> fetchInvoices({bool isRefresh = true}) async {
+    if (isRefresh) {
+      currentPage = 0;
+      _allInvoices.clear();
       isLoading = true;
       errorMessage = null;
       notifyListeners();
+    } else {
+      if (!hasMore || isFetchingMore) return;
+      isFetchingMore = true;
+      currentPage++;
+      notifyListeners();
+    }
 
-      // Gọi API không cần truyền tham số status
-      _allInvoices = await _repository.getAllInvoicesForLandlord();
+    try {
+      final result = await _repository.getAllInvoicesForLandlord(
+        page: currentPage,
+        size: pageSize,
+        status: selectedStatus == 'ALL' ? null : selectedStatus,
+      );
 
-      // Áp dụng bộ lọc tìm kiếm và trạng thái ngay sau khi có dữ liệu
-      _applyLocalSearch();
+      _allInvoices.addAll(result['invoices'] as List<InvoiceResponse>);
+      totalPages = result['totalPages'] as int;
+
+      _applyLocalFilter();
     } catch (e) {
       errorMessage = e.toString().replaceAll('Exception: ', '');
+      if (!isRefresh && currentPage > 0) currentPage--; // Hoàn tác trang nếu lỗi
+    } finally {
       isLoading = false;
+      isFetchingMore = false;
       notifyListeners();
     }
   }
 
-  // Khi chọn chip trạng thái mới
+  /// Thay đổi trạng thái lọc và gọi lại API
   void changeStatus(String status) {
     if (selectedStatus != status) {
       selectedStatus = status;
-      // Vì API đã trả về tất cả, ta chỉ cần lọc lại cục bộ (không tốn request API)
-      _applyLocalSearch();
+      fetchInvoices(isRefresh: true);
     }
   }
 
-  // Khi gõ text tìm kiếm (Lọc theo phòng)
+  /// Cập nhật từ khóa và tìm kiếm trong danh sách đã tải
   void onSearchChanged(String query) {
     searchQuery = query;
-    _applyLocalSearch();
+    _applyLocalFilter();
   }
 
-  void _applyLocalSearch() {
-    var filteredList = List<InvoiceResponse>.from(_allInvoices);
-
-    // 1. Lọc theo trạng thái
-    if (selectedStatus != 'ALL') {
-      filteredList = filteredList.where((inv) => inv.status == selectedStatus).toList();
-    }
-
-    // 2. Lọc theo text tìm kiếm (Số phòng)
+  /// Áp dụng bộ lọc tìm kiếm nội bộ dựa trên số phòng
+  void _applyLocalFilter() {
     if (searchQuery.trim().isNotEmpty) {
       final query = searchQuery.trim().toLowerCase();
-      filteredList = filteredList.where((inv) {
-        return inv.roomNumber.toLowerCase().contains(query);
-      }).toList();
+      displayedInvoices = _allInvoices
+          .where((inv) => inv.roomNumber.toLowerCase().contains(query))
+          .toList();
+    } else {
+      displayedInvoices = List<InvoiceResponse>.from(_allInvoices);
     }
-
-    displayedInvoices = filteredList;
-    isLoading = false;
     notifyListeners();
   }
 
-  // --- Hỗ trợ cập nhật cục bộ ---
+  /// Cập nhật thông tin một hóa đơn cụ thể (vd: sau khi thanh toán thành công)
   void updateLocalInvoice(InvoiceResponse updatedInvoice) {
     final index = _allInvoices.indexWhere((i) => i.id == updatedInvoice.id);
     if (index != -1) {
       _allInvoices[index] = updatedInvoice;
-      _applyLocalSearch();
+      _applyLocalFilter();
     }
   }
 }

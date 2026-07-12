@@ -7,12 +7,43 @@ import '../models/response/invoice_detail_response.dart';
 class InvoiceRepository {
   final ApiClient _apiClient = ApiClient();
 
-  Future<List<InvoiceResponse>> getAllInvoicesForLandlord() async {
-    final response = await _apiClient.get('/api/invoices/landlord');
-    if (response.statusCode == 200) {
-      final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
-      return data.map((json) => InvoiceResponse.fromJson(json)).toList();
+  Future<Map<String, dynamic>> getAllInvoicesForLandlord({
+    int page = 0,
+    int size = 10,
+    String? status,
+  }) async {
+    // Xây dựng query parameters
+    final Map<String, String> queryParams = {
+      'page': page.toString(),
+      'size': size.toString(),
+    };
+
+    if (status != null && status != 'ALL') {
+      queryParams['status'] = status;
     }
+
+    // Ghép query string vào path
+    final queryString = Uri(queryParameters: queryParams).query;
+    final path = '/api/invoices/landlord?$queryString';
+
+    final response = await _apiClient.get(path);
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> responseData = jsonDecode(utf8.decode(response.bodyBytes));
+
+      // Lấy danh sách
+      final List<dynamic> content = responseData['content'] ?? responseData['data'] ?? [];
+      final List<InvoiceResponse> invoices = content.map((json) => InvoiceResponse.fromJson(json)).toList();
+
+      // Lấy tổng số trang
+      final int totalPages = responseData['totalPages'] ?? 1;
+
+      return {
+        'invoices': invoices,
+        'totalPages': totalPages,
+      };
+    }
+
     final rawError = utf8.decode(response.bodyBytes);
     throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }

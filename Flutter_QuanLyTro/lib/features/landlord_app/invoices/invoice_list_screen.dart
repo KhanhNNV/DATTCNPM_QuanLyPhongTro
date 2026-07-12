@@ -1,42 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_quanlytro/features/landlord_app/invoices/view_models/invoice_detail_view_model.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/custom_app_bar.dart';
+import '../../../../core/widgets/custom_paginated_list.dart';
+import '../../../../data/models/response/invoice_response.dart';
 import 'invoice_detail_screen.dart';
+import 'view_models/invoice_detail_view_model.dart';
 import 'view_models/invoice_list_view_model.dart';
 
+/// Màn hình Quản lý Hóa đơn dành cho Chủ trọ.
 class InvoiceListScreen extends StatelessWidget {
   const InvoiceListScreen({super.key});
-
-  String _formatCurrency(double amount) {
-    return NumberFormat('#,###', 'vi_VN').format(amount).replaceAll(',', '.');
-  }
-
-  // Chuyển đổi chuỗi ngày yyyy-MM-dd sang dd/MM/yyyy
-  String _formatDate(String dateString) {
-    if (dateString.isEmpty) return '---';
-    try {
-      final date = DateTime.parse(dateString);
-      return DateFormat('dd/MM/yyyy').format(date);
-    } catch (e) {
-      return dateString;
-    }
-  }
-
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'UNPAID':
-        return Colors.orange;
-      case 'PAID':
-        return Colors.green;
-      case 'OVERDUE':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,6 +30,7 @@ class InvoiceListScreen extends StatelessWidget {
     );
   }
 
+  /// Khu vực thanh tìm kiếm và các chip lọc trạng thái
   Widget _buildSearchAndFilter(BuildContext context, InvoiceListViewModel vm) {
     return Container(
       color: Colors.white,
@@ -61,7 +38,7 @@ class InvoiceListScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Thanh tìm kiếm
+          // TextField Tìm kiếm
           TextField(
             onChanged: vm.onSearchChanged,
             decoration: InputDecoration(
@@ -77,7 +54,7 @@ class InvoiceListScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          // Thanh chọn trạng thái
+          // Chips Lọc Trạng thái
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -89,17 +66,13 @@ class InvoiceListScreen extends StatelessWidget {
                     label: Text(entry.value),
                     selected: isSelected,
                     selectedColor: AppColors.primary.withOpacity(0.2),
-                    labelStyle: TextStyle(
-                      color: isSelected ? AppColors.primary : Colors.grey[700],
-                      fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
                     backgroundColor: Colors.grey[100],
                     side: BorderSide(
-                      color: isSelected
-                          ? AppColors.primary
-                          : Colors.transparent,
+                      color: isSelected ? AppColors.primary : Colors.transparent,
+                    ),
+                    labelStyle: TextStyle(
+                      color: isSelected ? AppColors.primary : Colors.grey[700],
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
                     onSelected: (_) => vm.changeStatus(entry.key),
                   ),
@@ -112,134 +85,94 @@ class InvoiceListScreen extends StatelessWidget {
     );
   }
 
+  /// Danh sách hóa đơn sử dụng CustomPaginatedList
   Widget _buildBody(InvoiceListViewModel vm, BuildContext context) {
-    if (vm.isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+    return CustomPaginatedList<InvoiceResponse>(
+      items: vm.displayedInvoices,
+      isLoading: vm.isLoading,
+      isFetchingMore: vm.isFetchingMore,
+      errorMessage: vm.errorMessage,
+      onRefresh: () async => await vm.fetchInvoices(isRefresh: true),
+      onLoadMore: () => vm.fetchInvoices(isRefresh: false),
+      itemBuilder: (context, invoice) => _buildInvoiceCard(context, invoice, vm),
+    );
+  }
 
-    if (vm.errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(vm.errorMessage!, style: const TextStyle(color: Colors.red)),
-            const SizedBox(height: 8),
-            ElevatedButton(
-              onPressed: () => vm.fetchInvoices(),
-              child: const Text('Thử lại'),
-            ),
-          ],
-        ),
-      );
-    }
+  /// Item hiển thị thông tin tóm tắt của một Hóa đơn
+  Widget _buildInvoiceCard(BuildContext context, InvoiceResponse invoice, InvoiceListViewModel vm) {
+    final statusColor = _getStatusColor(invoice.status);
 
-    if (vm.displayedInvoices.isEmpty) {
-      return const Center(
-        child: Text(
-          'Không tìm thấy hóa đơn nào.',
-          style: TextStyle(color: Colors.grey),
-        ),
-      );
-    }
-
-    return ListView.separated(
-      padding: const EdgeInsets.all(16),
-      itemCount: vm.displayedInvoices.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 12),
-      itemBuilder: (context, index) {
-        final invoice = vm.displayedInvoices[index];
-        final statusColor = _getStatusColor(invoice.status);
-
-        return InkWell(
-          borderRadius: BorderRadius.circular(12),
-          onTap: () {
-            // ĐIỀU HƯỚNG SANG MÀN CHI TIẾT
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ChangeNotifierProvider(
-                  create: (_) =>
-                      InvoiceDetailViewModel()..fetchInvoiceDetail(invoice.id),
-                  child: const InvoiceDetailScreen(),
-                ),
-              ),
-            );
-          },
-          child: Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Phòng ${invoice.roomNumber}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: statusColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          vm.statusMap[invoice.status] ?? invoice.status,
-                          style: TextStyle(
-                            color: statusColor,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 24),
-                  _buildInfoRow(
-                    Icons.calendar_today,
-                    'Kỳ hóa đơn:',
-                    _formatDate(invoice.invoicePeriod),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildInfoRow(
-                    Icons.event_busy,
-                    'Hạn đóng:',
-                    _formatDate(invoice.dueDate),
-                  ),
-                  const SizedBox(height: 8),
-                  _buildInfoRow(
-                    Icons.monetization_on,
-                    'Tổng tiền:',
-                    '${_formatCurrency(invoice.totalAmount)} VNĐ',
-                    isHighlight: true,
-                  ),
-                ],
-              ),
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ChangeNotifierProvider(
+              create: (_) => InvoiceDetailViewModel()..fetchInvoiceDetail(invoice.id),
+              child: const InvoiceDetailScreen(),
             ),
           ),
         );
       },
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Header: Số phòng & Trạng thái
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Phòng ${invoice.roomNumber}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: statusColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      vm.statusMap[invoice.status] ?? invoice.status,
+                      style: TextStyle(
+                        color: statusColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(height: 24),
+              // Body: Chi tiết thời gian & Tiền
+              _buildInfoRow(Icons.calendar_today, 'Kỳ hóa đơn:', _formatDate(invoice.invoicePeriod)),
+              const SizedBox(height: 8),
+              _buildInfoRow(Icons.event_busy, 'Hạn đóng:', _formatDate(invoice.dueDate)),
+              const SizedBox(height: 8),
+              _buildInfoRow(
+                Icons.monetization_on,
+                'Tổng tiền:',
+                '${_formatCurrency(invoice.totalAmount)} VNĐ',
+                isHighlight: true,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  Widget _buildInfoRow(
-    IconData icon,
-    String label,
-    String value, {
-    bool isHighlight = false,
-  }) {
+  /// Widget hỗ trợ hiển thị 1 dòng thông tin (Icon + Label + Value)
+  Widget _buildInfoRow(IconData icon, String label, String value, {bool isHighlight = false}) {
     return Row(
       children: [
         Icon(icon, size: 18, color: Colors.grey[600]),
@@ -259,5 +192,30 @@ class InvoiceListScreen extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  // --- Utility Methods ---
+
+  String _formatCurrency(double amount) {
+    return NumberFormat('#,###', 'vi_VN').format(amount).replaceAll(',', '.');
+  }
+
+  String _formatDate(String dateString) {
+    if (dateString.isEmpty) return '---';
+    try {
+      final date = DateTime.parse(dateString);
+      return DateFormat('dd/MM/yyyy').format(date);
+    } catch (_) {
+      return dateString;
+    }
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'UNPAID': return Colors.orange;
+      case 'PAID': return Colors.green;
+      case 'OVERDUE': return Colors.red;
+      default: return Colors.grey;
+    }
   }
 }
