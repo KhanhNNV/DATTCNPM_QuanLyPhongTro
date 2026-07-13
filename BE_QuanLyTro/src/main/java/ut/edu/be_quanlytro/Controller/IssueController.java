@@ -36,6 +36,7 @@ public class IssueController {
 
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
+
     @PutMapping("/{id}/status")
     @PreAuthorize("hasRole('LANDLORD')") // Bắt buộc là Chủ trọ mới được sửa
     public ResponseEntity<IssueResponse> updateIssueStatus(
@@ -55,10 +56,11 @@ public class IssueController {
     public ResponseEntity<PageResponse<IssueResponse>> getMyIssues(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) IssueStatus status,
             @AuthenticationPrincipal Jwt jwt) {
 
         UUID tenantId = UUID.fromString(jwt.getClaimAsString("userId"));
-        PageResponse<IssueResponse> response = issueService.getMyIssues(tenantId, page, size);
+        PageResponse<IssueResponse> response = issueService.getMyIssues(tenantId, status, page, size);
         return ResponseEntity.ok(response);
     }
 
@@ -67,10 +69,40 @@ public class IssueController {
     public ResponseEntity<PageResponse<IssueResponse>> getIssuesForLandlord(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) IssueStatus status,
+            @RequestParam(required = false) UUID roomId, 
             @AuthenticationPrincipal Jwt jwt) {
 
         UUID landlordId = UUID.fromString(jwt.getClaimAsString("userId"));
-        PageResponse<IssueResponse> response = issueService.getIssuesForLandlord(landlordId, page, size);
+
+        // Nhớ truyền thêm roomId vào hàm
+        PageResponse<IssueResponse> response = issueService.getIssuesForLandlord(landlordId, roomId, status, page, size);
+
         return ResponseEntity.ok(response);
+    }
+    @PutMapping(value = "/tenant/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PreAuthorize("hasRole('TENANT')")
+    public ResponseEntity<IssueResponse> updateMyIssue(
+            @PathVariable UUID id,
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "image", required = false) MultipartFile image,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        UUID tenantId = UUID.fromString(jwt.getClaimAsString("userId"));
+        IssueResponse response = issueService.updateMyIssue(id, description, image, tenantId);
+
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/tenant/{id}")
+    @PreAuthorize("hasRole('TENANT')")
+    public ResponseEntity<String> deleteMyIssue(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        UUID tenantId = UUID.fromString(jwt.getClaimAsString("userId"));
+        issueService.deleteMyIssue(id, tenantId);
+
+        return ResponseEntity.ok("Đã thu hồi báo cáo sự cố thành công!");
     }
 }

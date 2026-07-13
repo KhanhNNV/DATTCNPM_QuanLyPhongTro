@@ -118,11 +118,69 @@ public class IssueService {
 
         return convertToResponse(issue);
     }
+    /**
+     * API: Khách thuê CẬP NHẬT báo cáo sự cố (Chỉ khi đang PENDING)
+     */
+    public IssueResponse updateMyIssue(UUID issueId, String newDescription, MultipartFile newImage, UUID tenantId) {
+        Issue issue = issueRepository.findById(issueId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy báo cáo sự cố!"));
 
+        // 1. Chốt chặn 1: Đúng chính chủ mới được sửa
+        if (!issue.getTenant().getId().equals(tenantId)) {
+            throw new AccessDeniedException("Bạn không có quyền sửa báo cáo của người khác!");
+        }
+
+        // 2. Chốt chặn 2: Chỉ cho phép sửa khi chủ trọ chưa đụng tay vào
+        if (issue.getStatus() != IssueStatus.PENDING) {
+            throw new BadRequestException("Sự cố đã được tiếp nhận hoặc xử lý, bạn không thể thay đổi thông tin nữa!");
+        }
+
+        // 3. Cập nhật dữ liệu
+        if (newDescription != null && !newDescription.trim().isEmpty()) {
+            issue.setDescription(newDescription);
+        }
+
+        if (newImage != null && !newImage.isEmpty()) {
+            // (Mẹo Pro: Nếu hệ thống lớn, chỗ này nên gọi hàm xóa ảnh cũ trên Cloudinary để đỡ tốn dung lượng)
+            String newImageUrl = cloudinaryService.uploadFile(newImage, "issues");
+            issue.setImageUrl(newImageUrl);
+        }
+
+        return convertToResponse(issueRepository.save(issue));
+    }
+
+    /**
+     * API: Khách thuê XÓA/THU HỒI báo cáo sự cố (Chỉ khi đang PENDING)
+     */
+    public void deleteMyIssue(UUID issueId, UUID tenantId) {
+        Issue issue = issueRepository.findById(issueId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy báo cáo sự cố!"));
+
+        if (!issue.getTenant().getId().equals(tenantId)) {
+            throw new AccessDeniedException("Bạn không có quyền xóa báo cáo của người khác!");
+        }
+
+        if (issue.getStatus() != IssueStatus.PENDING) {
+            throw new BadRequestException("Sự cố đã được tiếp nhận, không thể thu hồi. Vui lòng liên hệ chủ trọ!");
+        }
+
+        // Thực hiện xóa khỏi DB
+        issueRepository.delete(issue);
+    }
+
+    /**
+     * API: Khách thuê xem lịch sử báo cáo sự cố (Có lọc)
+     */
     @Transactional(readOnly = true)
-    public PageResponse<IssueResponse> getMyIssues(UUID tenantId, int page, int size) {
+    public PageResponse<IssueResponse> getMyIssues(UUID tenantId, IssueStatus status, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<Issue> issuePage = issueRepository.findByTenantIdOrderByCreatedAtDesc(tenantId, pageable);
+        Page<Issue> issuePage;
+
+        if (status != null) {
+            issuePage = issueRepository.findByTenantIdAndStatusOrderByCreatedAtDesc(tenantId, status, pageable);
+        } else {
+            issuePage = issueRepository.findByTenantIdOrderByCreatedAtDesc(tenantId, pageable);
+        }
 
         return PageResponse.<IssueResponse>builder()
                 .content(issuePage.getContent().stream().map(this::convertToResponse).toList())
@@ -135,12 +193,30 @@ public class IssueService {
     }
 
     /**
-     * API: Chủ trọ xem toàn bộ danh sách báo cáo sự cố của khu trọ
+     * API: Chủ trọ xem toàn bộ danh sách báo cáo sự cố (Có lọc)
+     */
+    /**
+     * API: Chủ trọ xem danh sách báo cáo sự cố (Có lọc theo Status và Room)
      */
     @Transactional(readOnly = true)
-    public PageResponse<IssueResponse> getIssuesForLandlord(UUID landlordId, int page, int size) {
+    public PageResponse<IssueResponse> getIssuesForLandlord(UUID landlordId, UUID roomId, IssueStatus status, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
-        Page<Issue> issuePage = issueRepository.findByRoomAreaLandlordIdOrderByCreatedAtDesc(landlordId, pageable);
+        Page<Issue> issuePage;
+
+        // Xử lý tổ hợp 4 trường hợp lọc dữ liệu
+        if (roomId != null && status != null) {
+            // Lọc cả phòng và trạng thái
+            issuePage = issueRepository.findByRoomAreaLandlordIdAndRoomIdAndStatusOrderByCreatedAtDesc(landlordId, roomId, status, pageable);
+        } else if (roomId != null) {
+            // Chỉ lọc theo phòng
+            issuePage = issueRepository.findByRoomAreaLandlordIdAndRoomIdOrderByCreatedAtDesc(landlordId, roomId, pageable);
+        } else if (status != null) {
+            // Chỉ lọc theo trạng thái
+            issuePage = issueRepository.findByRoomAreaLandlordIdAndStatusOrderByCreatedAtDesc(landlordId, status, pageable);
+        } else {
+            // Không lọc gì, lấy tất cả của khu trọ
+            issuePage = issueRepository.findByRoomAreaLandlordIdOrderByCreatedAtDesc(landlordId, pageable);
+        }
 
         return PageResponse.<IssueResponse>builder()
                 .content(issuePage.getContent().stream().map(this::convertToResponse).toList())
