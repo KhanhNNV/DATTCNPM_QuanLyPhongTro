@@ -3,6 +3,7 @@ package ut.edu.be_quanlytro.Service;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.Message;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.access.AccessDeniedException; // Thêm import 403
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,6 +34,7 @@ public class NotificationService {
     // private final SimpMessagingTemplate messagingTemplate; // 🌟 Mở ra khi cấu hình xong WebSocket
 
     // ================= 1. HÀM TẠO & ĐẨY THÔNG BÁO (REAL-TIME) =================
+    @Async
     @Transactional
     public void createNotification(User user, String title, String content, NotificationType type) {
 

@@ -614,17 +614,16 @@ public class ContractService {
         // =================================================================
         if (file != null && !file.isEmpty()) {
             String oldFileUrl = contract.getContractFileUrl();
+
+            //Gọi thợ phụ xóa file ngầm, luồng chính lập tức đi tiếp
             if (oldFileUrl != null && !oldFileUrl.trim().isEmpty()) {
-                try {
-                    cloudinaryService.deleteFile(oldFileUrl);
-                } catch (Exception e) {
-                    System.err.println("Cảnh báo: Không thể xóa file hợp đồng cũ trên Cloud - " + e.getMessage());
-                }
+                cloudinaryCleanupService.deleteContractFilesAsync(oldFileUrl, null);
             }
+
+            // Upload file mới lên
             String newFileUrl = cloudinaryService.uploadFile(file, "contract_files");
             contract.setContractFileUrl(newFileUrl);
         }
-
         // =================================================================
         // 7. LƯU DATABASE & GHI LOG
         // =================================================================
@@ -635,7 +634,6 @@ public class ContractService {
 
         return mapToDetailResponse(updatedContract);
     }
-    // Đừng quên Inject CloudinaryCleanupService vào ContractService nhé!
 
     // ================= 9. XÓA HỢP ĐỒNG (BẢN NHÁP & QUÁ HẠN - DỌN RÁC TRIỆT ĐỂ) =================
     @Transactional
@@ -754,19 +752,17 @@ public class ContractService {
         }
 
         // =================================================================
-        // BỔ SUNG: XỬ LÝ REPLACE FILE PDF HỢP ĐỒNG (GIỐNG BÊN UPDATE)
+        // BỔ SUNG: XỬ LÝ REPLACE FILE PDF HỢP ĐỒNG
         // =================================================================
         if (pdfFile != null && !pdfFile.isEmpty()) {
             String oldFileUrl = contract.getContractFileUrl();
-            // Nếu trước đó bản nháp đã có file PDF cũ thì tiến hành xóa dọn rác
+
+            //Giao việc xóa file cũ cho thợ phụ
             if (oldFileUrl != null && !oldFileUrl.trim().isEmpty()) {
-                try {
-                    cloudinaryService.deleteFile(oldFileUrl);
-                } catch (Exception e) {
-                    System.err.println("Cảnh báo: Không thể xóa file hợp đồng cũ trên Cloud - " + e.getMessage());
-                }
+                cloudinaryCleanupService.deleteContractFilesAsync(oldFileUrl, null);
             }
-            // Upload bản PDF có chữ ký mới lên thư mục contract_files
+
+            // Upload bản PDF có chữ ký mới
             String newFileUrl = cloudinaryService.uploadFile(pdfFile, "contract_files");
             contract.setContractFileUrl(newFileUrl);
         }
@@ -969,16 +965,10 @@ public class ContractService {
                     "mới có quyền tải lên file cho hợp đồng này.");
         }
 
-        // 4. XÓA FILE CŨ (NẾU CÓ) ĐỂ TIẾT KIỆM DUNG LƯỢNG CLOUD
+        // 4. GIAO VIỆC XÓA FILE CŨ CHO THỢ PHỤ (BACKGROUND THREAD)
         String oldFileUrl = contract.getContractFileUrl();
         if (oldFileUrl != null && !oldFileUrl.trim().isEmpty()) {
-            try {
-                cloudinaryService.deleteFile(oldFileUrl);
-            } catch (Exception e) {
-                // Chỉ in log cảnh báo chứ không throw Exception làm chết luồng chính
-                // Đề phòng trường hợp URL trong DB bị lỗi hoặc file đã bị xóa tay trên Cloudinary từ trước
-                System.err.println("Cảnh báo: Không thể xóa file hợp đồng cũ trên Cloudinary: " + e.getMessage());
-            }
+            cloudinaryCleanupService.deleteContractFilesAsync(oldFileUrl, null);
         }
 
         // 5. Gọi CloudinaryService để đẩy file mới lên cloud
