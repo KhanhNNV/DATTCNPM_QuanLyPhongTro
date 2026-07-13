@@ -3,6 +3,9 @@ package ut.edu.be_quanlytro.Service;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.Message;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.access.AccessDeniedException; // Thêm import 403
 import org.springframework.stereotype.Service;
@@ -10,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 // import org.springframework.messaging.simp.SimpMessagingTemplate; // 🌟 Mở ra khi dùng WebSocket
 
 import ut.edu.be_quanlytro.Dto.Response.NotificationResponse;
+import ut.edu.be_quanlytro.Dto.Response.PageResponse;
 import ut.edu.be_quanlytro.Entity.Enum.NotificationType;
 import ut.edu.be_quanlytro.Entity.Notification;
 import ut.edu.be_quanlytro.Entity.User;
@@ -64,11 +68,26 @@ public class NotificationService {
 
     // ================= 2. LẤY DANH SÁCH THÔNG BÁO =================
     @Transactional(readOnly = true)
-    public List<NotificationResponse> getMyNotifications(UUID userId) {
-        return notificationRepository.findByUserIdOrderByCreatedAtDesc(userId)
-                .stream()
+    public PageResponse<NotificationResponse> getMyNotifications(UUID userId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+
+        // Gọi xuống DB lấy đúng 1 trang dữ liệu
+        Page<Notification> notificationPage = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
+
+        // Map sang DTO
+        List<NotificationResponse> content = notificationPage.getContent().stream()
                 .map(this::mapToResponse)
                 .toList();
+
+        // Bọc vào khuôn PageResponse xịn xò
+        return PageResponse.<NotificationResponse>builder()
+                .content(content)
+                .pageNumber(notificationPage.getNumber())
+                .pageSize(notificationPage.getSize())
+                .totalElements(notificationPage.getTotalElements())
+                .totalPages(notificationPage.getTotalPages())
+                .isLast(notificationPage.isLast())
+                .build();
     }
 
     // ================= 3. ĐẾM SỐ THÔNG BÁO CHƯA ĐỌC =================
@@ -92,15 +111,18 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
-    // ================= 5. ĐÁNH DẤU TẤT CẢ LÀ ĐÃ ĐỌC (Tặng thêm) =================
+
+    // ================= 5. ĐÁNH DẤU TẤT CẢ LÀ ĐÃ ĐỌC =================
     @Transactional
     public void markAllAsRead(UUID userId) {
-        List<Notification> unreadList = notificationRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
-                .filter(n -> !n.getIsRead())
-                .toList();
+        // Lấy đúng những thông báo chưa đọc từ DB lên (Tối ưu RAM)
+        List<Notification> unreadList = notificationRepository.findByUserIdAndIsReadFalse(userId);
 
-        unreadList.forEach(n -> n.setIsRead(true));
-        notificationRepository.saveAll(unreadList);
+        // Nếu có thông báo chưa đọc thì mới xử lý
+        if (!unreadList.isEmpty()) {
+            unreadList.forEach(n -> n.setIsRead(true));
+            notificationRepository.saveAll(unreadList);
+        }
     }
 
     /**
