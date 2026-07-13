@@ -70,7 +70,7 @@ public class IssueController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) IssueStatus status,
-            @RequestParam(required = false) UUID roomId, 
+            @RequestParam(required = false) UUID roomId,
             @AuthenticationPrincipal Jwt jwt) {
 
         UUID landlordId = UUID.fromString(jwt.getClaimAsString("userId"));
