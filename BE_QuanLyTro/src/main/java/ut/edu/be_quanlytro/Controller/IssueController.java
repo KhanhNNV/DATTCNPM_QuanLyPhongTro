@@ -10,6 +10,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import ut.edu.be_quanlytro.Dto.Response.IssueResponse;
+import ut.edu.be_quanlytro.Dto.Response.PageResponse;
 import ut.edu.be_quanlytro.Entity.Enum.IssueStatus;
 import ut.edu.be_quanlytro.Service.IssueService;
 
@@ -46,6 +47,30 @@ public class IssueController {
         UUID landlordId = UUID.fromString(jwt.getClaimAsString("userId"));
         IssueResponse response = issueService.updateIssueStatus(id, status, solutionNote, landlordId);
 
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/tenant")
+    @PreAuthorize("hasRole('TENANT')")
+    public ResponseEntity<PageResponse<IssueResponse>> getMyIssues(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        UUID tenantId = UUID.fromString(jwt.getClaimAsString("userId"));
+        PageResponse<IssueResponse> response = issueService.getMyIssues(tenantId, page, size);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/landlord")
+    @PreAuthorize("hasRole('LANDLORD')")
+    public ResponseEntity<PageResponse<IssueResponse>> getIssuesForLandlord(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        UUID landlordId = UUID.fromString(jwt.getClaimAsString("userId"));
+        PageResponse<IssueResponse> response = issueService.getIssuesForLandlord(landlordId, page, size);
         return ResponseEntity.ok(response);
     }
 }
