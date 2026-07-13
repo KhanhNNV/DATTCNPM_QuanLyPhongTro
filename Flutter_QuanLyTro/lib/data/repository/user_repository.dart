@@ -72,4 +72,16 @@ class UserRepository {
     final rawError = utf8.decode(response.bodyBytes);
     throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
+
+  Future<List<UserModel>> getUsersByArea(String areaId) async {
+    final response = await _apiClient.get('/api/users/area/$areaId');
+
+    if (response.statusCode == 200) {
+      final List<dynamic> data = jsonDecode(utf8.decode(response.bodyBytes));
+      return data.map((json) => UserModel.fromJson(json)).toList();
+    }
+
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+  }
 }

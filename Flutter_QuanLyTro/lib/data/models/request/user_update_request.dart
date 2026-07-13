@@ -1,9 +1,9 @@
 class UserUpdateRequest {
-  final String phone;
+  final String? phone;
   final String? password;
-  final String fullName;
-  final String dob;
-  final String hometown;
+  final String? fullName;
+  final String? dob;
+  final String? hometown;
 
   UserUpdateRequest({
     required this.phone,

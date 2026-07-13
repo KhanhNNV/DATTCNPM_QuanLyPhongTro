@@ -6,6 +6,8 @@ import '../../../core/constants/app_colors.dart';
 import '../home_page/home_page_screen.dart';
 import '../home_page/home_screen.dart';
 import '../home_page/view_models/home_view_model.dart';
+import '../tenant_management/tenant_list_screen.dart';
+import '../tenant_management/view_models/tenant_list_view_model.dart';
 import 'widgets/main_app_bar.dart';
 import 'widgets/main_bottom_bar.dart';
 import 'widgets/main_drawer.dart';
@@ -197,8 +199,11 @@ class MainLayoutScreen extends StatelessWidget {
             create: (_) => HomeViewModel(),
             child: HomeScreen(selectedAreaId: viewModel.selectedAreaId),
           ),
-          const Center(
-            child: Text('Màn hình Khách thuê'),
+          ChangeNotifierProvider(
+            // Sử dụng ValueKey để ép Flutter tạo lại ViewModel mới khi chủ trọ đổi khu (Global Filter)
+            key: ValueKey('tenant_tab_${viewModel.selectedAreaId}'),
+            create: (_) => TenantListViewModel(areaId: viewModel.selectedAreaId!)..fetchTenants(),
+            child: const TenantListScreen(),
           ),
           const Center(
             child: Text('Màn hình Hóa đơn'),
