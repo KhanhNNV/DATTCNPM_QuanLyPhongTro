@@ -7,6 +7,8 @@ import '../contract/view_models/tenant_contract_view_model.dart';
 import '../invoices/tenant_invoice_list_screen.dart';
 import '../invoices/view_models/tenant_invoice_list_view_model.dart';
 import '../main_layout/view_models/tenant_main_layout_view_model.dart';
+import '../issues/report_issue_screen.dart';
+import '../issues/view_models/report_issue_view_model.dart';
 
 class TenantHomeScreen extends StatefulWidget {
   const TenantHomeScreen({super.key});
@@ -18,7 +20,7 @@ class TenantHomeScreen extends StatefulWidget {
 class _TenantHomeScreenState extends State<TenantHomeScreen> {
 
   // --- DANH SÁCH CHỨC NĂNG: QUẢN LÝ PHÒNG TRỌ ---
-  List<QuickActionItem> _getRoomActions(BuildContext context,TenantMainLayoutViewModel viewModel) {
+  List<QuickActionItem> _getRoomActions(BuildContext context, TenantMainLayoutViewModel viewModel) {
     return [
       QuickActionItem(
         title: 'Hợp đồng điện tử',
@@ -75,13 +77,34 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
   }
 
   // --- DANH SÁCH CHỨC NĂNG: TIỆN ÍCH & HỖ TRỢ ---
-  List<QuickActionItem> _getUtilityActions(BuildContext context) {
+  List<QuickActionItem> _getUtilityActions(BuildContext context, TenantMainLayoutViewModel viewModel) {
     return [
       QuickActionItem(
         title: 'Báo cáo Sự cố',
         icon: Icons.report_problem_outlined,
-        badgeText: '2', // Ví dụ hiển thị số lượng sự cố đang xử lý
-        onTap: () => _navigateTo('Màn hình Gửi yêu cầu sửa chữa/sự cố'),
+        onTap: () {
+          final roomId = viewModel.currentRoomId;
+
+          if (roomId == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Không tìm thấy thông tin phòng. Vui lòng thử lại!'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+            return;
+          }
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => ReportIssueViewModel(roomId: roomId),
+                child: const ReportIssueScreen(),
+              ),
+            ),
+          );
+        },
       ),
       QuickActionItem(
         title: 'Thông tin cá nhân',
@@ -92,7 +115,6 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
   }
 
   void _navigateTo(String featureName) {
-    // Thay thế bằng logic điều hướng Navigator.push thực tế của bạn sau này
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Điều hướng đến: $featureName')),
     );
@@ -100,11 +122,10 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Đọc trạng thái từ ViewModel của khách thuê (ví dụ: thông tin phòng, thông tin user)
     final viewModel = context.watch<TenantMainLayoutViewModel>();
 
-    final roomActions = _getRoomActions(context,viewModel);
-    final utilityActions = _getUtilityActions(context);
+    final roomActions = _getRoomActions(context, viewModel);
+    final utilityActions = _getUtilityActions(context, viewModel);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F9),

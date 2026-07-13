@@ -88,6 +88,8 @@ class TenantMainLayoutViewModel extends ChangeNotifier {
     }
   }
 
+  String? get currentRoomId => _currentContract?.roomId;
+
   // Lấy các text hiển thị nhanh trên UI
   String get displayRoomNumber => _currentContract?.roomNumber ?? "...";
   String get displayAreaName => _currentContract?.areaName ?? "...";
