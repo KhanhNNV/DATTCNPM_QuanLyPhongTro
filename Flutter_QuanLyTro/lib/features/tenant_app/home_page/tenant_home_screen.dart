@@ -11,6 +11,8 @@ import '../issues/view_models/tenant_issue_list_view_model.dart';
 import '../main_layout/view_models/tenant_main_layout_view_model.dart';
 import '../issues/report_issue_screen.dart';
 import '../issues/view_models/report_issue_view_model.dart';
+import '../tenant_profile/tenant_profile_screen.dart';
+import '../tenant_profile/view_models/tenant_profile_view_model.dart';
 
 class TenantHomeScreen extends StatefulWidget {
   const TenantHomeScreen({super.key});
@@ -111,7 +113,17 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
       QuickActionItem(
         title: 'Thông tin cá nhân',
         icon: Icons.person_outline,
-        onTap: () => _navigateTo('Màn hình Cập nhật hồ sơ & thông tin lưu trú'),
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => TenantProfileViewModel()..fetchProfile(),
+                child: const TenantProfileScreen(),
+              ),
+            ),
+          );
+        },
       ),
     ];
   }

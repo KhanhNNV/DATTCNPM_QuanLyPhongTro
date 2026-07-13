@@ -84,4 +84,19 @@ class UserRepository {
     final rawError = utf8.decode(response.bodyBytes);
     throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
+
+  Future<void> changePassword(String oldPassword, String newPassword) async {
+    final response = await _apiClient.put(
+      '/api/users/current/password',
+      {
+        'oldPassword': oldPassword,
+        'newPassword': newPassword,
+      },
+    );
+
+    if (response.statusCode != 200) {
+      final rawError = utf8.decode(response.bodyBytes);
+      throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+    }
+  }
 }
