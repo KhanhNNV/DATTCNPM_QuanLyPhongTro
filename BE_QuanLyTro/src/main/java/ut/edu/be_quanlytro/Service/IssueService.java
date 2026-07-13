@@ -1,11 +1,15 @@
 package ut.edu.be_quanlytro.Service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import ut.edu.be_quanlytro.Dto.Response.IssueResponse;
+import ut.edu.be_quanlytro.Dto.Response.PageResponse;
 import ut.edu.be_quanlytro.Entity.Contract;
 import ut.edu.be_quanlytro.Entity.Enum.ContractStatus;
 import ut.edu.be_quanlytro.Entity.Enum.IssueStatus;
@@ -113,6 +117,39 @@ public class IssueService {
         );
 
         return convertToResponse(issue);
+    }
+
+    @Transactional(readOnly = true)
+    public PageResponse<IssueResponse> getMyIssues(UUID tenantId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Issue> issuePage = issueRepository.findByTenantIdOrderByCreatedAtDesc(tenantId, pageable);
+
+        return PageResponse.<IssueResponse>builder()
+                .content(issuePage.getContent().stream().map(this::convertToResponse).toList())
+                .pageNumber(issuePage.getNumber())
+                .pageSize(issuePage.getSize())
+                .totalElements(issuePage.getTotalElements())
+                .totalPages(issuePage.getTotalPages())
+                .isLast(issuePage.isLast())
+                .build();
+    }
+
+    /**
+     * API: Chủ trọ xem toàn bộ danh sách báo cáo sự cố của khu trọ
+     */
+    @Transactional(readOnly = true)
+    public PageResponse<IssueResponse> getIssuesForLandlord(UUID landlordId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Issue> issuePage = issueRepository.findByRoomAreaLandlordIdOrderByCreatedAtDesc(landlordId, pageable);
+
+        return PageResponse.<IssueResponse>builder()
+                .content(issuePage.getContent().stream().map(this::convertToResponse).toList())
+                .pageNumber(issuePage.getNumber())
+                .pageSize(issuePage.getSize())
+                .totalElements(issuePage.getTotalElements())
+                .totalPages(issuePage.getTotalPages())
+                .isLast(issuePage.isLast())
+                .build();
     }
 
     private IssueResponse convertToResponse(Issue issue) {
