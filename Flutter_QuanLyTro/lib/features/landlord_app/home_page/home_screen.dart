@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
 import 'package:flutter_quanlytro/features/landlord_app/home_page/quick_action_item.dart';
 import 'package:flutter_quanlytro/features/landlord_app/meter_reading_page/meter_reading_screen.dart';
+import 'package:flutter_quanlytro/features/landlord_app/main_layout/view_models/main_layout_view_model.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../area_management/area_config_screen.dart';
 import '../area_management/view_models/area_config_view_model.dart';
@@ -8,20 +12,18 @@ import '../contract/contract_create_screen.dart';
 import '../contract/contract_list_screen.dart';
 import '../contract/view_models/contract_create_view_model.dart';
 import '../contract/view_models/contract_list_view_model.dart';
-import '../contract_template/contract_template_form_screen.dart';
 import '../contract_template/contract_template_list_screen.dart';
-import '../contract_template/view_models/contract_template_form_view_model.dart';
 import '../contract_template/view_models/contract_template_list_view_model.dart';
 import '../deposit_page/deposit_list_screen.dart';
-import 'package:provider/provider.dart';
-import 'package:flutter_quanlytro/features/landlord_app/main_layout/view_models/main_layout_view_model.dart';
-
 import '../deposit_page/view_models/deposit_list_view_model.dart';
 import '../invoices/invoice_list_screen.dart';
 import '../invoices/view_models/invoice_list_view_model.dart';
 import '../meter_reading_page/view_models/meter_reading_view_model.dart';
 import '../signature/signature_screen.dart';
 import '../signature/view_models/signature_view_model.dart';
+import '../issues/landlord_issue_list_screen.dart';
+import '../issues/view_models/landlord_issue_list_view_model.dart';
+import 'view_models/home_view_model.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -31,6 +33,14 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<HomeViewModel>().fetchPendingIssuesCount();
+    });
+  }
 
   // --- DANH SÁCH CHỨC NĂNG: THAO TÁC THƯỜNG DÙNG ---
   List<QuickActionItem> _getQuickActions(BuildContext context, String? currentAreaId) {
@@ -77,7 +87,6 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         },
       ),
-
       QuickActionItem(
         title: 'Trả phòng',
         icon: Icons.gite_outlined,
@@ -128,13 +137,29 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // --- DANH SÁCH CHỨC NĂNG: MENU QUẢN LÝ NHÀ TRỌ ---
-  List<QuickActionItem> _getManagementMenu(BuildContext context) {
+  List<QuickActionItem> _getManagementMenu(BuildContext context, HomeViewModel homeViewModel) {
     return [
       QuickActionItem(
         title: 'Quản lý Sự cố',
         icon: Icons.build_circle_outlined,
-        badgeText: '0/10', // Hiển thị badge dạng chuỗi như ảnh dưới
-        onTap: () => _navigateTo('Nút: Tiếp nhận & Cập nhật trạng thái sự cố'),
+        badgeText: homeViewModel.pendingIssuesCount > 0
+            ? '${homeViewModel.pendingIssuesCount}'
+            : null,
+        onTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => LandlordIssueListViewModel(),
+                child: const LandlordIssueListScreen(),
+              ),
+            ),
+          );
+
+          if (context.mounted) {
+            context.read<HomeViewModel>().fetchPendingIssuesCount();
+          }
+        },
       ),
       QuickActionItem(
         title: 'Cấu hình Khu trọ',
@@ -203,10 +228,10 @@ class _HomeScreenState extends State<HomeScreen> {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => ChangeNotifierProvider(
-                create: (_) => ContractListViewModel()..fetchContracts(),
-                child: const ContractListScreen(),
-              )
+                builder: (_) => ChangeNotifierProvider(
+                  create: (_) => ContractListViewModel()..fetchContracts(),
+                  child: const ContractListScreen(),
+                )
             ),
           );
         },
@@ -220,7 +245,6 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _navigateTo(String featureName) {
-    // Thay thế bằng logic điều hướng Navigator.push thực tế của bạn
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Điều hướng đến: $featureName')),
     );
@@ -228,11 +252,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-
+    // Watch MainLayoutViewModel để lấy currentAreaId
     final currentAreaId = context.watch<MainLayoutViewModel>().selectedAreaId;
 
-    final quickActions = _getQuickActions(context,currentAreaId);
-    final managementItems = _getManagementMenu(context);
+    // Watch HomeViewModel để lấy dữ liệu số lượng sự cố (badge)
+    final homeViewModel = context.watch<HomeViewModel>();
+
+    final quickActions = _getQuickActions(context, currentAreaId);
+
+    // Truyền homeViewModel vào để hàm lấy được pendingIssuesCount
+    final managementItems = _getManagementMenu(context, homeViewModel);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F9),
@@ -267,7 +296,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Widget hiển thị Tiêu đề phân đoạn nghiệp vụ
   Widget _buildSectionHeader({required String title, required String subtitle}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -308,24 +336,22 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         IconButton(
           icon: Icon(Icons.help, color: Colors.grey[400], size: 22),
-          onPressed: () {
-          },
+          onPressed: () {},
         )
       ],
     );
   }
 
-  // Lưới hiển thị các thẻ Card
   Widget _buildGridMenu(List<QuickActionItem> items) {
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
       itemCount: items.length,
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,         // Chia làm 3 cột đồng đều
-        crossAxisSpacing: 10,      // Khoảng cách ngang giữa các ô
-        mainAxisSpacing: 10,       // Khoảng cách dọc giữa các ô
-        childAspectRatio: 0.85,    // Tỷ lệ khung hình của ô (Rộng / Cao) nhằm đảm bảo hiển thị đủ text 2 dòng
+        crossAxisCount: 3,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: 0.85,
       ),
       itemBuilder: (context, index) {
         final item = items[index];
@@ -334,7 +360,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Cấu trúc chi tiết của từng thẻ Chức năng (Card)
   Widget _buildCardItem(QuickActionItem item) {
     return InkWell(
       onTap: item.onTap,
@@ -342,7 +367,6 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // Khung nền trắng của Thẻ
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
@@ -361,7 +385,6 @@ class _HomeScreenState extends State<HomeScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Khối bao bọc Icon
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
@@ -375,7 +398,6 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                // Tiêu đề chữ chức năng
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 4.0),
                   child: Text(
@@ -394,8 +416,6 @@ class _HomeScreenState extends State<HomeScreen> {
               ],
             ),
           ),
-
-          // --- XỬ LÝ HIỂN THỊ BADGE THÔNG BÁO GÓC PHẢI ---
           if (item.badgeCount != null || item.badgeText != null)
             Positioned(
               top: 6,

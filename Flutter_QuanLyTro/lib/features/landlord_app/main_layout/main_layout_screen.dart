@@ -5,6 +5,7 @@ import 'package:flutter_quanlytro/features/landlord_app/main_layout/view_models/
 import '../../../core/constants/app_colors.dart';
 import '../home_page/home_page_screen.dart';
 import '../home_page/home_screen.dart';
+import '../home_page/view_models/home_view_model.dart';
 import 'widgets/main_app_bar.dart';
 import 'widgets/main_bottom_bar.dart';
 import 'widgets/main_drawer.dart';
@@ -192,7 +193,10 @@ class MainLayoutScreen extends StatelessWidget {
           HomePageScreen(
             selectedAreaId: viewModel.selectedAreaId,
           ),
-          const HomeScreen(),
+          ChangeNotifierProvider(
+            create: (_) => HomeViewModel(),
+            child: const HomeScreen(),
+          ),
           const Center(
             child: Text('Màn hình Khách thuê'),
           ),
