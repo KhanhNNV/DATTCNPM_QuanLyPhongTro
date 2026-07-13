@@ -5,6 +5,10 @@ import '../../../../data/repository/contract_repository.dart';
 class ContractListViewModel extends ChangeNotifier {
   final ContractRepository _repository = ContractRepository();
 
+  final String areaId;
+
+  ContractListViewModel({required this.areaId});
+
   // --- QUẢN LÝ STATE TÌM KIẾM ---
   final TextEditingController searchController = TextEditingController();
 
@@ -32,7 +36,7 @@ class ContractListViewModel extends ChangeNotifier {
       errorMessage = null;
       notifyListeners();
 
-      _allContracts = await _repository.getMyContracts();
+      _allContracts = await _repository.getMyContracts(areaId);
 
       _applyFilters();
     } catch (e) {

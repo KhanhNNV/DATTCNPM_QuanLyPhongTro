@@ -38,4 +38,6 @@ public interface ContractRepository extends JpaRepository<Contract, UUID> {
     List<Contract> findByRoomAreaIdAndStatus(UUID areaId, ContractStatus status);
 
     boolean existsByTenantIdAndRoom_Area_Id(UUID tenantId, UUID areaId);
+
+    List<Contract> findByRoomAreaIdAndRoomAreaLandlordIdOrderByCreatedAtDesc(UUID areaId, UUID landlordId);
 }

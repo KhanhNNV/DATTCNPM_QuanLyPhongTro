@@ -8,7 +8,9 @@ import '../../../../data/repository/room_repository.dart';
 class RoomDetailViewModel extends ChangeNotifier {
   final RoomRepository _roomRepo = RoomRepository();
   final ContractRepository _contractRepo = ContractRepository();
+  final String areaId;
 
+  RoomDetailViewModel({required this.areaId});
   bool _isLoading = true;
   bool get isLoading => _isLoading;
 
@@ -44,7 +46,7 @@ class RoomDetailViewModel extends ChangeNotifier {
       _room = await _roomRepo.getRoomById(roomId);
 
       if (_room?.status == 'RENTED' || _room?.status == 'DEPOSITED' || _room?.status == 'RESERVED') {
-        final allContracts = await _contractRepo.getMyContracts();
+        final allContracts = await _contractRepo.getMyContracts(areaId);
 
         final targetContract = allContracts.where((c) {
           return c.roomId == roomId && c.status == 'SIGNED';

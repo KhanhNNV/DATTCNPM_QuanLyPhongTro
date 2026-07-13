@@ -92,10 +92,13 @@ public class ContractController {
     @GetMapping
     @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<List<ContractDetailResponse>> getMyContracts(
+            @RequestParam UUID areaId,
             @AuthenticationPrincipal Jwt jwt) {
 
         UUID landlordId = UUID.fromString(jwt.getClaimAsString("userId"));
-        List<ContractDetailResponse> responses = contractService.getContractsByLandlord(landlordId);
+
+        // Gọi hàm mới ở Service có truyền cả areaId và landlordId
+        List<ContractDetailResponse> responses = contractService.getContractsByArea(areaId, landlordId);
 
         return ResponseEntity.ok(responses);
     }

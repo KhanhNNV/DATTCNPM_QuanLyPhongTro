@@ -195,7 +195,7 @@ class MainLayoutScreen extends StatelessWidget {
           ),
           ChangeNotifierProvider(
             create: (_) => HomeViewModel(),
-            child: const HomeScreen(),
+            child: HomeScreen(selectedAreaId: viewModel.selectedAreaId),
           ),
           const Center(
             child: Text('Màn hình Khách thuê'),

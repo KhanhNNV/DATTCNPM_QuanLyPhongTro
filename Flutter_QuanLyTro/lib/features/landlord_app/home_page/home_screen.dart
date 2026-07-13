@@ -26,7 +26,9 @@ import '../issues/view_models/landlord_issue_list_view_model.dart';
 import 'view_models/home_view_model.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final String? selectedAreaId;
+
+  const HomeScreen({super.key, this.selectedAreaId});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -38,8 +40,18 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Gọi API lần đầu khi khởi tạo tab
       context.read<HomeViewModel>().fetchPendingIssuesCount();
     });
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Nếu khu trọ bị đổi -> Load lại dữ liệu của HomeViewModel
+    if (oldWidget.selectedAreaId != widget.selectedAreaId) {
+      context.read<HomeViewModel>().fetchPendingIssuesCount();
+    }
   }
 
   // --- DANH SÁCH CHỨC NĂNG: THAO TÁC THƯỜNG DÙNG ---
@@ -137,7 +149,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // --- DANH SÁCH CHỨC NĂNG: MENU QUẢN LÝ NHÀ TRỌ ---
-  List<QuickActionItem> _getManagementMenu(BuildContext context, HomeViewModel homeViewModel) {
+  List<QuickActionItem> _getManagementMenu(BuildContext context, HomeViewModel homeViewModel,String? currentAreaId) {
     return [
       QuickActionItem(
         title: 'Quản lý Sự cố',
@@ -165,8 +177,6 @@ class _HomeScreenState extends State<HomeScreen> {
         title: 'Cấu hình Khu trọ',
         icon: Icons.business_outlined,
         onTap: () {
-          final currentAreaId = context.read<MainLayoutViewModel>().selectedAreaId;
-
           if (currentAreaId == null || currentAreaId.isEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -225,11 +235,17 @@ class _HomeScreenState extends State<HomeScreen> {
         title: 'Quản lý hợp đồng',
         icon: Icons.folder_shared_outlined,
         onTap: () {
+          if (currentAreaId == null || currentAreaId.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Vui lòng chọn khu trọ trước!')),
+            );
+            return;
+          }
           Navigator.push(
             context,
             MaterialPageRoute(
                 builder: (_) => ChangeNotifierProvider(
-                  create: (_) => ContractListViewModel()..fetchContracts(),
+                  create: (_) => ContractListViewModel(areaId: currentAreaId)..fetchContracts(),
                   child: const ContractListScreen(),
                 )
             ),
@@ -252,16 +268,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Watch MainLayoutViewModel để lấy currentAreaId
-    final currentAreaId = context.watch<MainLayoutViewModel>().selectedAreaId;
+    final currentAreaId = widget.selectedAreaId;
 
     // Watch HomeViewModel để lấy dữ liệu số lượng sự cố (badge)
     final homeViewModel = context.watch<HomeViewModel>();
 
     final quickActions = _getQuickActions(context, currentAreaId);
-
-    // Truyền homeViewModel vào để hàm lấy được pendingIssuesCount
-    final managementItems = _getManagementMenu(context, homeViewModel);
+    final managementItems = _getManagementMenu(context, homeViewModel,currentAreaId);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF4F6F9),

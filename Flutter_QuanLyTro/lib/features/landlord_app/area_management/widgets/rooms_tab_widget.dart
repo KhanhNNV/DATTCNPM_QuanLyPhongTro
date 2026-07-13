@@ -176,7 +176,7 @@ class _RoomsTabWidgetState extends State<RoomsTabWidget> {
                         context,
                         MaterialPageRoute(
                           builder: (_) => ChangeNotifierProvider(
-                            create: (_) => RoomDetailViewModel()..fetchRoomAndMembers(room['id'].toString()),
+                            create: (_) => RoomDetailViewModel(areaId: widget.areaId)..fetchRoomAndMembers(room['id'].toString()),
                             child: RoomDetailScreen(
                               roomId: room['id'].toString(),
                               roomNumber: room['roomNumber'].toString(),

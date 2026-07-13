@@ -350,11 +350,11 @@ public class ContractService {
 
     // ================= 5. LẤY DANH SÁCH HỢP ĐỒNG (CHO CHỦ TRỌ) =================
     @Transactional(readOnly = true)
-    public List<ContractDetailResponse> getContractsByLandlord(UUID landlordId) {
-        // 1. Lấy toàn bộ danh sách hợp đồng liên quan đến các phòng của chủ trọ
-        List<Contract> contracts = contractRepository.findByRoomAreaLandlordIdOrderByCreatedAtDesc(landlordId);
+    public List<ContractDetailResponse> getContractsByArea(UUID areaId, UUID landlordId) {
+        // 1. Lọc hợp đồng theo khu trọ (areaId) VÀ phải thuộc sở hữu của chủ trọ đó (landlordId)
+        List<Contract> contracts = contractRepository.findByRoomAreaIdAndRoomAreaLandlordIdOrderByCreatedAtDesc(areaId, landlordId);
 
-        // 2. Dùng Stream API và hàm Mapper để chuyển đổi List<Entity> sang List<DTO>
+        // 2. Chuyển đổi Entity sang DTO
         return contracts.stream()
                 .map(this::mapToDetailResponse)
                 .toList();

@@ -57,8 +57,8 @@ class ContractRepository {
     throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
 
-  Future<List<ContractDetailResponse>> getMyContracts() async {
-    final response = await _apiClient.get('/api/contracts');
+  Future<List<ContractDetailResponse>> getMyContracts(String areaId) async {
+    final response = await _apiClient.get('/api/contracts?areaId=$areaId');
 
     if (response.statusCode == 200) {
       final List<dynamic> jsonList = jsonDecode(utf8.decode(response.bodyBytes));
