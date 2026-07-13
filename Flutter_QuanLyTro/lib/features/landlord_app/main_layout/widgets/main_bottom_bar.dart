@@ -23,8 +23,7 @@ class MainBottomBar extends StatelessWidget {
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang chủ'),
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang chủ2'),
         BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Khách thuê'),
-        BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Hóa đơn'),
-        BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Cài đặt'),
+        BottomNavigationBarItem(icon: Icon(Icons.notifications), label: 'Thông báo'),
       ],
     );
   }

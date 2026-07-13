@@ -6,6 +6,8 @@ import '../../../core/constants/app_colors.dart';
 import '../home_page/home_page_screen.dart';
 import '../home_page/home_screen.dart';
 import '../home_page/view_models/home_view_model.dart';
+import '../notification/notification_screen.dart';
+import '../notification/view_models/notification_view_model.dart';
 import '../tenant_management/tenant_list_screen.dart';
 import '../tenant_management/view_models/tenant_list_view_model.dart';
 import 'widgets/main_app_bar.dart';
@@ -205,11 +207,9 @@ class MainLayoutScreen extends StatelessWidget {
             create: (_) => TenantListViewModel(areaId: viewModel.selectedAreaId!)..fetchTenants(),
             child: const TenantListScreen(),
           ),
-          const Center(
-            child: Text('Màn hình Hóa đơn'),
-          ),
-          const Center(
-            child: Text('Màn hình Cài đặt'),
+          ChangeNotifierProvider(
+            create: (_) => NotificationViewModel()..fetchNotifications(),
+            child: const NotificationScreen(),
           ),
         ],
       ),

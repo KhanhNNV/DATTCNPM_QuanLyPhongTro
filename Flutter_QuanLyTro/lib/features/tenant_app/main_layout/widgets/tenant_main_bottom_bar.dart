@@ -21,7 +21,6 @@ class TenantMainBottomBar extends StatelessWidget {
       unselectedItemColor: Colors.grey,
       items: const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang chủ'),
-        BottomNavigationBarItem(icon: Icon(Icons.receipt_long), label: 'Hóa đơn'),
         BottomNavigationBarItem(icon: Icon(Icons.notifications), label: 'Thông báo'),
       ],
     );

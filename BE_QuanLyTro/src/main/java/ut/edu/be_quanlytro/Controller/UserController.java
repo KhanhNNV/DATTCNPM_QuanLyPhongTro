@@ -9,6 +9,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import ut.edu.be_quanlytro.Dto.Request.BankInfoUpdateRequest;
+import ut.edu.be_quanlytro.Dto.Request.PasswordChangeRequest;
 import ut.edu.be_quanlytro.Dto.Request.UserCreateRequest;
 import ut.edu.be_quanlytro.Dto.Request.UserUpdateRequest;
 import ut.edu.be_quanlytro.Dto.Response.UserResponse;
@@ -140,6 +141,25 @@ public class UserController {
             return ResponseEntity.ok("Cập nhật thông tin ngân hàng thành công!");
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PutMapping("/current/password")
+    @PreAuthorize("hasAnyRole('LANDLORD', 'TENANT')")
+    public ResponseEntity<?> changePassword(
+            @RequestBody PasswordChangeRequest request,
+            @AuthenticationPrincipal Jwt jwt) {
+
+        try {
+            // Lấy ID của người dùng đang đăng nhập từ Token
+            UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
+
+            // Gọi Service đổi mật khẩu
+            userService.changePassword(currentUserId, request);
+
+            return ResponseEntity.ok(Map.of("message", "Cập nhật mật khẩu thành công!"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 }

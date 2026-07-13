@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 
+import '../../landlord_app/notification/notification_screen.dart';
+import '../../landlord_app/notification/view_models/notification_view_model.dart';
 import '../home_page/tenant_home_screen.dart';
 import 'view_models/tenant_main_layout_view_model.dart';
 import 'widgets/tenant_main_app_bar.dart';
@@ -53,8 +55,10 @@ class TenantMainLayoutScreen extends StatelessWidget {
         index: viewModel.currentIndex,
         children: [
           const TenantHomeScreen(),
-          Center(child: Text('Màn hình Hóa đơn', style: TextStyle(fontSize: 18))),
-          Center(child: Text('Màn hình Thông báo', style: TextStyle(fontSize: 18))),
+          ChangeNotifierProvider(
+            create: (_) => NotificationViewModel()..fetchNotifications(),
+            child: const NotificationScreen(),
+          ),
         ],
       ),
       bottomNavigationBar: TenantMainBottomBar(

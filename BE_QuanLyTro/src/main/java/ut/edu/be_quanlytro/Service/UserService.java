@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import ut.edu.be_quanlytro.Dto.Request.BankInfoUpdateRequest;
+import ut.edu.be_quanlytro.Dto.Request.PasswordChangeRequest;
 import ut.edu.be_quanlytro.Dto.Request.UserCreateRequest;
 import ut.edu.be_quanlytro.Dto.Request.UserUpdateRequest;
 import ut.edu.be_quanlytro.Dto.Response.UserResponse;
@@ -241,6 +242,32 @@ public class UserService {
         user.setAccountName(request.getAccountName().toUpperCase());
 
         userRepository.save(user);
+    }
+
+    @Transactional
+    public void changePassword(UUID currentUserId, PasswordChangeRequest request) {
+        User user = userRepository.findById(currentUserId)
+                .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy người dùng trong hệ thống!"));
+
+        // 1. So sánh mật khẩu cũ (từ request) với mật khẩu đã băm trong database
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new BadRequestException("Mật khẩu hiện tại không chính xác!");
+        }
+
+        // 2. Kiểm tra mật khẩu mới không được trùng mật khẩu cũ
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new BadRequestException("Mật khẩu mới không được giống mật khẩu hiện tại!");
+        }
+
+        // 3. Cập nhật mật khẩu mới
+        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+
+
+        userRepository.save(user);
+
+        // 4. Ghi log hoạt động
+        activityLog.createLog(user, "CHANGE_PASSWORD", "users", user.getId(),
+                "Người dùng tự thay đổi mật khẩu.");
     }
 
     // ================= HELPER / MAPPER =================
