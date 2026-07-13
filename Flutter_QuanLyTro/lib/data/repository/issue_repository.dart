@@ -58,4 +58,50 @@ class IssueRepository {
     final rawError = utf8.decode(response.bodyBytes);
     throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
+
+  Future<Map<String, dynamic>> getIssuesForLandlord({
+    required int page,
+    required int size,
+    String? status,
+    String? roomId,
+  }) async {
+    String path = '/api/issues/landlord?page=$page&size=$size';
+
+    if (status != null) {
+      path += '&status=$status';
+    }
+    if (roomId != null) {
+      path += '&roomId=$roomId';
+    }
+
+    final response = await _apiClient.get(path);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    }
+
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+  }
+
+  Future<IssueResponse> updateIssueStatus({
+    required String issueId,
+    required String status,
+    String? solutionNote,
+  }) async {
+    String path = '/api/issues/$issueId/status?status=$status';
+    if (solutionNote != null && solutionNote.trim().isNotEmpty) {
+      path += '&solutionNote=${Uri.encodeComponent(solutionNote)}';
+    }
+
+    final response = await _apiClient.put(path,{});
+
+    if (response.statusCode == 200) {
+      final Map<String, dynamic> responseData = jsonDecode(utf8.decode(response.bodyBytes));
+      return IssueResponse.fromJson(responseData);
+    }
+
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+  }
 }
