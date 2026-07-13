@@ -38,4 +38,24 @@ class IssueRepository {
     final rawError = utf8.decode(response.bodyBytes);
     throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
+
+  Future<Map<String, dynamic>> getMyIssues({
+    required int page,
+    required int size,
+    String? status,
+  }) async {
+    String path = '/api/issues/tenant?page=$page&size=$size';
+    if (status != null) {
+      path += '&status=$status';
+    }
+
+    final response = await _apiClient.get(path);
+
+    if (response.statusCode == 200) {
+      return jsonDecode(utf8.decode(response.bodyBytes));
+    }
+
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+  }
 }

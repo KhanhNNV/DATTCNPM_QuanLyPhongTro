@@ -6,6 +6,8 @@ import '../contract/tenant_contract_pdf_viewer_screen.dart';
 import '../contract/view_models/tenant_contract_view_model.dart';
 import '../invoices/tenant_invoice_list_screen.dart';
 import '../invoices/view_models/tenant_invoice_list_view_model.dart';
+import '../issues/tenant_issue_list_screen.dart';
+import '../issues/view_models/tenant_issue_list_view_model.dart';
 import '../main_layout/view_models/tenant_main_layout_view_model.dart';
 import '../issues/report_issue_screen.dart';
 import '../issues/view_models/report_issue_view_model.dart';
@@ -99,8 +101,8 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
             context,
             MaterialPageRoute(
               builder: (_) => ChangeNotifierProvider(
-                create: (_) => ReportIssueViewModel(roomId: roomId),
-                child: const ReportIssueScreen(),
+                create: (_) => TenantIssueListViewModel(),
+                child: TenantIssueListScreen(roomId: roomId),
               ),
             ),
           );
