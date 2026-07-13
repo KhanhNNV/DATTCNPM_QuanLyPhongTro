@@ -173,9 +173,14 @@ public class NotificationService {
 
             Message message = Message.builder()
                     .setToken(fcmToken)
-                    .setNotification(firebaseNotification) // Hiển thị popup bên ngoài máy
-                    .putData("title", title)               // GỬI THÊM DATA NGẦM ĐỂ ÉP ĐÁNH THỨC FLUTTER
-                    .putData("body", body)                 // GỬI THÊM DATA NGẦM ĐỂ ÉP ĐÁNH THỨC FLUTTER
+                    .setNotification(firebaseNotification)
+                    // 🔴 CẤU HÌNH BẮT BUỘC CHO ANDROID ĐỂ HIỆN BIỂU NGỮ (POP-UP)
+                    .setAndroidConfig(com.google.firebase.messaging.AndroidConfig.builder()
+                            .setPriority(com.google.firebase.messaging.AndroidConfig.Priority.HIGH) // Bắt buộc là HIGH
+                            .setNotification(com.google.firebase.messaging.AndroidNotification.builder()
+                                    .setChannelId("high_importance_channel") // Khớp với ID kênh trong Flutter
+                                    .build())
+                            .build())
                     .build();
 
             String response = FirebaseMessaging.getInstance().send(message);
