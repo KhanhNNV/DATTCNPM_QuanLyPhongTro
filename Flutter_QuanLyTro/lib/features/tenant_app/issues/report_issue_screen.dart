@@ -129,7 +129,7 @@ class ReportIssueScreen extends StatelessWidget {
             onPressed: vm.isLoading
                 ? null
                 : () async {
-                    // Tắt bàn phím
+
                     FocusScope.of(context).unfocus();
 
                     final success = await context

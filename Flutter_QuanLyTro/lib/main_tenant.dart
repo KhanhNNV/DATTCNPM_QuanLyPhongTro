@@ -7,7 +7,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_quanlytro/core/constants/app_colors.dart';
 import 'features/tenant_app/auth/tenant_splash_screen.dart';
 import 'features/tenant_app/main_layout/view_models/tenant_main_layout_view_model.dart';
-// THÊM IMPORT NÀY
 import 'features/landlord_app/notification/view_models/notification_view_model.dart';
 import 'firebase_options.dart';
 
@@ -50,19 +49,14 @@ void main() async {
 
   FirebaseMessaging.onBackgroundMessage(_tenantBackgroundMessageHandler);
 
-  // 4. Lắng nghe FCM khi app đang mở (Foreground)
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     debugPrint("🔵 [Foreground FCM] Khách thuê nhận thông báo: ${message.notification?.title}");
 
-    // ==========================================
-    // 🚀 SỬA TẠI ĐÂY: Tự động cập nhật số chuông & danh sách thông báo
-    // ==========================================
+
     final context = navigatorKey.currentContext;
     if (context != null) {
       final notificationVM = context.read<NotificationViewModel>();
-      // 1. Cập nhật số Badge hiển thị trên chuông
       notificationVM.fetchUnreadCount();
-      // 2. Gọi tải lại danh sách ngầm (không chớp màn hình)
       notificationVM.fetchNotifications(isRefresh: true);
     }
 

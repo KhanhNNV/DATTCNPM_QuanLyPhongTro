@@ -21,7 +21,7 @@ class SignatureScreen extends StatelessWidget {
           backgroundColor: Colors.green,
         ),
       );
-      // Trả về kết quả true để thông báo màn hình trước tải lại thông tin User
+
       Navigator.pop(context, true);
     } else if (vm.errorMessage != null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -36,7 +36,7 @@ class SignatureScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Lắng nghe trạng thái từ SignatureViewModel thông qua Provider
+
     final viewModel = context.watch<SignatureViewModel>();
 
     return Scaffold(

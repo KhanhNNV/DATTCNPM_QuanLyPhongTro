@@ -38,9 +38,6 @@ public class InvoiceService {
     private final CloudinaryService cloudinaryService;
     private final PaymentRepository paymentRepository;
 
-    /**
-     * LÚC 1: CHỦ TRỌ BẤM TẠO BẰNG TAY (API MANUAL)
-     */
     @Transactional
     public InvoiceResponse createInvoice(InvoiceCreateRequest request, UUID currentUserId) {
         LocalDate normalizedPeriod = request.getInvoicePeriod().withDayOfMonth(1);
@@ -54,7 +51,6 @@ public class InvoiceService {
                 .findFirst()
                 .orElseThrow(() -> new RuntimeException("Phòng này hiện không có hợp đồng nào đang thuê hợp lệ!"));
 
-        // Vẫn giữ kiểm tra bảo mật IDOR cho API thủ công
         if (!contract.getRoom().getArea().getLandlord().getId().equals(currentUserId)) {
             throw new RuntimeException("Bạn không có quyền tạo hóa đơn cho khu trọ khác!");
         }
@@ -62,7 +58,6 @@ public class InvoiceService {
         Invoice invoice = generateInvoiceCore(contract, normalizedPeriod);
         return convertToResponse(invoice);
     }
-
 
     @Transactional
     public void autoGenerateMonthlyInvoices(){
@@ -76,7 +71,7 @@ public class InvoiceService {
                 try{
                     LocalDate normalizedPeriod = today.withDayOfMonth(1);
                     if(invoiceRepository.existsByRoomIdAndInvoicePeriod(contract.getRoom().getId(), normalizedPeriod)){
-                    continue;
+                        continue;
                     }
                     generateInvoiceCore(contract, normalizedPeriod);
                 }catch (Exception e){
@@ -85,6 +80,7 @@ public class InvoiceService {
             }
         }
     }
+
     private Invoice generateInvoiceCore(Contract contract, LocalDate normalizedPeriod) {
         Room room = contract.getRoom();
         Area area = room.getArea();
@@ -92,29 +88,20 @@ public class InvoiceService {
         LocalDate today = LocalDate.now();
         int daysToPay = area.getDueDate() != null ? area.getDueDate() : 5;
 
-        // Lấy danh sách dịch vụ của khu trọ
         List<AreaService> areaServices = areaServiceRepository.findByAreaIdAndIsActiveTrue(area.getId());
 
-        // =========================================================================
-        // 1. CHỐT CHẶN: KIỂM TRA ĐIỆN NƯỚC TRƯỚC KHI TẠO HÓA ĐƠN
-        // =========================================================================
         for (AreaService service : areaServices) {
             if (service.getCalcType() == ServiceCalculationType.BY_INDEX) {
-                // Kiểm tra xem tháng này đã chốt số cho dịch vụ này chưa
                 boolean hasReading = meterReadingRepository
                         .findFirstByRoomIdAndServiceIdAndIsInvoicedFalse(room.getId(), service.getId())
                         .isPresent();
 
                 if (!hasReading) {
-                    // Nếu chưa chốt, ném thẳng lỗi, DỪNG NGAY LẬP TỨC, KHÔNG LƯU gì vào DB cả!
                     throw new BadRequestException("Chưa chốt số " + service.getName() + " cho phòng " + room.getRoomNumber() + "!");
                 }
             }
         }
 
-        // =========================================================================
-        // 2. QUA ĐƯỢC CHỐT CHẶN -> BẮT ĐẦU LƯU HÓA ĐƠN
-        // =========================================================================
         Invoice invoice = Invoice.builder()
                 .contract(contract)
                 .room(room)
@@ -124,10 +111,9 @@ public class InvoiceService {
                 .status(InvoiceStatus.UNPAID)
                 .build();
 
-        invoice = invoiceRepository.save(invoice); // Giờ mới lưu cái vỏ hóa đơn nè
+        invoice = invoiceRepository.save(invoice);
         BigDecimal totalAmount = room.getRentPrice();
 
-        // 3. Tính tiền chi tiết (Điện, Nước, Rác, Wifi...)
         for (AreaService service : areaServices) {
             InvoiceDetail detail = InvoiceDetail.builder()
                     .invoice(invoice)
@@ -166,7 +152,6 @@ public class InvoiceService {
 
         invoice.setTotalAmount(totalAmount);
 
-        // 4. Sinh mã VietQR
         User landlord = area.getLandlord();
         if (landlord.getBankId() != null && landlord.getAccountNo() != null && landlord.getAccountName() != null) {
             String content = String.format("P%s THANH TOAN T%d",
@@ -183,11 +168,8 @@ public class InvoiceService {
             invoice.setVietqrUrl(qrUrl);
         }
 
-        invoice = invoiceRepository.save(invoice); // Lưu cập nhật tổng tiền
+        invoice = invoiceRepository.save(invoice);
 
-        // =========================================================================
-        // 5. 🚀 BẮN THÔNG BÁO TỨC THÌ (REAL-TIME) CHO KHÁCH THUÊ
-        // =========================================================================
         String title = "Hóa đơn tháng " + normalizedPeriod.getMonthValue() + " đã có!";
         String content = String.format("Chủ trọ đã chốt hóa đơn phòng %s. Tổng cộng: %,.0f đ. Vui lòng kiểm tra và thanh toán nhé!",
                 room.getRoomNumber(), totalAmount);
@@ -196,7 +178,7 @@ public class InvoiceService {
                 contract.getTenant(),
                 title,
                 content,
-                NotificationType.INVOICE_REMINDER // Ông có thể đổi type khác nếu muốn
+                NotificationType.INVOICE_REMINDER
         );
 
         return invoice;
@@ -213,7 +195,6 @@ public class InvoiceService {
                 .status(invoice.getStatus().name())
                 .build();
     }
-
 
     @Transactional(readOnly = true)
     public InvoiceDetailResponse getInvoiceDetail(UUID invoiceId, UUID currentUserId) {
@@ -240,7 +221,6 @@ public class InvoiceService {
                         .build()
         ).toList();
 
-
         return InvoiceDetailResponse.builder()
                 .id(invoice.getId())
                 .roomNumber(invoice.getRoom().getRoomNumber())
@@ -256,7 +236,6 @@ public class InvoiceService {
 
     @Transactional
     public PaymentQrResponse generateVietQR(UUID invoiceId, UUID currentUserId) {
-
         Invoice invoice = invoiceRepository.findById(invoiceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hóa đơn!"));
 
@@ -301,9 +280,6 @@ public class InvoiceService {
                 .build();
     }
 
-    /**
-     * UC23: GỬI MINH CHỨNG THANH TOÁN (LƯU VÀO BẢNG PAYMENT)
-     */
     @Transactional
     public void uploadPaymentProof(UUID invoiceId, MultipartFile file) {
         Invoice invoice = invoiceRepository.findById(invoiceId)
@@ -313,24 +289,20 @@ public class InvoiceService {
             throw new BadRequestException("Chỉ có thể gửi minh chứng cho hóa đơn chưa thanh toán hoặc quá hạn!");
         }
 
-        // 1. Upload ảnh lên Cloudinary
         String fileUrl = cloudinaryService.uploadFile(file, "payment_proofs");
 
-        // 2. LƯU LỊCH SỬ GIAO DỊCH VÀO BẢNG PAYMENT (Thay vì lưu thẳng vào Invoice)
         Payment payment = Payment.builder()
                 .invoice(invoice)
-                .amount(invoice.getTotalAmount()) // Khách thanh toán toàn bộ số tiền của hóa đơn
+                .amount(invoice.getTotalAmount())
                 .paymentProof(fileUrl)
-                .status(ut.edu.be_quanlytro.Entity.Enum.PaymentStatus.PENDING) // Trạng thái giao dịch chờ duyệt
+                .status(ut.edu.be_quanlytro.Entity.Enum.PaymentStatus.PENDING)
                 .build();
         paymentRepository.save(payment);
 
-        // 3. Cập nhật Invoice sang PENDING để Chủ trọ biết mà vào duyệt
         invoice.setStatus(InvoiceStatus.PENDING);
         invoice.setPaymentProofUrl(fileUrl);
         invoiceRepository.save(invoice);
 
-        // 4. Bắn thông báo
         String title = "Có minh chứng thanh toán mới!";
         String content = "Khách thuê phòng " + invoice.getRoom().getRoomNumber() + " vừa tải lên minh chứng thanh toán. Vui lòng kiểm tra!";
         notificationService.createNotification(
@@ -341,9 +313,6 @@ public class InvoiceService {
         );
     }
 
-    /**
-     * XÁC NHẬN THANH TOÁN (DUYỆT PAYMENT -> APPROVED)
-     */
     @Transactional
     public InvoiceResponse confirmPayment(UUID invoiceId, UUID currentUserId) {
         Invoice invoice = invoiceRepository.findById(invoiceId)
@@ -353,20 +322,16 @@ public class InvoiceService {
             throw new AccessDeniedException("Bạn không có quyền xác nhận thanh toán cho hóa đơn này!");
         }
 
-        // 1. Tìm cái giao dịch đang chờ duyệt của Hóa đơn này
         Payment pendingPayment = paymentRepository.findFirstByInvoiceIdAndStatusOrderByCreatedAtDesc(invoiceId, ut.edu.be_quanlytro.Entity.Enum.PaymentStatus.PENDING)
                 .orElseThrow(() -> new BadRequestException("Không tìm thấy giao dịch nào đang chờ duyệt!"));
 
-        // 2. Chuyển Payment thành APPROVED
         pendingPayment.setStatus(ut.edu.be_quanlytro.Entity.Enum.PaymentStatus.APPROVED);
         paymentRepository.save(pendingPayment);
 
-        // 3. Chuyển Hóa đơn thành PAID
         invoice.setStatus(InvoiceStatus.PAID);
         invoice.setPaidAt(java.time.LocalDateTime.now());
         invoice = invoiceRepository.save(invoice);
 
-        // 4. Gửi thông báo
         String title = "Thanh toán thành công!";
         String content = "Chủ trọ đã xác nhận minh chứng thanh toán cho hóa đơn phòng " + invoice.getRoom().getRoomNumber() + ".";
         notificationService.createNotification(invoice.getContract().getTenant(), title, content, NotificationType.PAYMENT_APPROVED);
@@ -374,9 +339,6 @@ public class InvoiceService {
         return convertToResponse(invoice);
     }
 
-    /**
-     * UC24: TỪ CHỐI MINH CHỨNG (PAYMENT -> REJECTED, KÈM LÝ DO)
-     */
     @Transactional
     public InvoiceResponse rejectPaymentProof(UUID invoiceId, String reason, UUID currentUserId) {
         Invoice invoice = invoiceRepository.findById(invoiceId)
@@ -386,16 +348,13 @@ public class InvoiceService {
             throw new AccessDeniedException("Bạn không có quyền từ chối thanh toán!");
         }
 
-        // 1. Tìm cái giao dịch đang chờ duyệt
         Payment pendingPayment = paymentRepository.findFirstByInvoiceIdAndStatusOrderByCreatedAtDesc(invoiceId, ut.edu.be_quanlytro.Entity.Enum.PaymentStatus.PENDING)
                 .orElseThrow(() -> new BadRequestException("Hóa đơn này không ở trạng thái chờ duyệt minh chứng!"));
 
-        // 2. Đánh dấu giao dịch này là REJECTED và lưu lý do từ chối
         pendingPayment.setStatus(ut.edu.be_quanlytro.Entity.Enum.PaymentStatus.REJECTED);
         pendingPayment.setNote(reason);
         paymentRepository.save(pendingPayment);
 
-        // 3. Tính toán trả Hóa đơn về trạng thái Nợ
         LocalDate today = LocalDate.now();
         if (today.isAfter(invoice.getDueDate())) {
             invoice.setStatus(InvoiceStatus.OVERDUE);
@@ -404,7 +363,6 @@ public class InvoiceService {
         }
         invoice = invoiceRepository.save(invoice);
 
-        // 4. Bắn thông báo
         String title = "Minh chứng thanh toán bị từ chối!";
         String content = String.format("Chủ trọ không duyệt minh chứng phòng %s. Lý do: %s. Vui lòng kiểm tra và gửi lại!",
                 invoice.getRoom().getRoomNumber(), reason);
@@ -413,9 +371,6 @@ public class InvoiceService {
         return convertToResponse(invoice);
     }
 
-    /**
-     * UC27: TỰ ĐỘNG CẬP NHẬT TRẠNG THÁI QUÁ HẠN (OVERDUE)
-     */
     @Transactional
     public void autoUpdateOverdueInvoices() {
         LocalDate today = LocalDate.now();
@@ -425,11 +380,10 @@ public class InvoiceService {
             invoice.setStatus(InvoiceStatus.OVERDUE);
             invoiceRepository.save(invoice);
 
-            // 🚀 LƯU THÔNG BÁO VÀO DATABASE
             String title = "Hóa đơn quá hạn thanh toán!";
             String content = "Hóa đơn phòng " + invoice.getRoom().getRoomNumber() + " đã quá hạn. Vui lòng thanh toán sớm để tránh gián đoạn dịch vụ nhé!";
             notificationService.createNotification(
-                    invoice.getContract().getTenant(), // Gửi cho ai? -> Gửi cho Khách thuê
+                    invoice.getContract().getTenant(),
                     title,
                     content,
                     NotificationType.INVOICE_OVERDUE
@@ -439,21 +393,17 @@ public class InvoiceService {
         }
     }
 
-    /**
-     * UC26: TỰ ĐỘNG NHẮC NỢ HÀNG THÁNG
-     */
     @Transactional
     public void autoRemindMonthlyDebts() {
         LocalDate today = LocalDate.now();
         List<Invoice> remindInvoices = invoiceRepository.findByStatusAndDueDate(InvoiceStatus.UNPAID, today.plusDays(1));
 
         for (Invoice invoice : remindInvoices) {
-            // 🚀 LƯU THÔNG BÁO VÀO DATABASE
             String title = "Nhắc nhở hạn chót thanh toán";
             String content = "Ngày mai là hạn chót đóng tiền phòng " + invoice.getRoom().getRoomNumber()
                     + " (Tổng: " + invoice.getTotalAmount() + "đ). Bạn nhớ thanh toán nhé!";
             notificationService.createNotification(
-                    invoice.getContract().getTenant(), // Gửi cho Khách thuê
+                    invoice.getContract().getTenant(),
                     title,
                     content,
                     NotificationType.INVOICE_REMINDER
@@ -463,30 +413,20 @@ public class InvoiceService {
         }
     }
 
-    /**
-     * API: Lấy danh sách TOÀN BỘ hóa đơn của Chủ Trọ
-     */
     @Transactional(readOnly = true)
     public List<InvoiceResponse> getAllInvoicesForLandlord(UUID currentUserId) {
-
         List<Invoice> invoices = invoiceRepository.findByRoomAreaLandlordIdOrderByInvoicePeriodDesc(currentUserId);
 
         return invoices.stream()
                 .map(this::convertToResponse)
                 .toList();
     }
-    /**
-     * API: Lấy danh sách TOÀN BỘ hóa đơn của Chủ Trọ (Có phân trang & lọc Status + Area chuẩn Enterprise)
-     */
-    @Transactional(readOnly = true)
-    // 🎯 SỬA Ở ĐÂY: Thêm biến UUID areaId vào tham số hàm
-    public PageResponse<InvoiceResponse> getAllInvoicesForLandlord(UUID currentUserId, UUID areaId, InvoiceStatus status, int page, int size) {
 
-        // 1. Phân trang
+    @Transactional(readOnly = true)
+    public PageResponse<InvoiceResponse> getAllInvoicesForLandlord(UUID currentUserId, UUID areaId, InvoiceStatus status, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Invoice> invoicePage;
 
-        // 2. 🎯 SỬA Ở ĐÂY: Xử lý 4 trường hợp tổ hợp bộ lọc (Khu trọ + Trạng thái)
         if (areaId != null && status != null) {
             invoicePage = invoiceRepository.findByRoomAreaLandlordIdAndRoomAreaIdAndStatusOrderByInvoicePeriodDesc(currentUserId, areaId, status, pageable);
         } else if (areaId != null) {
@@ -497,12 +437,10 @@ public class InvoiceService {
             invoicePage = invoiceRepository.findByRoomAreaLandlordIdOrderByInvoicePeriodDesc(currentUserId, pageable);
         }
 
-        // 3. Map sang DTO
         List<InvoiceResponse> content = invoicePage.getContent().stream()
                 .map(this::convertToResponse)
                 .toList();
 
-        // 4. Bọc vào PageResponse
         return PageResponse.<InvoiceResponse>builder()
                 .content(content)
                 .pageNumber(invoicePage.getNumber())
@@ -512,28 +450,22 @@ public class InvoiceService {
                 .isLast(invoicePage.isLast())
                 .build();
     }
-    /**
-     * API: Khách thuê lấy danh sách hóa đơn của chính mình
-     */
+
     @Transactional(readOnly = true)
     public PageResponse<InvoiceResponse> getMyInvoices(UUID tenantId, InvoiceStatus status, int page, int size) {
-
         Pageable pageable = PageRequest.of(page, size);
         Page<Invoice> invoicePage;
 
-        // Gọi Repository của Khách thuê
         if (status != null) {
             invoicePage = invoiceRepository.findByContractTenantIdAndStatusOrderByInvoicePeriodDesc(tenantId, status, pageable);
         } else {
             invoicePage = invoiceRepository.findByContractTenantIdOrderByInvoicePeriodDesc(tenantId, pageable);
         }
 
-        // Map sang DTO
         List<InvoiceResponse> content = invoicePage.getContent().stream()
                 .map(this::convertToResponse)
                 .toList();
 
-        // Bọc vào PageResponse
         return PageResponse.<InvoiceResponse>builder()
                 .content(content)
                 .pageNumber(invoicePage.getNumber())

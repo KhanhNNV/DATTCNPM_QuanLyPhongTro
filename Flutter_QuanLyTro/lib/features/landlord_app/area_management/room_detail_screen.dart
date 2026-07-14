@@ -191,7 +191,6 @@ class RoomDetailScreen extends StatelessWidget {
     );
   }
 
-  // --- WIDGET TIỆN ÍCH DÙNG CHO HỘP THOẠI ---
   Widget _buildDialogTextField(TextEditingController controller, String label, {TextInputType type = TextInputType.text}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
@@ -237,7 +236,6 @@ class RoomDetailScreen extends StatelessWidget {
                     builder: (context, value, child) {
                       final bool isHint = value.text.isEmpty;
 
-                      // Chuyển đổi định dạng yyyy-MM-dd sang dd/MM/yyyy chỉ để hiển thị
                       String displayDate = value.text;
                       if (!isHint) {
                         try {
@@ -250,7 +248,7 @@ class RoomDetailScreen extends StatelessWidget {
 
                       return InkWell(
                         onTap: () async {
-                          DateTime initialDate = DateTime(2000); // Mặc định mở ở năm 2000 cho dễ chọn tuổi
+                          DateTime initialDate = DateTime(2000);
                           if (!isHint) {
                             try {
                               initialDate = DateFormat('yyyy-MM-dd').parse(value.text);
@@ -265,7 +263,7 @@ class RoomDetailScreen extends StatelessWidget {
                           );
 
                           if (pickedDate != null) {
-                            // Ghi đè vào controller (Định dạng yyyy-MM-dd để đẩy lên Backend)
+                            
                             vm.dobController.text = DateFormat('yyyy-MM-dd').format(pickedDate);
                           }
                         },

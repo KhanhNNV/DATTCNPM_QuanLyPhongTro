@@ -36,14 +36,14 @@ class TenantMainDrawer extends StatelessWidget {
             title: const Text('Cài đặt'),
             onTap: () {
               Navigator.pop(context);
-              // TODO: Điều hướng sang màn Settings của Khách thuê
+
             },
           ),
 
           const Spacer(),
           const Divider(),
 
-          // Nút Đăng xuất
+
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.redAccent),
             title: const Text(
@@ -51,17 +51,14 @@ class TenantMainDrawer extends StatelessWidget {
               style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.w600),
             ),
             onTap: () async {
-              // Lưu lại Navigator và ViewModel trước khi context của Drawer bị hủy
+
               final navigator = Navigator.of(context);
               final viewModel = Provider.of<TenantMainLayoutViewModel>(context, listen: false);
 
-              // Đóng Drawer ngay lập tức để phản hồi UI mượt mà
               navigator.pop();
 
-              // Chờ ViewModel xử lý logic gọi API và dọn dẹp RAM + Token
               await viewModel.logout();
 
-              // Dùng navigator đã lưu để chuyển ra màn Đăng nhập và xóa sạch lịch sử
               navigator.pushAndRemoveUntil(
                 MaterialPageRoute(builder: (_) => const TenantLoginScreen()),
                     (route) => false,

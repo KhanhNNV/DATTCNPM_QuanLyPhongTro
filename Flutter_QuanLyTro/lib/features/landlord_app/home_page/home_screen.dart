@@ -56,7 +56,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // --- DANH SÁCH CHỨC NĂNG: THAO TÁC THƯỜNG DÙNG ---
+
   List<QuickActionItem> _getQuickActions(BuildContext context, String? currentAreaId) {
     return [
       QuickActionItem(
@@ -115,7 +115,6 @@ class _HomeScreenState extends State<HomeScreen> {
             context,
             MaterialPageRoute(
               builder: (_) => ChangeNotifierProvider(
-                // Khởi tạo ViewModel, truyền areaId và load danh sách hợp đồng ngay lập tức
                 create: (_) => ContractTerminationViewModel(areaId: currentAreaId)..fetchActiveContracts(),
                 child: const ContractTerminationScreen(),
               ),
@@ -173,7 +172,6 @@ class _HomeScreenState extends State<HomeScreen> {
     ];
   }
 
-  // --- DANH SÁCH CHỨC NĂNG: MENU QUẢN LÝ NHÀ TRỌ ---
   List<QuickActionItem> _getManagementMenu(BuildContext context, HomeViewModel homeViewModel,String? currentAreaId) {
     return [
       QuickActionItem(
@@ -320,7 +318,6 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final currentAreaId = widget.selectedAreaId;
 
-    // Watch HomeViewModel để lấy dữ liệu số lượng sự cố (badge)
     final homeViewModel = context.watch<HomeViewModel>();
 
     final quickActions = _getQuickActions(context, currentAreaId);
@@ -334,7 +331,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- SECTION 1: THAO TÁC THƯỜNG DÙNG ---
             _buildSectionHeader(
               title: 'Thao tác thường dùng',
               subtitle: 'Thực hiện tác vụ nhanh để quản lý...',
@@ -344,7 +340,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const SizedBox(height: 24),
 
-            // --- SECTION 2: MENU QUẢN LÝ NHÀ TRỌ ---
             _buildSectionHeader(
               title: 'Menu quản lý nhà trọ',
               subtitle: 'Quản lý đối tượng nghiệp vụ trong...',

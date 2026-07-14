@@ -31,7 +31,7 @@ class TenantListViewModel extends ChangeNotifier {
   Future<bool> updateTenant(String userId, UserUpdateRequest request) async {
     try {
       final updatedUser = await _userRepo.updateUser(userId, request);
-      // Cập nhật lại danh sách trên UI
+
       final index = tenants.indexWhere((t) => t.id == userId);
       if (index != -1) {
         tenants[index] = updatedUser;

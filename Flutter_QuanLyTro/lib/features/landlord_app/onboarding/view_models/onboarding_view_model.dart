@@ -12,19 +12,19 @@ class OnboardingViewModel extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
-  // --- 1. STATE THÔNG TIN KHU TRỌ ---
+
   final TextEditingController nameController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
   int invoiceDay = 1;
   int dueDate = 5;
 
-  // --- 2. STATE PHÒNG MẪU ---
+
   final TextEditingController areaSizeController = TextEditingController();
   final TextEditingController rentPriceController = TextEditingController();
   final TextEditingController depositController = TextEditingController();
   final TextEditingController maxOccupantsController = TextEditingController();
 
-  // --- 3. STATE DỊCH VỤ ---
+
   final List<AppServiceItem> services = [
     AppServiceItem(name: 'Điện', calcType: ServiceCalculationType.byIndex),
     AppServiceItem(name: 'Nước', calcType: ServiceCalculationType.byIndex),
@@ -32,12 +32,12 @@ class OnboardingViewModel extends ChangeNotifier {
     AppServiceItem(name: 'Wifi', calcType: ServiceCalculationType.perRoom),
   ];
 
-  // --- 4. STATE TẦNG ĐỘNG ---
+
   final TextEditingController floorCountController = TextEditingController();
   int floorCount = 0;
   final List<TextEditingController> roomsPerFloorControllers = [];
 
-  // --- CÁC HÀM CẬP NHẬT TRẠNG THÁI ---
+
   void updateInvoiceDay(int day) {
     invoiceDay = day;
     notifyListeners();
@@ -72,8 +72,7 @@ class OnboardingViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- HÀM XỬ LÝ GỬI DỮ LIỆU ---
-  // Trả về AreaModel nếu thành công, null nếu thất bại để UI tự điều hướng
+
   Future<AreaModel?> submitOnboarding() async {
     if (nameController.text.trim().isEmpty || addressController.text.trim().isEmpty) {
       _errorMessage = 'Vui lòng nhập tên và địa chỉ khu trọ.';

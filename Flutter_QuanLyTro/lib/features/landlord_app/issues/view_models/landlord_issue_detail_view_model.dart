@@ -5,7 +5,6 @@ import '../../../../data/repository/issue_repository.dart';
 class LandlordIssueDetailViewModel extends ChangeNotifier {
   final IssueRepository _repository = IssueRepository();
 
-  // Biến lưu trữ sự cố hiện tại
   IssueResponse currentIssue;
 
   bool _isLoading = false;
@@ -14,7 +13,6 @@ class LandlordIssueDetailViewModel extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
-  // Biến cờ để báo cho màn List biết có cần refresh không khi back lại
   bool hasChanged = false;
 
   LandlordIssueDetailViewModel({required this.currentIssue});
@@ -25,14 +23,13 @@ class LandlordIssueDetailViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Gọi API cập nhật
       final updatedIssue = await _repository.updateIssueStatus(
         issueId: currentIssue.id,
         status: newStatus,
         solutionNote: note,
       );
 
-      // Cập nhật lại đối tượng currentIssue, UI sẽ tự động build lại theo data này
+
       currentIssue = updatedIssue;
       hasChanged = true;
       return true;

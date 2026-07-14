@@ -5,11 +5,10 @@ import '../../../../data/repository/issue_repository.dart';
 class TenantIssueListViewModel extends ChangeNotifier {
   final IssueRepository _repository = IssueRepository();
 
-  // --- QUẢN LÝ DỮ LIỆU ---
+
   List<IssueResponse> _issues = [];
   List<IssueResponse> get issues => _issues;
 
-  // --- TRẠNG THÁI UI ---
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
@@ -22,12 +21,12 @@ class TenantIssueListViewModel extends ChangeNotifier {
   String? _selectedStatus;
   String? get selectedStatus => _selectedStatus;
 
-  // --- PHÂN TRANG BAN ĐẦU ---
+
   int _currentPage = 0;
   final int _pageSize = 10;
   bool _isLastPage = false;
 
-  // Bản đồ map trạng thái Backend với ngôn ngữ hiển thị UI
+
   final Map<String?, String> statusMap = {
     null: 'Tất cả',
     'PENDING': 'Chờ xử lý',
@@ -35,7 +34,6 @@ class TenantIssueListViewModel extends ChangeNotifier {
     'COMPLETED': 'Đã hoàn thành',
   };
 
-  // --- HÀM TẢI DỮ LIỆU ---
   Future<void> fetchIssues({bool isRefresh = false}) async {
     if (isRefresh) {
       _currentPage = 0;
@@ -45,7 +43,7 @@ class TenantIssueListViewModel extends ChangeNotifier {
       _issues = [];
       notifyListeners();
     } else {
-      // Nếu đã ở trang cuối hoặc đang kéo tải thêm thì chặn lại không gọi trùng lặp
+
       if (_isLastPage || _isFetchingMore) return;
       _isFetchingMore = true;
       notifyListeners();

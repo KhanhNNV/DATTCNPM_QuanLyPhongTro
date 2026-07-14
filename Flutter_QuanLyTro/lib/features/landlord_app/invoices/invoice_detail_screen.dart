@@ -116,7 +116,6 @@ class InvoiceDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // CHI TIẾT DỊCH VỤ SỬ DỤNG
           const Text(
             'Chi tiết dịch vụ',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -124,7 +123,7 @@ class InvoiceDetailScreen extends StatelessWidget {
           const SizedBox(height: 8),
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            clipBehavior: Clip.antiAlias, // Để bo góc table
+            clipBehavior: Clip.antiAlias,
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
@@ -137,7 +136,7 @@ class InvoiceDetailScreen extends StatelessWidget {
                   DataColumn(label: Text('Thành tiền', style: TextStyle(fontWeight: FontWeight.bold))),
                 ],
                 rows: detail.items.map((item) {
-                  // Hiển thị chỉ số cũ - mới nếu có (Điện/Nước)
+
                   String indexDisplay = (item.oldIndex != null && item.newIndex != null)
                       ? '${item.oldIndex} -> ${item.newIndex}'
                       : '-';
@@ -155,7 +154,7 @@ class InvoiceDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // TỔNG TIỀN
+
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -265,7 +264,6 @@ class InvoiceDetailScreen extends StatelessWidget {
           ),
           actionsAlignment: isPending ? MainAxisAlignment.spaceEvenly : MainAxisAlignment.end,
 
-          // Nếu là PENDING thì hiện Từ chối, Xác nhận, ngược lại chỉ hiện Đóng
           actions: isPending
               ? [
             OutlinedButton(
@@ -312,7 +310,7 @@ class InvoiceDetailScreen extends StatelessWidget {
     );
   }
 
-  // --- Dialog nhập lý do từ chối ---
+
   void _showRejectDialog(BuildContext context, InvoiceDetailViewModel vm, String invoiceId) {
     final TextEditingController reasonController = TextEditingController();
 
@@ -348,7 +346,7 @@ class InvoiceDetailScreen extends StatelessWidget {
 
                 Navigator.pop(ctx);
 
-                // Gọi API từ chối
+
                 String? errorMsg = await vm.rejectPayment(invoiceId, reason);
 
                 if (context.mounted) {
@@ -356,7 +354,7 @@ class InvoiceDetailScreen extends StatelessWidget {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Đã từ chối thanh toán.', style: TextStyle(color: Colors.white)), backgroundColor: Colors.green),
                     );
-                  } else { // Thất bại
+                  } else {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
                     );

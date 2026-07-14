@@ -7,14 +7,13 @@ import '../../../../data/repository/user_repository.dart';
 class SettingsViewModel extends ChangeNotifier {
   final UserRepository _userProvider = UserRepository();
 
-  // Controllers Thông tin cá nhân
+
   final fullNameController = TextEditingController();
   final phoneController = TextEditingController();
   final passwordController = TextEditingController();
   final hometownController = TextEditingController();
   DateTime? selectedDob;
 
-  // Controllers Thông tin ngân hàng
   final bankIdController = TextEditingController();
   final accountNoController = TextEditingController();
   final accountNameController = TextEditingController();
@@ -32,7 +31,7 @@ class SettingsViewModel extends ChangeNotifier {
       currentUser = await _userProvider.getCurrentUser();
 
       if (currentUser != null) {
-        // Gán dữ liệu Cá nhân
+
         fullNameController.text = currentUser!.fullName ?? '';
         phoneController.text = currentUser!.phone ?? '';
         hometownController.text = currentUser!.hometown ?? '';
@@ -41,7 +40,7 @@ class SettingsViewModel extends ChangeNotifier {
           selectedDob = DateTime.tryParse(currentUser!.dob!);
         }
 
-        // Gán dữ liệu Ngân hàng (Yêu cầu UserModel phải có các field này)
+
         bankIdController.text = currentUser!.bankId ?? '';
         accountNoController.text = currentUser!.accountNo ?? '';
         accountNameController.text = currentUser!.accountName ?? '';
@@ -100,7 +99,7 @@ class SettingsViewModel extends ChangeNotifier {
     }
   }
 
-  // --- CẬP NHẬT NGÂN HÀNG ---
+
   Future<bool> updateBankInfo() async {
     isLoading = true;
     errorMessage = null;
@@ -115,7 +114,7 @@ class SettingsViewModel extends ChangeNotifier {
 
       await _userProvider.updateBankInfo(request);
 
-      // Load lại user để lấy thông tin mới nhất
+
       await fetchCurrentUser();
 
       isLoading = false;

@@ -49,20 +49,18 @@ class DepositListScreen extends StatelessWidget {
           );
 
 
-          //bắt kết quả trả về từ Navigator.push
           if (context.mounted) {
             if (result is DepositResponse) {
-              // Nếu trang Tạo mới trả về object -> Thêm luôn vào List
               context.read<DepositListViewModel>().addLocalDeposit(result);
             } else if (result == true) {
-              // Fallback an toàn (trường hợp form chỉ trả về true)
+
               context.read<DepositListViewModel>().fetchDeposits(areaId);
             }
           }
         },
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      // Bọc _buildBody trong Column để chứa cả phần Search & Filter
+
       body: Column(
         children: [
           _buildSearchAndFilter(context, vm),
@@ -79,7 +77,7 @@ class DepositListScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Thanh tìm kiếm
+
           TextField(
             onChanged: vm.onSearchChanged,
             decoration: InputDecoration(
@@ -95,7 +93,7 @@ class DepositListScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          // Thanh chọn trạng thái
+
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -147,7 +145,7 @@ class DepositListScreen extends StatelessWidget {
       );
     }
 
-    // Đổi kiểm tra vm.deposits sang vm.displayedDeposits
+
     if (vm.displayedDeposits.isEmpty) {
       return const Center(
         child: Text('Không tìm thấy phiếu đặt cọc nào.', style: TextStyle(color: Colors.grey)),
@@ -174,16 +172,13 @@ class DepositListScreen extends StatelessWidget {
               ),
             );
 
-            // xử lý kết quả trả về từ màn detail
+
             if (context.mounted && result != null) {
               if (result == 'deleted') {
-                // Nếu báo đã xóa -> Xóa cục bộ
                 context.read<DepositListViewModel>().deleteLocalDeposit(deposit.id);
               } else if (result is DepositResponse) {
-                // Nếu trả về object -> Cập nhật cục bộ
                 context.read<DepositListViewModel>().updateLocalDeposit(result);
               } else if (result == true) {
-                // Fallback an toàn
                 context.read<DepositListViewModel>().fetchDeposits(areaId);
               }
             }

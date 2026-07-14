@@ -8,7 +8,7 @@ class TenantInvoiceDetailViewModel extends ChangeNotifier {
   bool isLoading = true;
   String? errorMessage;
   InvoiceDetailResponse? invoiceDetail;
-  bool isPaying = false; // Trạng thái khi đang gọi API thanh toán
+  bool isPaying = false;
 
   Future<void> fetchInvoiceDetail(String id) async {
     try {

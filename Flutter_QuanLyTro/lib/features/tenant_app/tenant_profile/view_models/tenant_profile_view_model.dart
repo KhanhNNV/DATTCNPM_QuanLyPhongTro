@@ -7,7 +7,6 @@ import '../../../../data/repository/user_repository.dart';
 class TenantProfileViewModel extends ChangeNotifier {
   final UserRepository _userRepo = UserRepository();
 
-  // Trạng thái chung
   bool isFetching = true;
   bool isUpdatingProfile = false;
   bool isUpdatingPassword = false;
@@ -15,14 +14,12 @@ class TenantProfileViewModel extends ChangeNotifier {
 
   UserModel? currentUser;
 
-  // Controllers: Thông tin cá nhân
   final TextEditingController fullNameController = TextEditingController();
   final TextEditingController phoneController = TextEditingController();
   final TextEditingController hometownController = TextEditingController();
   final TextEditingController idCardController = TextEditingController();
   DateTime? selectedDob;
 
-  // Controllers: Đổi mật khẩu
   final TextEditingController oldPasswordController = TextEditingController();
   final TextEditingController newPasswordController = TextEditingController();
   final TextEditingController confirmPasswordController = TextEditingController();
@@ -35,7 +32,6 @@ class TenantProfileViewModel extends ChangeNotifier {
     try {
       currentUser = await _userRepo.getCurrentUser();
 
-      // Gán dữ liệu vào Controller
       fullNameController.text = currentUser?.fullName ?? '';
       phoneController.text = currentUser?.phone ?? '';
       hometownController.text = currentUser?.hometown ?? '';
@@ -76,7 +72,6 @@ class TenantProfileViewModel extends ChangeNotifier {
 
     try {
       await _userRepo.changePassword(oldPass, newPass);
-      // Xóa trắng trường mật khẩu sau khi đổi thành công
       oldPasswordController.clear();
       newPasswordController.clear();
       confirmPasswordController.clear();
@@ -90,7 +85,6 @@ class TenantProfileViewModel extends ChangeNotifier {
     }
   }
 
-  // Tiện ích: Chọn ngày sinh
   void updateDob(DateTime date) {
     selectedDob = date;
     notifyListeners();

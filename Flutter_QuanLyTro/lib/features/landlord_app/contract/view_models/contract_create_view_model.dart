@@ -124,9 +124,6 @@ class ContractCreateViewModel extends ChangeNotifier {
     try {
       ContractCreateResponse contractResponse;
 
-      // ==========================================
-      // BƯỚC 1: CREATE HỢP ĐỒNG (Gọi API)
-      // ==========================================
       if (_isOcrMode) {
         if (_frontImage == null || _backImage == null) {
           throw Exception("Vui lòng chụp/chọn đầy đủ 2 mặt CCCD!");
@@ -163,9 +160,7 @@ class ContractCreateViewModel extends ChangeNotifier {
         contractResponse = await _contractRepo.createContractManual(request);
       }
 
-      // ==========================================
-      // BƯỚC 2: GET THÔNG TIN HỢP ĐỒNG & TEMPLATE
-      // ==========================================
+
       try {
         final contractId = contractResponse.contractId;
 
@@ -179,17 +174,11 @@ class ContractCreateViewModel extends ChangeNotifier {
 
         final areaDetail = await _areaRepo.getAreaById(_currentAreaId!);
 
-        // ==========================================
-        // BƯỚC 3: TẠO PDF TỪ DỮ LIỆU ĐÃ LẤY VÀ REPLACE CHUỖI
-        // ==========================================
-
-        // 1. Tính toán thời hạn thuê (Tháng)
         int durationMonths = 0;
         if (startDate != null && endDate != null) {
           durationMonths = (endDate!.difference(startDate!).inDays / 30).round();
         }
 
-        // 2. Lấy ngày thanh toán hàng tháng
         int paymentDay = areaDetail.invoiceDay ?? 1;
 
         final pdfBytes = await ContractPdfService.generateContractPdf(
@@ -208,7 +197,6 @@ class ContractCreateViewModel extends ChangeNotifier {
           tenantIdCard: contractDetail.tenantIdCardNumber,
           tenantAddress: contractDetail.tenantHometown,
 
-          // Dữ liệu dùng để replace
           roomNumber: contractDetail.roomNumber,
           roomAddress: areaDetail.address,
           rentPrice: contractDetail.rentPrice,
@@ -224,9 +212,7 @@ class ContractCreateViewModel extends ChangeNotifier {
           landlordSignatureUrl: contractDetail.landlordSignatureUrl ?? "",
         );
 
-        // ==========================================
-        // BƯỚC 4: UPLOAD PDF LÊN SERVER
-        // ==========================================
+
         final tempDir = await getTemporaryDirectory();
         final tempFile = File('${tempDir.path}/hop_dong_$contractId.pdf');
         await tempFile.writeAsBytes(pdfBytes);

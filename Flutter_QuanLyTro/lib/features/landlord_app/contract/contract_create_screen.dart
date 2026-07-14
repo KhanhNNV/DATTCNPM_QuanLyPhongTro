@@ -104,7 +104,6 @@ class ContractCreateScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // TABS CHUYỂN ĐỔI CHẾ ĐỘ
                     Container(
                       decoration: BoxDecoration(
                         color: Colors.grey[200],
@@ -146,7 +145,6 @@ class ContractCreateScreen extends StatelessWidget {
                     const Text('Thông tin phòng thuê', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primary)),
                     const SizedBox(height: 16),
 
-                    // DROPDOWN CHỌN PHÒNG
                     if (vm.isFetchingRooms)
                       const Center(child: Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator()))
                     else
@@ -192,7 +190,6 @@ class ContractCreateScreen extends StatelessWidget {
                     _buildTextField(vm.phoneController, 'SĐT Khách Thuê', isPhone: true),
 
                     if (vm.isOcrMode) ...[
-                      // Trường ID Mẫu Hợp Đồng cũ tại đây đã được loại bỏ hoàn toàn
                       const Text('Ảnh mặt trước & mặt sau CCCD (Bắt buộc)', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Colors.black87)),
                       const SizedBox(height: 12),
                       Row(

@@ -33,12 +33,12 @@ public class MeterReadingService {
     private final RoomRepository roomRepository;
     private final AreaServiceRepository areaServiceRepository;
     private final UserRepository userRepository;
+
     @Transactional
     public MeterReading createMeterReading(MeterReadingCreateRequest request, UUID currentUserId){
         Room room = roomRepository.findById(request.getRoomId())
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phòng!"));
 
-        //  Kiểm tra xem phòng này có thuộc quyền sở hữu của Chủ trọ đang gọi API không
         if (!room.getArea().getLandlord().getId().equals(currentUserId)) {
             throw new AccessDeniedException("Bạn không có quyền chốt số cho phòng của khu trọ khác!");
         }
@@ -73,15 +73,14 @@ public class MeterReadingService {
         return meterReadingRepository.save(newReading);
     }
 
-    // gop tinh dien nuoc....
     @Transactional
     public List<MeterReading> createBulkMeterReading(List<MeterReadingCreateRequest> requests, UUID currentUserId) {
         List<MeterReading> savedReadings = new ArrayList<>();
-       for (MeterReadingCreateRequest request : requests) {
-           MeterReading saved = this.createMeterReading(request, currentUserId);
-           savedReadings.add(saved);
-       }
-       return savedReadings;
+        for (MeterReadingCreateRequest request : requests) {
+            MeterReading saved = this.createMeterReading(request, currentUserId);
+            savedReadings.add(saved);
+        }
+        return savedReadings;
     }
 
     @Transactional
@@ -109,12 +108,13 @@ public class MeterReadingService {
 
         return savedReading;
     }
+
     @Transactional
-    public List<MeterReading> updateBulkMeterReadings(List<MeterReadingBulkUpdateRequest> requests, UUID currentUserId) { // THÊM THAM SỐ ID
+    public List<MeterReading> updateBulkMeterReadings(List<MeterReadingBulkUpdateRequest> requests, UUID currentUserId) {
         List<MeterReading> updatedReadings = new ArrayList<>();
 
         for (MeterReadingBulkUpdateRequest request : requests) {
-            MeterReading updated = this.updateMeterReading(request.getId(), request.getNewIndex(), currentUserId); // Truyền ID vào
+            MeterReading updated = this.updateMeterReading(request.getId(), request.getNewIndex(), currentUserId);
             updatedReadings.add(updated);
         }
 
@@ -122,7 +122,7 @@ public class MeterReadingService {
     }
 
     @Transactional(readOnly = true)
-    public List<MeterReadingResponse> getReadingsByRoomAndMonth(UUID roomId, LocalDate month, UUID currentUserId) { // THÊM THAM SỐ ID
+    public List<MeterReadingResponse> getReadingsByRoomAndMonth(UUID roomId, LocalDate month, UUID currentUserId) {
         Room room = roomRepository.findById(roomId)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy phòng!"));
 

@@ -42,12 +42,12 @@ class _TenantIssueListScreenState extends State<TenantIssueListScreen> {
           Expanded(child: _buildBody(vm)),
         ],
       ),
-      // --- NÚT DẤU CỘNG THÊM MỚI SỰ CỐ ---
+
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
         child: const Icon(Icons.add, color: Colors.white, size: 28),
         onPressed: () async {
-          // Điều hướng sang màn hình gửi báo cáo và chờ kết quả trả về
+
           final bool? isSuccess = await Navigator.push<bool>(
             context,
             MaterialPageRoute(
@@ -58,7 +58,7 @@ class _TenantIssueListScreenState extends State<TenantIssueListScreen> {
             ),
           );
 
-          // Nếu gửi sự cố thành công, tự động làm mới danh sách
+
           if (isSuccess == true && mounted) {
             context.read<TenantIssueListViewModel>().fetchIssues(isRefresh: true);
           }
@@ -67,7 +67,7 @@ class _TenantIssueListScreenState extends State<TenantIssueListScreen> {
     );
   }
 
-  /// Bộ lọc trạng thái
+
   Widget _buildFilterChips(TenantIssueListViewModel vm) {
     return Container(
       color: Colors.white,
@@ -100,7 +100,7 @@ class _TenantIssueListScreenState extends State<TenantIssueListScreen> {
     );
   }
 
-  /// Khối nội dung quản lý phân trang danh sách sự cố
+
   Widget _buildBody(TenantIssueListViewModel vm) {
     return CustomPaginatedList<IssueResponse>(
       items: vm.issues,
@@ -113,7 +113,7 @@ class _TenantIssueListScreenState extends State<TenantIssueListScreen> {
     );
   }
 
-  /// Khung hiển thị chi tiết thẻ sự cố
+
   Widget _buildIssueCard(BuildContext context, IssueResponse issue) {
     final statusColor = _getStatusColor(issue.status);
     final statusText = _getStatusText(issue.status);

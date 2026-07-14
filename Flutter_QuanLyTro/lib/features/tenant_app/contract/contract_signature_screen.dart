@@ -21,7 +21,7 @@ class ContractSignatureScreen extends StatelessWidget {
           backgroundColor: Colors.green,
         ),
       );
-      // Ký xong trả về true để màn hình trước tải lại
+
       Navigator.pop(context, true);
     } else if (vm.errorMessage != null) {
       ScaffoldMessenger.of(context).showSnackBar(

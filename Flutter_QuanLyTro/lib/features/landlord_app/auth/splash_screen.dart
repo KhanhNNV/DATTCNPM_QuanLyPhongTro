@@ -27,19 +27,16 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAuthentication() async {
-    // Chờ 1 khoảng ngắn để tránh việc màn hình bị nháy quá nhanh
+
     await Future.delayed(const Duration(seconds: 1));
 
-    // Lấy accessToken từ Secure Storage
     final token = await TokenManager.getAccessToken();
 
-    // ko có Token -> Chuyển sang trang chào mừng
     if (token == null) {
       _navigateToWelcome();
       return;
     }
 
-    // Trường hợp CÓ Token -> Gọi API check xem còn hạn không
     try {
       await _userProvider.getCurrentUser();
       _navigateToHome();
@@ -60,22 +57,18 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void _navigateToHome() {
     if (mounted) {
-      // 1. Lấy dữ liệu khu trọ
       context.read<MainLayoutViewModel>().fetchInitialData();
 
-      // 2. Lấy số lượng chuông chưa đọc
       context.read<NotificationViewModel>().fetchUnreadCount();
 
-      // 3. Tải sẵn danh sách thông báo
       context.read<NotificationViewModel>().fetchNotifications(isRefresh: true);
 
-      // Chuyển hướng sang màn Main Layout
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(
           builder: (context) => const MainLayoutScreen(),
         ),
-            (route) => false, // Dọn sạch ngăn xếp
+            (route) => false,
       );
     }
   }

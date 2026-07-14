@@ -22,7 +22,6 @@ class ContractTerminationViewModel extends ChangeNotifier {
   String? _selectedContractId;
   String? get selectedContractId => _selectedContractId;
 
-  // Controllers được quản lý hoàn toàn ở ViewModel
   final TextEditingController electricityController = TextEditingController();
   final TextEditingController waterController = TextEditingController();
 
@@ -33,7 +32,6 @@ class ContractTerminationViewModel extends ChangeNotifier {
     super.dispose();
   }
 
-  /// Lấy danh sách hợp đồng đang ký để chọn thanh lý
   Future<void> fetchActiveContracts() async {
     _isLoading = true;
     _errorMessage = null;
@@ -41,7 +39,6 @@ class ContractTerminationViewModel extends ChangeNotifier {
 
     try {
       final contracts = await _contractRepository.getMyContracts(areaId);
-      // Chỉ lấy các hợp đồng có trạng thái SIGNED
       _activeContracts = contracts.where((c) => c.status == 'SIGNED').toList();
     } catch (e) {
       _errorMessage = e.toString().replaceAll('Exception: ', '');
@@ -56,7 +53,6 @@ class ContractTerminationViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Thực hiện thanh lý
   Future<ContractTerminationResponse?> submitTermination() async {
     if (_selectedContractId == null) {
       _errorMessage = 'Vui lòng chọn phòng/hợp đồng cần thanh lý';
@@ -79,12 +75,10 @@ class ContractTerminationViewModel extends ChangeNotifier {
 
       final response = await _contractRepository.terminateContract(_selectedContractId!, request);
 
-      // Xóa form sau khi thành công
       _selectedContractId = null;
       electricityController.clear();
       waterController.clear();
 
-      // Load lại danh sách hợp đồng còn lại
       await fetchActiveContracts();
 
       return response;

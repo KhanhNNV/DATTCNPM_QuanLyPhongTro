@@ -11,13 +11,13 @@ class TenantInvoiceListViewModel extends ChangeNotifier {
 
   List<InvoiceResponse> invoices = [];
 
-  // Phân trang
+
   int currentPage = 0;
   int totalPages = 1;
   final int pageSize = 10;
   bool get hasMore => currentPage < totalPages - 1;
 
-  // Trạng thái lọc
+
   String selectedStatus = 'ALL';
 
   final Map<String, String> statusMap = {
