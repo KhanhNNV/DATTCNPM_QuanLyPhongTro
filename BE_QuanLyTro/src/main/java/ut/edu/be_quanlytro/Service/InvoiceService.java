@@ -476,17 +476,22 @@ public class InvoiceService {
                 .toList();
     }
     /**
-     * API: Lấy danh sách TOÀN BỘ hóa đơn của Chủ Trọ (Có phân trang & lọc Status chuẩn Enterprise)
+     * API: Lấy danh sách TOÀN BỘ hóa đơn của Chủ Trọ (Có phân trang & lọc Status + Area chuẩn Enterprise)
      */
     @Transactional(readOnly = true)
-    public PageResponse<InvoiceResponse> getAllInvoicesForLandlord(UUID currentUserId, InvoiceStatus status, int page, int size) {
+    // 🎯 SỬA Ở ĐÂY: Thêm biến UUID areaId vào tham số hàm
+    public PageResponse<InvoiceResponse> getAllInvoicesForLandlord(UUID currentUserId, UUID areaId, InvoiceStatus status, int page, int size) {
 
         // 1. Phân trang
         Pageable pageable = PageRequest.of(page, size);
         Page<Invoice> invoicePage;
 
-        // 2. Lọc theo trạng thái
-        if (status != null) {
+        // 2. 🎯 SỬA Ở ĐÂY: Xử lý 4 trường hợp tổ hợp bộ lọc (Khu trọ + Trạng thái)
+        if (areaId != null && status != null) {
+            invoicePage = invoiceRepository.findByRoomAreaLandlordIdAndRoomAreaIdAndStatusOrderByInvoicePeriodDesc(currentUserId, areaId, status, pageable);
+        } else if (areaId != null) {
+            invoicePage = invoiceRepository.findByRoomAreaLandlordIdAndRoomAreaIdOrderByInvoicePeriodDesc(currentUserId, areaId, pageable);
+        } else if (status != null) {
             invoicePage = invoiceRepository.findByRoomAreaLandlordIdAndStatusOrderByInvoicePeriodDesc(currentUserId, status, pageable);
         } else {
             invoicePage = invoiceRepository.findByRoomAreaLandlordIdOrderByInvoicePeriodDesc(currentUserId, pageable);
