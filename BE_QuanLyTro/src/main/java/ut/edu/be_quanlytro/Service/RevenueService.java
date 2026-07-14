@@ -25,13 +25,10 @@ public class RevenueService {
     private final AreaRepository areaRepository;
 
     public RevenueReportResponse getMonthlyRevenueReport(LocalDate month, UUID areaId, UUID landlordId) {
-        // Chuẩn hóa ngày về ngày đầu tháng để khớp với dữ liệu chốt hóa đơn
         LocalDate normalizedMonth = month.withDayOfMonth(1);
         List<Invoice> invoices;
 
-        // 1. Kiểm tra luồng filter: Xem tất cả hay xem theo từng Khu trọ cụ thể
         if (areaId != null) {
-            // Chốt chặn bảo mật: Kiểm tra xem khu trọ này có đúng của ông chủ trọ đang gọi API không
             var area = areaRepository.findById(areaId)
                     .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy khu trọ!"));
             if (!area.getLandlord().getId().equals(landlordId)) {
@@ -42,36 +39,47 @@ public class RevenueService {
             invoices = invoiceRepository.findAllByLandlordAndPeriod(landlordId, normalizedMonth);
         }
 
-        // 2. Dùng Stream tính toán thần tốc các chỉ số
         long totalInvoices = invoices.size();
 
+        // 1. Đã thu (PAID)
         long paidCount = invoices.stream()
                 .filter(i -> i.getStatus() == InvoiceStatus.PAID)
                 .count();
 
-        long unpaidCount = invoices.stream()
-                .filter(i -> i.getStatus() == InvoiceStatus.UNPAID || i.getStatus() == InvoiceStatus.OVERDUE)
-                .count();
-
-        // Tính tổng tiền ĐÃ THU
         BigDecimal totalCollected = invoices.stream()
                 .filter(i -> i.getStatus() == InvoiceStatus.PAID)
                 .map(Invoice::getTotalAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Tính tổng tiền CÒN NỢ (Nợ xấu)
+        // 2. 🎯 FIX BUG: Tiền đang chờ xử lý (PENDING)
+        long pendingCount = invoices.stream()
+                .filter(i -> i.getStatus() == InvoiceStatus.PENDING)
+                .count();
+
+        BigDecimal totalPending = invoices.stream()
+                .filter(i -> i.getStatus() == InvoiceStatus.PENDING)
+                .map(Invoice::getTotalAmount)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        // 3. Thực nợ (UNPAID + OVERDUE)
+        long unpaidCount = invoices.stream()
+                .filter(i -> i.getStatus() == InvoiceStatus.UNPAID || i.getStatus() == InvoiceStatus.OVERDUE)
+                .count();
+
         BigDecimal totalDebt = invoices.stream()
                 .filter(i -> i.getStatus() == InvoiceStatus.UNPAID || i.getStatus() == InvoiceStatus.OVERDUE)
                 .map(Invoice::getTotalAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // 3. Đóng gói trả về DTO siêu đẹp
+        // Đóng gói trả về DTO (nhớ thêm trường vào file DTO của ông nhé)
         return RevenueReportResponse.builder()
                 .period(normalizedMonth)
                 .totalInvoices(totalInvoices)
                 .paidInvoicesCount(paidCount)
+                .pendingInvoicesCount(pendingCount) // Thêm vào DTO
                 .unpaidInvoicesCount(unpaidCount)
                 .totalCollectedAmount(totalCollected)
+                .totalPendingAmount(totalPending)   // Thêm vào DTO để báo cáo số tiền chờ duyệt
                 .totalDebtAmount(totalDebt)
                 .build();
     }
