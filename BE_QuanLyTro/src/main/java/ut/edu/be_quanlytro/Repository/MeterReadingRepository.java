@@ -18,4 +18,6 @@ public interface MeterReadingRepository extends JpaRepository<MeterReading, UUID
     Optional<MeterReading> findFirstByRoomIdAndServiceIdAndIsInvoicedFalse(UUID roomId, UUID serviceId);
 
     List<MeterReading> findByRoomIdAndReadingMonth(UUID roomId, LocalDate readingMonth);
+
+    Optional<MeterReading> findFirstByRoomIdAndServiceIdOrderByCreatedAtDesc(UUID roomId, UUID serviceId);
 }
