@@ -41,7 +41,6 @@ public class ContractService {
 
     private final ContractHtmlCompiler contractHtmlCompiler;
 
-
     @Transactional
     public ContractCreateResponse createContract(ContractCreateRequest request, MultipartFile frontImage, MultipartFile backImage, UUID currentUserId) {
 
@@ -108,8 +107,6 @@ public class ContractService {
             userReq.setHometown(ocrData.getHometown());
             userReq.setIdCardNumber(ocrData.getIdNumber());
 
-
-
             UserResponse userResponse = userService.createUser(userReq, currentUserId);
 
             tenant = userRepository.findById(userResponse.getId())
@@ -117,8 +114,6 @@ public class ContractService {
         } else {
             rawPassword = "Khách đã có tài khoản (Dùng mật khẩu cũ)";
         }
-
-
 
         ContractTemplate template = templateRepository.findByLandlordIdAndIsActiveTrue(currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("Bạn chưa thiết lập Mẫu hợp đồng mặc định! Vui lòng vào mục Quản lý mẫu hợp đồng để kích hoạt một mẫu."));
@@ -173,6 +168,7 @@ public class ContractService {
                 .message("Tạo hợp đồng thành công!")
                 .build();
     }
+
     @Transactional
     public ContractCreateResponse createContractManual(ContractCreateManualRequest request, UUID currentUserId) {
 
@@ -235,8 +231,6 @@ public class ContractService {
             rawPassword = "Khách đã có tài khoản (Dùng mật khẩu cũ)";
         }
 
-
-
         ContractTemplate template = templateRepository.findByLandlordIdAndIsActiveTrue(currentUserId)
                 .orElseThrow(() -> new ResourceNotFoundException("Bạn chưa thiết lập Mẫu hợp đồng mặc định! Vui lòng vào mục Quản lý mẫu hợp đồng để kích hoạt một mẫu."));
 
@@ -290,6 +284,7 @@ public class ContractService {
                 .message("Tạo hợp đồng nhập tay thành công!")
                 .build();
     }
+
     @Transactional(readOnly = true)
     public ContractDetailResponse getContractByIdForLandlord(UUID contractId, UUID currentUserId) {
         Contract contract = contractRepository.findById(contractId)
@@ -323,6 +318,7 @@ public class ContractService {
                 .map(this::mapToDetailResponse)
                 .toList();
     }
+
     @Transactional
     public ContractDetailResponse addContractMember(ContractMemberAddRequest request, UUID currentUserId) {
 
@@ -365,6 +361,7 @@ public class ContractService {
 
         return mapToDetailResponse(savedContract);
     }
+
     @Transactional
     public ContractTerminationResponse terminateContract(ContractTerminationRequest request, UUID currentUserId, UUID contractID) {
 
@@ -487,6 +484,7 @@ public class ContractService {
                 .message("Thanh lý hợp đồng thành công")
                 .build();
     }
+
     @Transactional
     public ContractDetailResponse updateContract(UUID contractId, ContractUpdateRequest request, MultipartFile file, UUID currentUserId) {
 
@@ -677,6 +675,7 @@ public class ContractService {
             userService.deleteUser(tenantId);
         }
     }
+
     @Transactional
     public ContractDetailResponse signContract(UUID contractId, MultipartFile signatureImage, MultipartFile pdfFile, UUID currentUserId) {
 
@@ -881,12 +880,12 @@ public class ContractService {
         String uploadedUrl = cloudinaryService.uploadFile(file, "contract_files");
 
         contract.setContractFileUrl(uploadedUrl);
-        contractRepository.save(contract);
+        Contract updatedContract = contractRepository.save(contract);
 
         String logDesc = String.format("Cập nhật file đính kèm mới cho hợp đồng phòng %s", contract.getRoom().getRoomNumber());
-        activityLog.createLog(contract.getRoom().getArea().getLandlord(), "UPLOAD_CONTRACT_FILE", "contracts", contract.getId(), logDesc);
+        activityLog.createLog(contract.getRoom().getArea().getLandlord(), "UPLOAD_CONTRACT_FILE", "contracts", updatedContract.getId(), logDesc);
 
-        return mapToDetailResponse(contract);
+        return mapToDetailResponse(updatedContract);
     }
 
     private ContractDetailResponse mapToDetailResponse(Contract contract) {
@@ -913,29 +912,23 @@ public class ContractService {
                 .areaId(contract.getRoom().getArea().getId())
                 .areaName(contract.getRoom().getArea().getName())
                 .areaAddress(contract.getRoom().getArea().getAddress())
-
                 .templateId(contract.getTemplate() != null ? contract.getTemplate().getId() : null)
-
                 .roomId(contract.getRoom().getId())
                 .roomNumber(contract.getRoom().getRoomNumber())
                 .rentPrice(contract.getRoom().getRentPrice())
-
                 .landlordName(contract.getCreator().getFullName())
                 .landlordIdCardNumber(contract.getCreator().getIdCardNumber())
                 .landlordHometown(contract.getCreator().getHometown())
                 .landlordSignatureUrl(contract.getLandlordSignature())
-
                 .tenantId(contract.getTenant().getId())
                 .tenantName(contract.getTenant().getFullName())
                 .tenantPhone(contract.getTenant().getPhone())
                 .tenantIdCardNumber(contract.getTenant().getIdCardNumber())
                 .tenantHometown(contract.getTenant().getHometown())
                 .tenantSignatureUrl(contract.getTenantSignature())
-
                 .members(memberResponses)
                 .build();
     }
-
 
     private String generateRandomPassword() {
         Random random = new Random();
