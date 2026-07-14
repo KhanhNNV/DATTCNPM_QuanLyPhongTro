@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_quanlytro/features/tenant_app/auth/view_models/force_change_password_view_model.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../main_layout/tenant_main_layout_screen.dart';
 import '../main_layout/view_models/tenant_main_layout_view_model.dart';
+import 'force_change_password_screen.dart';
 import 'view_models/tenant_login_view_model.dart';
 
 class TenantLoginScreen extends StatefulWidget {
@@ -42,15 +44,30 @@ class _TenantLoginScreenState extends State<TenantLoginScreen> {
     _viewModel.login(
       _phoneController.text,
       _passwordController.text,
-      onSuccess: () {
-        Provider.of<TenantMainLayoutViewModel>(context, listen: false).fetchInitialData();
+      // Đã cập nhật: onSuccess nhận về biến isFirstLogin để kiểm tra
+      onSuccess: (bool isFirstLogin) {
+        if (isFirstLogin) {
+          // NẾU LÀ LẦN ĐẦU ĐĂNG NHẬP -> Bắt đổi mật khẩu
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ChangeNotifierProvider(
+                create: (_) => ForceChangePasswordViewModel(),
+                child: const ForceChangePasswordScreen(),
+              ),
+            ),
+          );
+        } else {
+          // ĐÃ ĐỔI MẬT KHẨU RỒI -> Vào thẳng trang chủ Main Layout
+          Provider.of<TenantMainLayoutViewModel>(context, listen: false).fetchInitialData();
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const TenantMainLayoutScreen(),
-          ),
-        );
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const TenantMainLayoutScreen(),
+            ),
+          );
+        }
       },
     );
   }

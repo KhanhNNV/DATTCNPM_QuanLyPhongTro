@@ -262,6 +262,9 @@ public class UserService {
         // 3. Cập nhật mật khẩu mới
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
 
+        if(user.getIsFirstLogin() == true) {
+            user.setIsFirstLogin(false);
+        }
 
         userRepository.save(user);
 

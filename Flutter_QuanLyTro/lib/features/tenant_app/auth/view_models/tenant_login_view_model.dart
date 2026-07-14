@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../../../data/repository/auth_repository.dart';
+import '../../../../data/repository/user_repository.dart'; // Import thêm UserRepository
 
 class TenantLoginViewModel extends ChangeNotifier {
   final AuthRepository _authProvider = AuthRepository();
+  final UserRepository _userRepo = UserRepository(); // Khởi tạo UserRepository
 
   // Trạng thái Loading
   bool _isLoading = false;
@@ -12,8 +14,8 @@ class TenantLoginViewModel extends ChangeNotifier {
   String? _errorMessage;
   String? get errorMessage => _errorMessage;
 
-  // Hàm xử lý đăng nhập
-  Future<void> login(String phone, String password, {required VoidCallback onSuccess}) async {
+  // Hàm xử lý đăng nhập - Đã sửa tham số onSuccess
+  Future<void> login(String phone, String password, {required Function(bool isFirstLogin) onSuccess}) async {
     // 1. Validate cơ bản
     if (phone.trim().isEmpty || password.trim().isEmpty) {
       _errorMessage = 'Vui lòng nhập đầy đủ số điện thoại và mật khẩu';
@@ -34,13 +36,18 @@ class TenantLoginViewModel extends ChangeNotifier {
         expectedRole: 'TENANT',
       );
 
-      // 4. Thành công -> Kích hoạt callback để View chuyển trang
-      onSuccess();
+      // 4. Lấy thông tin User hiện tại để kiểm tra isFirstLogin
+      final currentUser = await _userRepo.getCurrentUser();
+      final bool isFirst = currentUser.isFirstLogin ?? false;
+
+      // 5. Thành công -> Kích hoạt callback và truyền isFirstLogin sang View
+      onSuccess(isFirst);
+
     } catch (e) {
-      // 5. Thất bại -> Lưu lỗi lại
+      // 6. Thất bại -> Lưu lỗi lại
       _errorMessage = e.toString().replaceAll('Exception: ', '');
     } finally {
-      // 6. Tắt loading dù thành công hay thất bại
+      // 7. Tắt loading dù thành công hay thất bại
       _isLoading = false;
       notifyListeners();
     }
