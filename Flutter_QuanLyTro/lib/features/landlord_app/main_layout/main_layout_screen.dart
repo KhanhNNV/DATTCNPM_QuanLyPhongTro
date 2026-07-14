@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import 'package:flutter_quanlytro/features/landlord_app/main_layout/view_models/main_layout_view_model.dart';
 
 import '../../../core/constants/app_colors.dart';
-import '../home_page/home_page_screen.dart';
 import '../home_page/home_screen.dart';
 import '../home_page/view_models/home_view_model.dart';
 import '../notification/notification_screen.dart';
@@ -192,7 +191,6 @@ class MainLayoutScreen extends StatelessWidget {
           : IndexedStack(
               index: viewModel.currentIndex,
               children: [
-                HomePageScreen(selectedAreaId: viewModel.selectedAreaId),
                 ChangeNotifierProvider(
                   create: (_) => HomeViewModel(),
                   child: HomeScreen(selectedAreaId: viewModel.selectedAreaId),

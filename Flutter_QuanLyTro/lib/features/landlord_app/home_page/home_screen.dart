@@ -164,11 +164,6 @@ class _HomeScreenState extends State<HomeScreen> {
           );
         },
       ),
-      QuickActionItem(
-        title: 'Hóa đơn cần thu tiền',
-        icon: Icons.payments_outlined,
-        onTap: () => _navigateTo('Nút: Danh sách hóa đơn tích hợp VietQR'),
-      ),
     ];
   }
 
@@ -248,7 +243,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
       ),
       QuickActionItem(
-        title: 'Lập mẫu hợp đồng',
+        title: 'Mẫu hợp đồng',
         icon: Icons.note_add_outlined,
         onTap: () {
           Navigator.push(
@@ -287,7 +282,6 @@ class _HomeScreenState extends State<HomeScreen> {
         title: 'Thống kê Doanh thu',
         icon: Icons.analytics_outlined,
         onTap: () {
-          // Ngăn không cho xem nếu chưa chọn khu trọ
           if (currentAreaId == null || currentAreaId.isEmpty) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Vui lòng chọn khu trọ trước!')),
@@ -392,10 +386,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
-        IconButton(
-          icon: Icon(Icons.help, color: Colors.grey[400], size: 22),
-          onPressed: () {},
-        )
       ],
     );
   }
@@ -426,6 +416,8 @@ class _HomeScreenState extends State<HomeScreen> {
         clipBehavior: Clip.none,
         children: [
           Container(
+            width: double.infinity,
+            height: double.infinity,
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),

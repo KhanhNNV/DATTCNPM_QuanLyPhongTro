@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart'; // 1. Thêm import Provider
 import '../../../../core/constants/app_colors.dart';
 import '../../auth/tenant_login_screen.dart';
+import '../../tenant_profile/tenant_profile_screen.dart';
+import '../../tenant_profile/view_models/tenant_profile_view_model.dart';
 import '../view_models/tenant_main_layout_view_model.dart';
 
 class TenantMainDrawer extends StatelessWidget {
@@ -35,7 +37,15 @@ class TenantMainDrawer extends StatelessWidget {
             leading: const Icon(Icons.settings_outlined),
             title: const Text('Cài đặt'),
             onTap: () {
-              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ChangeNotifierProvider(
+                    create: (_) => TenantProfileViewModel()..fetchProfile(),
+                    child: const TenantProfileScreen(),
+                  ),
+                ),
+              );
 
             },
           ),

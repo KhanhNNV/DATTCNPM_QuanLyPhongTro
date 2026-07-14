@@ -59,7 +59,6 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
       QuickActionItem(
         title: 'Hóa đơn & Thanh toán',
         icon: Icons.receipt_long_outlined,
-        badgeText: 'Mới',
         onTap: () {
           Navigator.push(
             context,
@@ -71,11 +70,6 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
             ),
           );
         },
-      ),
-      QuickActionItem(
-        title: 'Bạn cùng phòng',
-        icon: Icons.group_outlined,
-        onTap: () => _navigateTo('Màn hình Quản lý thành viên trong phòng'),
       ),
     ];
   }
@@ -126,12 +120,6 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
         },
       ),
     ];
-  }
-
-  void _navigateTo(String featureName) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Điều hướng đến: $featureName')),
-    );
   }
 
   @override
@@ -212,10 +200,6 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
             ],
           ),
         ),
-        IconButton(
-          icon: Icon(Icons.help_outline, color: Colors.grey[400], size: 22),
-          onPressed: () {},
-        )
       ],
     );
   }

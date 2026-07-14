@@ -26,7 +26,6 @@ class MainBottomBar extends StatelessWidget {
       unselectedItemColor: Colors.grey,
       items: [
         const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang chủ'),
-        const BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang chủ2'),
         const BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Khách thuê'),
         BottomNavigationBarItem(
 

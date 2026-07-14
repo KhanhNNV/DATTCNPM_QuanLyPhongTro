@@ -90,7 +90,6 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => TenantMainLayoutViewModel()),
-        // KHỞI TẠO GLOBAL NOTIFICATION VIEWMODEL TẠI ĐÂY
         ChangeNotifierProvider(create: (_) => NotificationViewModel()),
       ],
       child: const TenantApp(),

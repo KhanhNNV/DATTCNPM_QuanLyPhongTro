@@ -4,11 +4,9 @@ import 'package:provider/provider.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/token_manager.dart';
 import '../../../../data/repository/user_repository.dart';
-import '../home_page/home_page_screen.dart';
 import '../main_layout/main_layout_screen.dart';
 import '../main_layout/view_models/main_layout_view_model.dart';
 import '../notification/view_models/notification_view_model.dart';
-import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
