@@ -19,6 +19,8 @@ import '../deposit_page/view_models/deposit_list_view_model.dart';
 import '../invoices/invoice_list_screen.dart';
 import '../invoices/view_models/invoice_list_view_model.dart';
 import '../meter_reading_page/view_models/meter_reading_view_model.dart';
+import '../revenue/revenue_report_screen.dart';
+import '../revenue/view_models/revenue_view_model.dart';
 import '../signature/signature_screen.dart';
 import '../signature/view_models/signature_view_model.dart';
 import '../issues/landlord_issue_list_screen.dart';
@@ -267,7 +269,24 @@ class _HomeScreenState extends State<HomeScreen> {
       QuickActionItem(
         title: 'Thống kê Doanh thu',
         icon: Icons.analytics_outlined,
-        onTap: () => _navigateTo('Nút: Thống kê hóa đơn và nợ xấu'),
+        onTap: () {
+          // Ngăn không cho xem nếu chưa chọn khu trọ
+          if (currentAreaId == null || currentAreaId.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Vui lòng chọn khu trọ trước!')),
+            );
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider(
+                create: (_) => RevenueViewModel(areaId: currentAreaId)..fetchRevenueReport(),
+                child: const RevenueReportScreen(),
+              ),
+            ),
+          );
+        },
       ),
     ];
   }
