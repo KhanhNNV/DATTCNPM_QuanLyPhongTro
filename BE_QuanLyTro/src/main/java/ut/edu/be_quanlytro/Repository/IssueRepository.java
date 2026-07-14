@@ -8,27 +8,27 @@ import org.springframework.data.domain.Pageable;
 import java.util.UUID;
 
 public interface IssueRepository extends JpaRepository<Issue, UUID> {
-    // ================= DÀNH CHO KHÁCH THUÊ =================
-    // 1. Không lọc
+
+    //  Không lọc
     Page<Issue> findByTenantIdOrderByCreatedAtDesc(UUID tenantId, Pageable pageable);
-    // 2. Có lọc status
+    //  Có lọc status
     Page<Issue> findByTenantIdAndStatusOrderByCreatedAtDesc(UUID tenantId, IssueStatus status, Pageable pageable);
 
-    // ================= DÀNH CHO CHỦ TRỌ =================
-    // 1. Không lọc
-    Page<Issue> findByRoomAreaLandlordIdOrderByCreatedAtDesc(UUID landlordId, Pageable pageable);
-    // 2. Có lọc status
-    Page<Issue> findByRoomAreaLandlordIdAndStatusOrderByCreatedAtDesc(UUID landlordId, IssueStatus status, Pageable pageable);
-    // ================= DÀNH CHO CHỦ TRỌ (CẬP NHẬT THÊM LỌC THEO PHÒNG) =================
 
-    // 3. Có lọc theo phòng (Nhưng KHÔNG lọc status)
+    //  Không lọc
+    Page<Issue> findByRoomAreaLandlordIdOrderByCreatedAtDesc(UUID landlordId, Pageable pageable);
+    //  Có lọc status
+    Page<Issue> findByRoomAreaLandlordIdAndStatusOrderByCreatedAtDesc(UUID landlordId, IssueStatus status, Pageable pageable);
+
+
+    //  Có lọc theo phòng (Nhưng KHÔNG lọc status)
     Page<Issue> findByRoomAreaLandlordIdAndRoomIdOrderByCreatedAtDesc(UUID landlordId, UUID roomId, Pageable pageable);
 
-    // 4. Có lọc theo phòng (VÀ có lọc luôn status)
+    //  Có lọc theo phòng (VÀ có lọc luôn status)
     Page<Issue> findByRoomAreaLandlordIdAndRoomIdAndStatusOrderByCreatedAtDesc(UUID landlordId, UUID roomId, IssueStatus status, Pageable pageable);
-    // 5. Có lọc theo Khu trọ VÀ Trạng thái
+    //  Có lọc theo Khu trọ VÀ Trạng thái
     Page<Issue> findByRoomAreaLandlordIdAndRoomAreaIdAndStatusOrderByCreatedAtDesc(UUID landlordId, UUID areaId, IssueStatus status, Pageable pageable);
 
-    // 6. Có lọc theo Khu trọ (nhưng KHÔNG lọc trạng thái)
+    //  Có lọc theo Khu trọ (nhưng KHÔNG lọc trạng thái)
     Page<Issue> findByRoomAreaLandlordIdAndRoomAreaIdOrderByCreatedAtDesc(UUID landlordId, UUID areaId, Pageable pageable);
 }

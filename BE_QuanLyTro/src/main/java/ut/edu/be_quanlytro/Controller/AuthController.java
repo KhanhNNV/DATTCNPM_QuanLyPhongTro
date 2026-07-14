@@ -96,25 +96,10 @@ public class AuthController {
         UUID userId = UUID.fromString(jwt.getClaimAsString("userId"));
         String token = request.get("token");
 
-        // Logic: Kiểm tra nếu user chưa có token này dưới DB thì lưu mới vào bảng user_fcm_tokens
+        //  Kiểm tra nếu user chưa có token này dưới DB thì lưu mới vào bảng user_fcm_tokens
         notificationService.saveFcmToken(userId, token);
 
         return ResponseEntity.ok(Map.of("message", "Lưu FCM Token thành công!"));
     }
 
-    @PostMapping("/test-push")
-    public ResponseEntity<?> testPushNotification(@AuthenticationPrincipal Jwt jwt) {
-        // 1. Lấy UUID của chính người dùng đang đăng nhập thông qua Token
-        String idString = "9d245549-6e62-4277-9588-09f2c4500e67";
-        UUID id = UUID.fromString(idString);
-
-        // 2. Định nghĩa nội dung thông báo test
-        String testTitle = "🔔 Test Push Notification";
-        String testBody = "Chúc mừng! Hệ thống Spring Boot của bạn đã kết nối thành công tới thiết bị này.";
-
-        // 3. Gọi hàm tìm token trong DB và bắn lệnh qua Firebase
-        notificationService.sendNotificationToUser(id, testTitle, testBody);
-
-        return ResponseEntity.ok(Map.of("message", "Đã gửi lệnh bắn thông báo thử nghiệm thành công!"));
-    }
 }

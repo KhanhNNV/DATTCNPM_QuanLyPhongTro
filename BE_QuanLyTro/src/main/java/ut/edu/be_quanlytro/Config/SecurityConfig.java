@@ -77,9 +77,9 @@ public class SecurityConfig {
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtGrantedAuthoritiesConverter grantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-        // 1. Chỉ cho Spring biết tìm quyền ở trường nào trong Token (của mình là trường "role")
+
         grantedAuthoritiesConverter.setAuthoritiesClaimName("role");
-        // 2. Tự động gắn thêm chữ "ROLE_" vào trước để Spring hiểu (thành ROLE_LANDLORD)
+
         grantedAuthoritiesConverter.setAuthorityPrefix("ROLE_");
 
         JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();

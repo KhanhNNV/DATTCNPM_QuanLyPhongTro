@@ -18,17 +18,17 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
 
     boolean existsByRoomIdAndInvoicePeriod(UUID roomId, LocalDate invoicePeriod);
 
-    // UC27: Tìm các hóa đơn chưa khớp tiền mà ngày hạn chót nhỏ hơn ngày hôm nay
+    // Tìm các hóa đơn chưa khớp tiền mà ngày hạn chót nhỏ hơn ngày hôm nay
     List<Invoice> findByStatusAndDueDateLessThan(InvoiceStatus status, LocalDate date);
 
-    // UC26: Tìm các hóa đơn chưa đóng tiền mà sắp đến hạn (Ví dụ: còn đúng 1 ngày hoặc chính là ngày hôm nay)
+    // Tìm các hóa đơn chưa đóng tiền mà sắp đến hạn
     List<Invoice> findByStatusAndDueDate(InvoiceStatus status, LocalDate date);
 
-    // 1. Tìm tất cả hóa đơn trong tháng của TẤT CẢ các khu trọ thuộc chủ trọ này
+    //  Tìm tất cả hóa đơn trong tháng của TẤT CẢ các khu trọ thuộc chủ trọ này
     @Query("SELECT i FROM Invoice i WHERE i.room.area.landlord.id = :landlordId AND i.invoicePeriod = :period")
     List<Invoice> findAllByLandlordAndPeriod(@Param("landlordId") UUID landlordId, @Param("period") LocalDate period);
 
-    // 2. Tìm tất cả hóa đơn trong tháng của MỘT KHU TRỌ cụ thể thuộc chủ trọ này (để lọc nâng cao)
+    // Tìm tất cả hóa đơn trong tháng của MỘT KHU TRỌ cụ thể thuộc chủ trọ này (để lọc nâng cao)
     @Query("SELECT i FROM Invoice i WHERE i.room.area.id = :areaId AND i.room.area.landlord.id = :landlordId AND i.invoicePeriod = :period")
     List<Invoice> findAllByAreaAndLandlordAndPeriod(@Param("areaId") UUID areaId, @Param("landlordId") UUID landlordId, @Param("period") LocalDate period);
     void deleteAllByContractId(UUID contractId);
@@ -36,20 +36,19 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
     List<Invoice> findByRoomAreaLandlordIdOrderByInvoicePeriodDesc(UUID landlordId);
 
     List<Invoice> findByContractId(UUID contractId);
-    // 1. Dùng khi Frontend CÓ TRUYỀN trạng thái (vd: ?status=UNPAID)
+    //  Dùng khi Frontend CÓ TRUYỀN trạng thái
     Page<Invoice> findByRoomAreaLandlordIdAndStatusOrderByInvoicePeriodDesc(UUID landlordId, InvoiceStatus status, Pageable pageable);
 
-    // 2. Dùng khi Frontend KHÔNG TRUYỀN trạng thái (lấy tất cả)
+    // Dùng khi Frontend KHÔNG TRUYỀN trạng thái (lấy tất cả)
     Page<Invoice> findByRoomAreaLandlordIdOrderByInvoicePeriodDesc(UUID landlordId, Pageable pageable);
-    // ================= DÀNH CHO KHÁCH THUÊ =================
-    // 1. Tìm tất cả hóa đơn của 1 khách thuê (Có lọc Status)
+    // Tìm tất cả hóa đơn của 1 khách thuê (Có lọc Status)
     Page<Invoice> findByContractTenantIdAndStatusOrderByInvoicePeriodDesc(UUID tenantId, InvoiceStatus status, Pageable pageable);
 
-    // 2. Tìm tất cả hóa đơn của 1 khách thuê (Không lọc)
+    // Tìm tất cả hóa đơn của 1 khách thuê (Không lọc)
     Page<Invoice> findByContractTenantIdOrderByInvoicePeriodDesc(UUID tenantId, Pageable pageable);
-    // 3. Có lọc theo Khu trọ VÀ Trạng thái
+    //  Có lọc theo Khu trọ VÀ Trạng thái
     Page<Invoice> findByRoomAreaLandlordIdAndRoomAreaIdAndStatusOrderByInvoicePeriodDesc(UUID landlordId, UUID areaId, InvoiceStatus status, Pageable pageable);
 
-    // 4. Có lọc theo Khu trọ (nhưng KHÔNG lọc Trạng thái)
+    // Có lọc theo Khu trọ (nhưng KHÔNG lọc Trạng thái)
     Page<Invoice> findByRoomAreaLandlordIdAndRoomAreaIdOrderByInvoicePeriodDesc(UUID landlordId, UUID areaId, Pageable pageable);
 }

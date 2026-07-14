@@ -38,7 +38,6 @@ public class InvoiceController {
             @Valid @RequestBody InvoiceCreateRequest request,
             @AuthenticationPrincipal Jwt jwt) {
             UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
-            // Truyền currentUserId xuống tầng Service
             InvoiceResponse response = invoiceService.createInvoice(request, currentUserId);
             return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
@@ -87,9 +86,9 @@ public class InvoiceController {
         invoiceService.uploadPaymentProof(id, file);
         return ResponseEntity.ok(Map.of("message", "Gửi minh chứng lên Cloud thành công! Đang chờ chủ trọ phê duyệt."));
     }
-    /**
-     * API Chủ trọ từ chối minh chứng thanh toán
-     */
+
+      //API Chủ trọ từ chối minh chứng thanh toán
+
     @PutMapping("/{id}/reject-payment")
     @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<InvoiceResponse> rejectPaymentProof(
@@ -106,9 +105,7 @@ public class InvoiceController {
         InvoiceResponse response = invoiceService.rejectPaymentProof(id, reason, currentUserId);
         return ResponseEntity.ok(response);
     }
-    /**
-     * API: Lấy danh sách TOÀN BỘ hóa đơn của Chủ Trọ
-     */
+    //API: Lấy danh sách toàn bộ hóa đơn của Chủ Trọ
     @GetMapping("/landlord")
     @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<PageResponse<InvoiceResponse>> getAllInvoicesForLandlord(
@@ -120,14 +117,13 @@ public class InvoiceController {
 
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
 
-        // 🎯 SỬA Ở ĐÂY: Truyền thêm areaId vào Service
         PageResponse<InvoiceResponse> responses = invoiceService.getAllInvoicesForLandlord(currentUserId, areaId, status, page, size);
         return ResponseEntity.ok(responses);
     }
-    /**
-     * API: Lấy danh sách hóa đơn cho Khách Thuê (Có phân trang & lọc)
-     * URL ví dụ: /api/invoices/tenant?page=0&size=10&status=UNPAID
-     */
+
+     // API: Lấy danh sách hóa đơn cho Khách Thuê (Có phân trang & lọc)
+
+
     @GetMapping("/tenant")
     @PreAuthorize("hasRole('TENANT')")
     public ResponseEntity<PageResponse<InvoiceResponse>> getMyInvoices(
@@ -136,10 +132,8 @@ public class InvoiceController {
             @RequestParam(required = false) InvoiceStatus status,
             @AuthenticationPrincipal Jwt jwt) {
 
-        // Lấy ID của ông Khách thuê đang đăng nhập
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
 
-        // Đẩy xuống Service
         PageResponse<InvoiceResponse> responses = invoiceService.getMyInvoices(currentUserId, status, page, size);
         return ResponseEntity.ok(responses);
     }

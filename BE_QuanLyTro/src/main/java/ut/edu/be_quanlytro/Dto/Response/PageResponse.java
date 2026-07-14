@@ -17,5 +17,5 @@ public class PageResponse<T> {
     private int pageSize;          // Kích thước 1 trang
     private long totalElements;    // Tổng số lượng tất cả các dòng
     private int totalPages;        // Tổng số trang
-    private boolean isLast;        // Có phải trang cuối cùng chưa?
+    private boolean isLast;        // Có phải trang cuối cùng chưa
 }
