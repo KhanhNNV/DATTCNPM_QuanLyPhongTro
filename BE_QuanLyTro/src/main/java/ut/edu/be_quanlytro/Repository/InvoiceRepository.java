@@ -47,4 +47,9 @@ public interface InvoiceRepository extends JpaRepository<Invoice, UUID> {
 
     // 2. Tìm tất cả hóa đơn của 1 khách thuê (Không lọc)
     Page<Invoice> findByContractTenantIdOrderByInvoicePeriodDesc(UUID tenantId, Pageable pageable);
+    // 3. Có lọc theo Khu trọ VÀ Trạng thái
+    Page<Invoice> findByRoomAreaLandlordIdAndRoomAreaIdAndStatusOrderByInvoicePeriodDesc(UUID landlordId, UUID areaId, InvoiceStatus status, Pageable pageable);
+
+    // 4. Có lọc theo Khu trọ (nhưng KHÔNG lọc Trạng thái)
+    Page<Invoice> findByRoomAreaLandlordIdAndRoomAreaIdOrderByInvoicePeriodDesc(UUID landlordId, UUID areaId, Pageable pageable);
 }

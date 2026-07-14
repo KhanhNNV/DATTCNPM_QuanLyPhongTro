@@ -192,29 +192,34 @@ public class IssueService {
                 .build();
     }
 
+
     /**
-     * API: Chủ trọ xem toàn bộ danh sách báo cáo sự cố (Có lọc)
-     */
-    /**
-     * API: Chủ trọ xem danh sách báo cáo sự cố (Có lọc theo Status và Room)
+     * API: Chủ trọ xem danh sách báo cáo sự cố (Có lọc theo Status, Area và Room)
      */
     @Transactional(readOnly = true)
-    public PageResponse<IssueResponse> getIssuesForLandlord(UUID landlordId, UUID roomId, IssueStatus status, int page, int size) {
+    // 🎯 SỬA Ở ĐÂY: Thêm biến UUID areaId vào tham số
+    public PageResponse<IssueResponse> getIssuesForLandlord(UUID landlordId, UUID areaId, UUID roomId, IssueStatus status, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Issue> issuePage;
 
-        // Xử lý tổ hợp 4 trường hợp lọc dữ liệu
+        // 🎯 SỬA Ở ĐÂY: Xử lý tổ hợp 6 trường hợp lọc dữ liệu
         if (roomId != null && status != null) {
-            // Lọc cả phòng và trạng thái
+            // 1. Lọc theo phòng + trạng thái (Phòng đã xác định rõ khu trọ rồi)
             issuePage = issueRepository.findByRoomAreaLandlordIdAndRoomIdAndStatusOrderByCreatedAtDesc(landlordId, roomId, status, pageable);
         } else if (roomId != null) {
-            // Chỉ lọc theo phòng
+            // 2. Chỉ lọc theo phòng
             issuePage = issueRepository.findByRoomAreaLandlordIdAndRoomIdOrderByCreatedAtDesc(landlordId, roomId, pageable);
+        } else if (areaId != null && status != null) {
+            // 3. Lọc theo Khu trọ + Trạng thái
+            issuePage = issueRepository.findByRoomAreaLandlordIdAndRoomAreaIdAndStatusOrderByCreatedAtDesc(landlordId, areaId, status, pageable);
+        } else if (areaId != null) {
+            // 4. Chỉ lọc theo Khu trọ
+            issuePage = issueRepository.findByRoomAreaLandlordIdAndRoomAreaIdOrderByCreatedAtDesc(landlordId, areaId, pageable);
         } else if (status != null) {
-            // Chỉ lọc theo trạng thái
+            // 5. Chỉ lọc theo trạng thái (Toàn bộ các khu)
             issuePage = issueRepository.findByRoomAreaLandlordIdAndStatusOrderByCreatedAtDesc(landlordId, status, pageable);
         } else {
-            // Không lọc gì, lấy tất cả của khu trọ
+            // 6. Không lọc gì, lấy tất cả (Toàn bộ các khu)
             issuePage = issueRepository.findByRoomAreaLandlordIdOrderByCreatedAtDesc(landlordId, pageable);
         }
 

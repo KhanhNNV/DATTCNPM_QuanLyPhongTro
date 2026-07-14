@@ -71,12 +71,13 @@ public class IssueController {
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) IssueStatus status,
             @RequestParam(required = false) UUID roomId,
+            @RequestParam(required = false) UUID areaId,
             @AuthenticationPrincipal Jwt jwt) {
 
         UUID landlordId = UUID.fromString(jwt.getClaimAsString("userId"));
 
-        // Nhớ truyền thêm roomId vào hàm
-        PageResponse<IssueResponse> response = issueService.getIssuesForLandlord(landlordId, roomId, status, page, size);
+        // 🎯 SỬA Ở ĐÂY: Nhớ truyền thêm areaId vào hàm Service
+        PageResponse<IssueResponse> response = issueService.getIssuesForLandlord(landlordId, areaId, roomId, status, page, size);
 
         return ResponseEntity.ok(response);
     }

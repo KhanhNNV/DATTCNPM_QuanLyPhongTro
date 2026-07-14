@@ -26,4 +26,9 @@ public interface IssueRepository extends JpaRepository<Issue, UUID> {
 
     // 4. Có lọc theo phòng (VÀ có lọc luôn status)
     Page<Issue> findByRoomAreaLandlordIdAndRoomIdAndStatusOrderByCreatedAtDesc(UUID landlordId, UUID roomId, IssueStatus status, Pageable pageable);
+    // 5. Có lọc theo Khu trọ VÀ Trạng thái
+    Page<Issue> findByRoomAreaLandlordIdAndRoomAreaIdAndStatusOrderByCreatedAtDesc(UUID landlordId, UUID areaId, IssueStatus status, Pageable pageable);
+
+    // 6. Có lọc theo Khu trọ (nhưng KHÔNG lọc trạng thái)
+    Page<Issue> findByRoomAreaLandlordIdAndRoomAreaIdOrderByCreatedAtDesc(UUID landlordId, UUID areaId, Pageable pageable);
 }

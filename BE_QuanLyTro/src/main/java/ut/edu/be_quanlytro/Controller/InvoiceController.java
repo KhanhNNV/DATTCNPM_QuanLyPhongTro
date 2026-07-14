@@ -115,11 +115,13 @@ public class InvoiceController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
             @RequestParam(required = false) InvoiceStatus status,
+            @RequestParam(required = false) UUID areaId,
             @AuthenticationPrincipal Jwt jwt) {
 
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
 
-        PageResponse<InvoiceResponse> responses = invoiceService.getAllInvoicesForLandlord(currentUserId, status, page, size);
+        // 🎯 SỬA Ở ĐÂY: Truyền thêm areaId vào Service
+        PageResponse<InvoiceResponse> responses = invoiceService.getAllInvoicesForLandlord(currentUserId, areaId, status, page, size);
         return ResponseEntity.ok(responses);
     }
     /**
