@@ -58,12 +58,8 @@ class _HomePageScreenState extends State<HomePageScreen> {
     });
 
     try {
-      // TODO: Gọi API lấy danh sách phòng theo ID khu trọ tại đây
-      // Ví dụ: final rooms = await _roomProvider.getRooms(widget.selectedAreaId!);
-
-      await Future.delayed(const Duration(milliseconds: 300)); // Giả lập call API
+      await Future.delayed(const Duration(milliseconds: 300));
     } catch (e) {
-      // Xử lý lỗi
     } finally {
       if (mounted) {
         setState(() {

@@ -9,7 +9,7 @@ class TenantContractViewModel extends ChangeNotifier {
   bool isLoading = true;
   String? errorMessage;
 
-  // Hàm tải dữ liệu hợp đồng
+
   Future<void> loadCurrentContract() async {
     isLoading = true;
     errorMessage = null;

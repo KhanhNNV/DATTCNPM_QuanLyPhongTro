@@ -10,7 +10,7 @@ class DepositFormViewModel extends ChangeNotifier {
   final RoomRepository roomProvider = RoomRepository();
   final DepositRepository _depositRepository = DepositRepository();
 
-  // --- QUẢN LÝ FORM STATE ---
+
   final formKey = GlobalKey<FormState>();
   final tenantController = TextEditingController();
   final phoneController = TextEditingController();
@@ -45,7 +45,7 @@ class DepositFormViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- HÀM LƯU PHIẾU ĐẶT CỌC ---
+
   Future<DepositResponse> saveDeposit() async {
     if (!formKey.currentState!.validate()) {
       throw Exception('Vui lòng điền đầy đủ thông tin hợp lệ!');

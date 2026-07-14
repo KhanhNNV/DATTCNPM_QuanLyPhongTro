@@ -107,7 +107,7 @@ class MainDrawer extends StatelessWidget {
           const Spacer(),
           const Divider(),
 
-          // Nút Đăng xuất
+
           ListTile(
             leading: const Icon(Icons.logout_rounded, color: Colors.redAccent),
             title: const Text(
@@ -118,22 +118,21 @@ class MainDrawer extends StatelessWidget {
               ),
             ),
             onTap: () async {
-              // 1. Lưu lại Navigator và ViewModel TRƯỚC KHI đóng Drawer
+
               final navigator = Navigator.of(context);
               final mainViewModel = Provider.of<MainLayoutViewModel>(context, listen: false);
 
-              // 2. Đóng Drawer
+
               navigator.pop();
 
-              // 3. Đợi logic clear data và API chạy xong
+
               await mainViewModel.logout();
 
-              // 4. Dùng navigator đã lưu để chuyển trang và xóa sạch lịch sử
               navigator.pushAndRemoveUntil(
                 MaterialPageRoute(
                   builder: (context) => const WelcomeScreen(),
                 ),
-                    (route) => false, // Xóa toàn bộ stack
+                    (route) => false,
               );
             },
           ),

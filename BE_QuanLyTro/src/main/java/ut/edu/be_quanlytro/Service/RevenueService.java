@@ -41,7 +41,6 @@ public class RevenueService {
 
         long totalInvoices = invoices.size();
 
-        // 1. Đã thu (PAID)
         long paidCount = invoices.stream()
                 .filter(i -> i.getStatus() == InvoiceStatus.PAID)
                 .count();
@@ -51,7 +50,6 @@ public class RevenueService {
                 .map(Invoice::getTotalAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // 2. 🎯 FIX BUG: Tiền đang chờ xử lý (PENDING)
         long pendingCount = invoices.stream()
                 .filter(i -> i.getStatus() == InvoiceStatus.PENDING)
                 .count();
@@ -61,7 +59,6 @@ public class RevenueService {
                 .map(Invoice::getTotalAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // 3. Thực nợ (UNPAID + OVERDUE)
         long unpaidCount = invoices.stream()
                 .filter(i -> i.getStatus() == InvoiceStatus.UNPAID || i.getStatus() == InvoiceStatus.OVERDUE)
                 .count();
@@ -71,15 +68,14 @@ public class RevenueService {
                 .map(Invoice::getTotalAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Đóng gói trả về DTO (nhớ thêm trường vào file DTO của ông nhé)
         return RevenueReportResponse.builder()
                 .period(normalizedMonth)
                 .totalInvoices(totalInvoices)
                 .paidInvoicesCount(paidCount)
-                .pendingInvoicesCount(pendingCount) // Thêm vào DTO
+                .pendingInvoicesCount(pendingCount)
                 .unpaidInvoicesCount(unpaidCount)
                 .totalCollectedAmount(totalCollected)
-                .totalPendingAmount(totalPending)   // Thêm vào DTO để báo cáo số tiền chờ duyệt
+                .totalPendingAmount(totalPending)
                 .totalDebtAmount(totalDebt)
                 .build();
     }

@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import '../../../../data/models/response/invoice_response.dart';
 import '../../../../data/repository/invoice_repository.dart';
 
-/// Quản lý trạng thái và logic của màn hình Danh sách Hóa đơn.
-/// Hỗ trợ phân trang (Pagination), tìm kiếm nội bộ và lọc theo trạng thái.
 class InvoiceListViewModel extends ChangeNotifier {
   final InvoiceRepository _repository = InvoiceRepository();
 
@@ -11,22 +9,18 @@ class InvoiceListViewModel extends ChangeNotifier {
 
   InvoiceListViewModel({this.areaId});
 
-  // Trạng thái UI
   bool isLoading = false;
   bool isFetchingMore = false;
   String? errorMessage;
 
-  // Dữ liệu
   List<InvoiceResponse> _allInvoices = [];
   List<InvoiceResponse> displayedInvoices = [];
 
-  // Phân trang
   int currentPage = 0;
   int totalPages = 1;
   final int pageSize = 3;
   bool get hasMore => currentPage < totalPages - 1;
 
-  // Trạng thái bộ lọc
   String selectedStatus = 'ALL';
   String searchQuery = '';
 
@@ -38,9 +32,6 @@ class InvoiceListViewModel extends ChangeNotifier {
     'PENDING': 'Chờ xác nhận'
   };
 
-  /// Lấy danh sách hóa đơn từ Server
-  /// [isRefresh] = true: Tải lại từ trang 0.
-  /// [isRefresh] = false: Tải tiếp trang tiếp theo (Load more).
   Future<void> fetchInvoices({bool isRefresh = true}) async {
     if (isRefresh) {
       currentPage = 0;
@@ -60,7 +51,7 @@ class InvoiceListViewModel extends ChangeNotifier {
         page: currentPage,
         size: pageSize,
         status: selectedStatus == 'ALL' ? null : selectedStatus,
-        areaId: areaId, // 🎯 SỬA Ở ĐÂY: Truyền areaId xuống Repository
+        areaId: areaId,
       );
 
       _allInvoices.addAll(result['invoices'] as List<InvoiceResponse>);
@@ -69,7 +60,7 @@ class InvoiceListViewModel extends ChangeNotifier {
       _applyLocalFilter();
     } catch (e) {
       errorMessage = e.toString().replaceAll('Exception: ', '');
-      if (!isRefresh && currentPage > 0) currentPage--; // Hoàn tác trang nếu lỗi
+      if (!isRefresh && currentPage > 0) currentPage--;
     } finally {
       isLoading = false;
       isFetchingMore = false;
@@ -77,7 +68,7 @@ class InvoiceListViewModel extends ChangeNotifier {
     }
   }
 
-  /// Thay đổi trạng thái lọc và gọi lại API
+
   void changeStatus(String status) {
     if (selectedStatus != status) {
       selectedStatus = status;
@@ -85,13 +76,13 @@ class InvoiceListViewModel extends ChangeNotifier {
     }
   }
 
-  /// Cập nhật từ khóa và tìm kiếm trong danh sách đã tải
+
   void onSearchChanged(String query) {
     searchQuery = query;
     _applyLocalFilter();
   }
 
-  /// Áp dụng bộ lọc tìm kiếm nội bộ dựa trên số phòng
+
   void _applyLocalFilter() {
     if (searchQuery.trim().isNotEmpty) {
       final query = searchQuery.trim().toLowerCase();
@@ -104,7 +95,6 @@ class InvoiceListViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Cập nhật thông tin một hóa đơn cụ thể (vd: sau khi thanh toán thành công)
   void updateLocalInvoice(InvoiceResponse updatedInvoice) {
     final index = _allInvoices.indexWhere((i) => i.id == updatedInvoice.id);
     if (index != -1) {

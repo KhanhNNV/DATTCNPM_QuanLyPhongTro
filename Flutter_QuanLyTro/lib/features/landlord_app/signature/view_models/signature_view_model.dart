@@ -19,7 +19,7 @@ class SignatureViewModel extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   Future<String?> uploadSignature() async {
-    // 1. Kiểm tra xem người dùng đã vẽ gì chưa
+
     if (signatureController.isEmpty) {
       _errorMessage = 'Vui lòng vẽ chữ ký của bạn trước khi lưu!';
       notifyListeners();
@@ -31,13 +31,13 @@ class SignatureViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 2. Xuất dữ liệu bảng vẽ thành mảng Bytes PNG
+
       final Uint8List? imageBytes = await signatureController.toPngBytes();
       if (imageBytes == null) {
         throw Exception('Không thể xuất dữ liệu chữ ký!');
       }
 
-      // 3. Gọi API upload
+
       final signatureUrl = await _userProvider.updateSignature(imageBytes);
       return signatureUrl;
     } catch (e) {

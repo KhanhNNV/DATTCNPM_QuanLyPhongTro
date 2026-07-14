@@ -44,10 +44,10 @@ class _TenantLoginScreenState extends State<TenantLoginScreen> {
     _viewModel.login(
       _phoneController.text,
       _passwordController.text,
-      // Đã cập nhật: onSuccess nhận về biến isFirstLogin để kiểm tra
+
       onSuccess: (bool isFirstLogin) {
         if (isFirstLogin) {
-          // NẾU LÀ LẦN ĐẦU ĐĂNG NHẬP -> Bắt đổi mật khẩu
+
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(
@@ -58,7 +58,7 @@ class _TenantLoginScreenState extends State<TenantLoginScreen> {
             ),
           );
         } else {
-          // ĐÃ ĐỔI MẬT KHẨU RỒI -> Vào thẳng trang chủ Main Layout
+
           Provider.of<TenantMainLayoutViewModel>(context, listen: false).fetchInitialData();
 
           Navigator.pushReplacement(

@@ -59,10 +59,10 @@ class EditAreaScreen extends StatelessWidget {
                   onPressed: vm.isLoading
                       ? null
                       : () async {
-                    // Gọi API thông qua ViewModel
+
                     final success = await vm.updateAreaInfo(area.id);
 
-                    // Kiểm tra xem Widget còn tồn tại không trước khi dùng context
+
                     if (!context.mounted) return;
 
                     if (success) {
@@ -72,7 +72,6 @@ class EditAreaScreen extends StatelessWidget {
                           backgroundColor: Colors.green,
                         ),
                       );
-                      // Trả về true để màn hình trước cập nhật lại dữ liệu
                       Navigator.pop(context, true);
                     } else if (vm.errorMessage != null) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -81,7 +80,7 @@ class EditAreaScreen extends StatelessWidget {
                           backgroundColor: Colors.redAccent,
                         ),
                       );
-                      vm.clearError(); // Xóa lỗi sau khi đã hiển thị
+                      vm.clearError();
                     }
                   },
                   style: ElevatedButton.styleFrom(

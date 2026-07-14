@@ -10,7 +10,6 @@ import 'features/landlord_app/main_layout/view_models/main_layout_view_model.dar
 import 'features/landlord_app/notification/view_models/notification_view_model.dart';
 import 'firebase_options.dart';
 
-// --- KHỞI TẠO LOCAL NOTIFICATIONS ---
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
 const AndroidNotificationChannel channel = AndroidNotificationChannel(
@@ -20,7 +19,6 @@ const AndroidNotificationChannel channel = AndroidNotificationChannel(
   importance: Importance.max,
 );
 
-// --- HÀM XỬ LÝ BACKGROUND FCM CỦA CHỦ TRỌ ---
 @pragma('vm:entry-point')
 Future<void> _landlordBackgroundMessageHandler(RemoteMessage message) async {
   await Firebase.initializeApp(
@@ -29,18 +27,15 @@ Future<void> _landlordBackgroundMessageHandler(RemoteMessage message) async {
   debugPrint("📩 [Background FCM] Đã nhận thông báo: ${message.notification?.title}");
 }
 
-// Khai báo navigatorKey
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Khởi tạo Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // 2. Cấu hình Kênh thông báo cho Android (Để bật Pop-up rớt xuống)
   await flutterLocalNotificationsPlugin
       .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(channel);
@@ -52,24 +47,17 @@ void main() async {
     settings: initSettings,
   );
 
-  // 3. Lắng nghe FCM khi app đóng hoặc chạy ngầm (Background / Terminated)
   FirebaseMessaging.onBackgroundMessage(_landlordBackgroundMessageHandler);
 
-  // 4. Lắng nghe FCM khi app đang mở (Foreground) -> Ép vẽ Pop-up bằng Local Notification
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     debugPrint("📩 [Foreground FCM] Đã nhận thông báo: ${message.notification?.title}");
 
-    // ==========================================
-    // SỬA Ở ĐÂY: Cập nhật số chuông + Tải lại danh sách
-    // ==========================================
     final context = navigatorKey.currentContext;
     if (context != null) {
       final notificationVM = context.read<NotificationViewModel>();
 
-      // 1. Cập nhật số lượng trên chuông
       notificationVM.fetchUnreadCount();
 
-      // 2. Gọi API nạp thêm thông báo mới ngầm dưới nền
       notificationVM.fetchNotifications(isRefresh: true);
     }
 
@@ -95,7 +83,6 @@ void main() async {
     }
   });
 
-  // 5. Xử lý sự kiện khi người dùng bấm vào thông báo để mở app
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
     debugPrint("👆 [Opened FCM] Người dùng vừa bấm vào thông báo, data: ${message.data}");
   });

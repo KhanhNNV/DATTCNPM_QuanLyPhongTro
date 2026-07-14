@@ -81,7 +81,7 @@ class TenantInvoiceDetailScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // THÔNG TIN CHUNG TÓM TẮT
+
           Card(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             child: Padding(
@@ -120,7 +120,7 @@ class TenantInvoiceDetailScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
 
-          // CHI TIẾT DỊCH VỤ SỬ DỤNG
+
           const Text(
             'Chi tiết dịch vụ',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -141,7 +141,7 @@ class TenantInvoiceDetailScreen extends StatelessWidget {
                   DataColumn(label: Text('Thành tiền', style: TextStyle(fontWeight: FontWeight.bold))),
                 ],
                 rows: detail.items.map((item) {
-                  // Hiển thị chỉ số cũ - mới nếu có (Điện/Nước)
+
                   String indexDisplay = (item.oldIndex != null && item.newIndex != null)
                       ? '${item.oldIndex} -> ${item.newIndex}'
                       : '-';
@@ -189,12 +189,12 @@ class TenantInvoiceDetailScreen extends StatelessWidget {
     );
   }
 
-  // --- NÚT THANH TOÁN ---
+
   Widget? _buildBottomPaymentBar(TenantInvoiceDetailViewModel vm, BuildContext context) {
     final detail = vm.invoiceDetail;
     if (detail == null) return null;
 
-    // Trạng thái chưa thanh toán hoặc quá hạn -> Hiện nút "Thanh toán ngay"
+
     if (detail.status == 'UNPAID' || detail.status == 'OVERDUE') {
       return Container(
         padding: const EdgeInsets.all(16.0),
@@ -246,7 +246,7 @@ class TenantInvoiceDetailScreen extends StatelessWidget {
       );
     }
 
-    // Trạng thái PENDING hoặc PAID và đã có ảnh minh chứng -> Hiện nút "Xem minh chứng"
+
     if (detail.paymentProofUrl != null && detail.paymentProofUrl!.isNotEmpty) {
       return Container(
         padding: const EdgeInsets.all(16.0),

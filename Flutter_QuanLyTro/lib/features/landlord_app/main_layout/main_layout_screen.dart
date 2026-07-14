@@ -18,7 +18,6 @@ class MainLayoutScreen extends StatelessWidget {
   const MainLayoutScreen({super.key});
 
   void _showAreaSelection(BuildContext context) {
-    // Lấy ViewModel từ context của màn hình chính TRƯỚC khi mở BottomSheet
     final parentViewModel = context.read<MainLayoutViewModel>();
 
     showModalBottomSheet(
@@ -29,7 +28,6 @@ class MainLayoutScreen extends StatelessWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
       builder: (bottomSheetContext) {
-        // Sử dụng .value để truyền ViewModel hiện tại vào nhánh Widget Tree mới của BottomSheet
         return ChangeNotifierProvider<MainLayoutViewModel>.value(
           value: parentViewModel,
           child: Consumer<MainLayoutViewModel>(

@@ -48,7 +48,6 @@ class RegisterViewModel extends ChangeNotifier {
           hometown.trim()
       );
 
-      // Tự động đăng nhập sau khi đăng ký thành công
       await _authProvider.login(
         phone.trim(),
         password.trim(),

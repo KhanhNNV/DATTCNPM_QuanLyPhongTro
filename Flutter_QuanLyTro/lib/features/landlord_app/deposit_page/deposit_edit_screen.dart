@@ -84,7 +84,7 @@ class DepositEditScreen extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Trạng thái phiếu (Dropdown)
+
             DropdownButtonFormField<String>(
               value: vm.selectedStatus,
               decoration: InputDecoration(

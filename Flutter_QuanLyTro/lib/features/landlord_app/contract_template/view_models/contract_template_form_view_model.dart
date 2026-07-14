@@ -14,7 +14,6 @@ class ContractTemplateFormViewModel extends ChangeNotifier {
   final formKey = GlobalKey<FormState>();
   final nameController = TextEditingController();
 
-  // Thay thế dấu chấm thành các biến {{...}}
   final rentalContentController = TextEditingController(
       text: 'Bên A cho Bên B thuê 01 phòng trọ số {{SO_PHONG}} tại căn nhà số {{DIA_CHI_NHA}}. '
           'Với thời hạn là: {{THOI_HAN}} tháng, giá thuê: {{GIA_THUE}} đồng (Bằng chữ: {{GIA_THUE_CHU}}). '

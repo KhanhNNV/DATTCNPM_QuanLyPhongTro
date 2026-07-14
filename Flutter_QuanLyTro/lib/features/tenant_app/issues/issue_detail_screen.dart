@@ -22,7 +22,7 @@ class IssueDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // 1. Hình ảnh sự cố (nếu có)
+
             if (issue.imageUrl != null && issue.imageUrl!.isNotEmpty)
               Image.network(
                 issue.imageUrl!,
@@ -45,7 +45,7 @@ class IssueDetailScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 2. Trạng thái
+
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
@@ -64,11 +64,11 @@ class IssueDetailScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // 3. Thông tin cơ bản
+
                   _buildInfoCard(),
                   const SizedBox(height: 16),
 
-                  // 4. Nội dung mô tả
+
                   const Text(
                     'Mô tả chi tiết',
                     style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -88,7 +88,7 @@ class IssueDetailScreen extends StatelessWidget {
                     ),
                   ),
 
-                  // 5. Ghi chú giải quyết (Chỉ hiện khi đã xử lý/có ghi chú)
+
                   if (issue.solutionNote != null && issue.solutionNote!.isNotEmpty) ...[
                     const SizedBox(height: 16),
                     const Text(

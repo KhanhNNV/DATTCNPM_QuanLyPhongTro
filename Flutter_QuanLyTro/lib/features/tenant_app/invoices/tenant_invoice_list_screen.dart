@@ -9,8 +9,7 @@ import '../../../../core/widgets/custom_app_bar.dart';
 import '../../../../core/widgets/custom_paginated_list.dart';
 import '../../../../data/models/response/invoice_response.dart';
 import 'view_models/tenant_invoice_list_view_model.dart';
-// Import file Detail nếu bạn muốn nhấn vào để xem chi tiết
-// import 'tenant_invoice_detail_screen.dart';
+
 
 class TenantInvoiceListScreen extends StatelessWidget {
   const TenantInvoiceListScreen({super.key});
@@ -31,7 +30,7 @@ class TenantInvoiceListScreen extends StatelessWidget {
     );
   }
 
-  /// Danh sách các nút chọn trạng thái (Tất cả, Chưa thanh toán...)
+
   Widget _buildFilterChips(TenantInvoiceListViewModel vm) {
     return Container(
       color: Colors.white,
@@ -64,7 +63,7 @@ class TenantInvoiceListScreen extends StatelessWidget {
     );
   }
 
-  /// Body chứa danh sách hóa đơn có phân trang
+
   Widget _buildBody(TenantInvoiceListViewModel vm, BuildContext context) {
     return CustomPaginatedList<InvoiceResponse>(
       items: vm.invoices,
@@ -77,7 +76,7 @@ class TenantInvoiceListScreen extends StatelessWidget {
     );
   }
 
-  /// Card hiển thị từng hóa đơn
+
   Widget _buildInvoiceCard(BuildContext context, InvoiceResponse invoice) {
     final statusColor = _getStatusColor(invoice.status);
     final statusText = _getStatusText(invoice.status);
@@ -103,7 +102,7 @@ class TenantInvoiceListScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
+
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -171,7 +170,7 @@ class TenantInvoiceListScreen extends StatelessWidget {
     );
   }
 
-  // --- Utils ---
+
   String _formatCurrency(double amount) {
     return NumberFormat('#,###', 'vi_VN').format(amount).replaceAll(',', '.');
   }

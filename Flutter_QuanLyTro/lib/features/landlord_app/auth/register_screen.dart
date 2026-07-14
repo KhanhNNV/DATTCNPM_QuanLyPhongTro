@@ -107,7 +107,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 40),
 
-                  // 1. Nhập Họ tên
+
                   TextField(
                     controller: _nameController,
                     textCapitalization: TextCapitalization.words,
@@ -121,7 +121,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // 2. Nhập SĐT
+
                   TextField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
@@ -135,7 +135,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // 3. Nhập CCCD
+
                   TextField(
                     controller: _idCardController,
                     keyboardType: TextInputType.number,
@@ -149,7 +149,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // 4. Nhập Quê quán
+
                   TextField(
                     controller: _hometownController,
                     textCapitalization: TextCapitalization.words,
@@ -163,7 +163,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // 5. Nhập Mật khẩu
+
                   TextField(
                     controller: _passwordController,
                     obscureText: _isObscure,
@@ -181,7 +181,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                   const SizedBox(height: 40),
 
-                  // Nút Đăng ký
+
                   SizedBox(
                     width: double.infinity,
                     height: 56,

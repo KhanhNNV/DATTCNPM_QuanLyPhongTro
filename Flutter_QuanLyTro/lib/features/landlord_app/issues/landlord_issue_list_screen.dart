@@ -106,7 +106,6 @@ class _LandlordIssueListScreenState extends State<LandlordIssueListScreen> {
             ),
           );
 
-          // Nếu có thao tác cập nhật trạng thái trong màn chi tiết, tải lại danh sách
           if (hasChanged == true && context.mounted) {
             context.read<LandlordIssueListViewModel>().fetchIssues(isRefresh: true);
           }
