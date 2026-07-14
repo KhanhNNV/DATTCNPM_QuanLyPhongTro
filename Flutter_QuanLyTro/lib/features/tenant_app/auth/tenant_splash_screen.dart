@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/token_manager.dart';
-// Bạn nhớ kiểm tra lại đường dẫn import này cho khớp với cấu trúc thư mục nhé
 import '../../../../data/repository/user_repository.dart';
 import '../main_layout/tenant_main_layout_screen.dart';
 import '../main_layout/view_models/tenant_main_layout_view_model.dart';
+import '../../landlord_app/notification/view_models/notification_view_model.dart';
 import 'tenant_login_screen.dart';
 
 class TenantSplashScreen extends StatefulWidget {
@@ -26,17 +26,14 @@ class _TenantSplashScreenState extends State<TenantSplashScreen> {
 
   Future<void> _checkAuthentication() async {
     await Future.delayed(const Duration(seconds: 1));
-
     final token = await TokenManager.getAccessToken();
 
-    // Không có Token -> Chuyển thẳng sang trang Đăng nhập
     if (token == null) {
       _navigateToLogin();
       return;
     }
 
     try {
-      // Gọi API để xác thực Token.
       await _userProvider.getCurrentUser();
       _navigateToHome();
     } catch (e) {
@@ -56,7 +53,11 @@ class _TenantSplashScreenState extends State<TenantSplashScreen> {
 
   void _navigateToHome() {
     if (mounted) {
-      Provider.of<TenantMainLayoutViewModel>(context, listen: false).fetchInitialData();
+      context.read<TenantMainLayoutViewModel>().fetchInitialData();
+
+      context.read<NotificationViewModel>().fetchUnreadCount();
+
+      context.read<NotificationViewModel>().fetchNotifications(isRefresh: true);
 
       Navigator.pushReplacement(
         context,

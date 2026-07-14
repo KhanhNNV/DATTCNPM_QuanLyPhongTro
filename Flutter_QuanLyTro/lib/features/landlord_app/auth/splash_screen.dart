@@ -7,6 +7,7 @@ import '../../../../data/repository/user_repository.dart';
 import '../home_page/home_page_screen.dart';
 import '../main_layout/main_layout_screen.dart';
 import '../main_layout/view_models/main_layout_view_model.dart';
+import '../notification/view_models/notification_view_model.dart';
 import 'login_screen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -59,8 +60,16 @@ class _SplashScreenState extends State<SplashScreen> {
 
   void _navigateToHome() {
     if (mounted) {
-      Provider.of<MainLayoutViewModel>(context, listen: false).fetchInitialData();
+      // 1. Lấy dữ liệu khu trọ
+      context.read<MainLayoutViewModel>().fetchInitialData();
 
+      // 2. Lấy số lượng chuông chưa đọc
+      context.read<NotificationViewModel>().fetchUnreadCount();
+
+      // 3. Tải sẵn danh sách thông báo
+      context.read<NotificationViewModel>().fetchNotifications(isRefresh: true);
+
+      // Chuyển hướng sang màn Main Layout
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(

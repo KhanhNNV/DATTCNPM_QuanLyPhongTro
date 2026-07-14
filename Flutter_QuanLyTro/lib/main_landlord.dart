@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_quanlytro/core/constants/app_colors.dart';
 import 'features/landlord_app/auth/splash_screen.dart';
 import 'features/landlord_app/main_layout/view_models/main_layout_view_model.dart';
+import 'features/landlord_app/notification/view_models/notification_view_model.dart';
 import 'firebase_options.dart';
 
 // --- KHỞI TẠO LOCAL NOTIFICATIONS ---
@@ -58,11 +59,24 @@ void main() async {
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     debugPrint("📩 [Foreground FCM] Đã nhận thông báo: ${message.notification?.title}");
 
+    // ==========================================
+    // SỬA Ở ĐÂY: Cập nhật số chuông + Tải lại danh sách
+    // ==========================================
+    final context = navigatorKey.currentContext;
+    if (context != null) {
+      final notificationVM = context.read<NotificationViewModel>();
+
+      // 1. Cập nhật số lượng trên chuông
+      notificationVM.fetchUnreadCount();
+
+      // 2. Gọi API nạp thêm thông báo mới ngầm dưới nền
+      notificationVM.fetchNotifications(isRefresh: true);
+    }
+
     RemoteNotification? notification = message.notification;
     AndroidNotification? android = message.notification?.android;
 
     if (notification != null && android != null) {
-      // Đã sửa lỗi "Too many positional arguments" bằng cách gọi tên các tham số (id, title, body...)
       flutterLocalNotificationsPlugin.show(
         id: notification.hashCode,
         title: notification.title,
@@ -84,15 +98,13 @@ void main() async {
   // 5. Xử lý sự kiện khi người dùng bấm vào thông báo để mở app
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
     debugPrint("👆 [Opened FCM] Người dùng vừa bấm vào thông báo, data: ${message.data}");
-
-    // TODO: (Tương lai) Đọc message.data để lấy ID hợp đồng/phòng và dùng navigatorKey
-    // để chuyển hướng thẳng tới màn hình chi tiết tương ứng.
   });
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => MainLayoutViewModel()),
+        ChangeNotifierProvider(create: (_) => NotificationViewModel()),
       ],
       child: const MyApp(),
     ),

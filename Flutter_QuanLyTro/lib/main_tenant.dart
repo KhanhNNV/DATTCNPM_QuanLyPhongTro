@@ -7,9 +7,10 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_quanlytro/core/constants/app_colors.dart';
 import 'features/tenant_app/auth/tenant_splash_screen.dart';
 import 'features/tenant_app/main_layout/view_models/tenant_main_layout_view_model.dart';
+// THÊM IMPORT NÀY
+import 'features/landlord_app/notification/view_models/notification_view_model.dart';
 import 'firebase_options.dart';
 
-// --- KHỞI TẠO LOCAL NOTIFICATIONS ---
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
 
 const AndroidNotificationChannel channel = AndroidNotificationChannel(
@@ -19,7 +20,6 @@ const AndroidNotificationChannel channel = AndroidNotificationChannel(
   importance: Importance.max,
 );
 
-// --- HÀM XỬ LÝ BACKGROUND FCM CỦA KHÁCH THUÊ ---
 @pragma('vm:entry-point')
 Future<void> _tenantBackgroundMessageHandler(RemoteMessage message) async {
   await Firebase.initializeApp(
@@ -28,18 +28,15 @@ Future<void> _tenantBackgroundMessageHandler(RemoteMessage message) async {
   debugPrint("🔵 [Background FCM] Khách thuê nhận thông báo: ${message.notification?.title}");
 }
 
-// Khai báo navigatorKey
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Khởi tạo Firebase
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  // 2. Cấu hình Kênh thông báo cho Android (Để bật Pop-up rớt xuống)
   await flutterLocalNotificationsPlugin
       .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
       ?.createNotificationChannel(channel);
@@ -47,23 +44,32 @@ void main() async {
   const AndroidInitializationSettings initSettingsAndroid = AndroidInitializationSettings('@mipmap/ic_launcher');
   const InitializationSettings initSettings = InitializationSettings(android: initSettingsAndroid);
 
-  // Khởi tạo thư viện Local Notification (Sử dụng cú pháp named parameters)
   await flutterLocalNotificationsPlugin.initialize(
     settings: initSettings,
   );
 
-  // 3. Lắng nghe FCM khi app đóng hoặc chạy ngầm (Background / Terminated)
   FirebaseMessaging.onBackgroundMessage(_tenantBackgroundMessageHandler);
 
-  // 4. Lắng nghe FCM khi app đang mở (Foreground) -> Ép vẽ Pop-up bằng Local Notification
+  // 4. Lắng nghe FCM khi app đang mở (Foreground)
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     debugPrint("🔵 [Foreground FCM] Khách thuê nhận thông báo: ${message.notification?.title}");
+
+    // ==========================================
+    // 🚀 SỬA TẠI ĐÂY: Tự động cập nhật số chuông & danh sách thông báo
+    // ==========================================
+    final context = navigatorKey.currentContext;
+    if (context != null) {
+      final notificationVM = context.read<NotificationViewModel>();
+      // 1. Cập nhật số Badge hiển thị trên chuông
+      notificationVM.fetchUnreadCount();
+      // 2. Gọi tải lại danh sách ngầm (không chớp màn hình)
+      notificationVM.fetchNotifications(isRefresh: true);
+    }
 
     RemoteNotification? notification = message.notification;
     AndroidNotification? android = message.notification?.android;
 
     if (notification != null && android != null) {
-      // Hiển thị biểu ngữ từ trên rớt xuống
       flutterLocalNotificationsPlugin.show(
         id: notification.hashCode,
         title: notification.title,
@@ -82,18 +88,16 @@ void main() async {
     }
   });
 
-  // 5. Xử lý sự kiện khi người dùng bấm vào thông báo để mở app
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
     debugPrint("👆 [Opened FCM] Khách thuê vừa bấm vào thông báo, data: ${message.data}");
-
-    // TODO: (Tương lai) Dựa vào message.data để điều hướng đến màn hình thanh toán,
-    // hợp đồng hoặc chi tiết thông báo tương ứng.
   });
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => TenantMainLayoutViewModel()),
+        // KHỞI TẠO GLOBAL NOTIFICATION VIEWMODEL TẠI ĐÂY
+        ChangeNotifierProvider(create: (_) => NotificationViewModel()),
       ],
       child: const TenantApp(),
     ),

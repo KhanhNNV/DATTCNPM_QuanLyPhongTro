@@ -55,7 +55,11 @@ class MainLayoutScreen extends StatelessWidget {
                         ),
                       ),
                       const Padding(
-                        padding: EdgeInsets.only(bottom: 16.0, left: 16, right: 16),
+                        padding: EdgeInsets.only(
+                          bottom: 16.0,
+                          left: 16,
+                          right: 16,
+                        ),
                         child: Text(
                           'Chọn khu trọ quản lý',
                           style: TextStyle(
@@ -77,7 +81,8 @@ class MainLayoutScreen extends StatelessWidget {
                             itemCount: viewModel.areas.length,
                             itemBuilder: (context, index) {
                               final area = viewModel.areas[index];
-                              final isSelected = area.id == viewModel.selectedArea?.id;
+                              final isSelected =
+                                  area.id == viewModel.selectedArea?.id;
 
                               return ListTile(
                                 leading: Icon(
@@ -104,9 +109,9 @@ class MainLayoutScreen extends StatelessWidget {
                                 ),
                                 trailing: isSelected
                                     ? const Icon(
-                                  Icons.check_circle,
-                                  color: AppColors.primary,
-                                )
+                                        Icons.check_circle,
+                                        color: AppColors.primary,
+                                      )
                                     : null,
                                 onTap: () {
                                   viewModel.changeArea(area);
@@ -134,8 +139,7 @@ class MainLayoutScreen extends StatelessWidget {
     String displayName = "Đang tải...";
 
     if (!viewModel.isLoading) {
-      displayName =
-          viewModel.selectedArea?.name ?? "Chưa có khu trọ";
+      displayName = viewModel.selectedArea?.name ?? "Chưa có khu trọ";
     }
 
     if (viewModel.errorMessage != null) {
@@ -162,60 +166,58 @@ class MainLayoutScreen extends StatelessWidget {
       ),
       body: viewModel.isLoading
           ? const Center(
-        child: CircularProgressIndicator(
-          color: AppColors.primary,
-        ),
-      )
+              child: CircularProgressIndicator(color: AppColors.primary),
+            )
           : viewModel.errorMessage != null
           ? Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.cloud_off,
-              size: 48,
-              color: Colors.redAccent,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Lỗi: ${viewModel.errorMessage}',
-              style: const TextStyle(
-                color: Colors.redAccent,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.cloud_off,
+                    size: 48,
+                    color: Colors.redAccent,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Lỗi: ${viewModel.errorMessage}',
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: viewModel.fetchInitialData,
+                    child: const Text('Thử lại'),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: viewModel.fetchInitialData,
-              child: const Text('Thử lại'),
-            ),
-          ],
-        ),
-      )
+            )
           : IndexedStack(
-        index: viewModel.currentIndex,
-        children: [
-          HomePageScreen(
-            selectedAreaId: viewModel.selectedAreaId,
-          ),
-          ChangeNotifierProvider(
-            create: (_) => HomeViewModel(),
-            child: HomeScreen(selectedAreaId: viewModel.selectedAreaId),
-          ),
-          ChangeNotifierProvider(
-            // Sử dụng ValueKey để ép Flutter tạo lại ViewModel mới khi chủ trọ đổi khu (Global Filter)
-            key: ValueKey('tenant_tab_${viewModel.selectedAreaId}'),
-            create: (_) => TenantListViewModel(areaId: viewModel.selectedAreaId!)..fetchTenants(),
-            child: const TenantListScreen(),
-          ),
-          ChangeNotifierProvider(
-            create: (_) => NotificationViewModel()..fetchNotifications(),
-            child: const NotificationScreen(),
-          ),
-        ],
-      ),
+              index: viewModel.currentIndex,
+              children: [
+                HomePageScreen(selectedAreaId: viewModel.selectedAreaId),
+                ChangeNotifierProvider(
+                  create: (_) => HomeViewModel(),
+                  child: HomeScreen(selectedAreaId: viewModel.selectedAreaId),
+                ),
+                ChangeNotifierProvider(
+                  key: ValueKey('tenant_tab_${viewModel.selectedAreaId}'),
+                  create: (_) =>
+                      TenantListViewModel(areaId: viewModel.selectedAreaId!)
+                        ..fetchTenants(),
+                  child: const TenantListScreen(),
+                ),
+
+                const NotificationScreen(),
+              ],
+            ),
       bottomNavigationBar: MainBottomBar(
         currentIndex: viewModel.currentIndex,
-        onTabSelected: viewModel.changeTab,
+        onTabSelected: (index) {
+          viewModel.changeTab(index);
+          if (index == 3) {
+            context.read<NotificationViewModel>().fetchNotifications(isRefresh: true);
+          }
+        },
       ),
     );
   }

@@ -55,15 +55,17 @@ class TenantMainLayoutScreen extends StatelessWidget {
         index: viewModel.currentIndex,
         children: [
           const TenantHomeScreen(),
-          ChangeNotifierProvider(
-            create: (_) => NotificationViewModel()..fetchNotifications(),
-            child: const NotificationScreen(),
-          ),
+          const NotificationScreen(),
         ],
       ),
       bottomNavigationBar: TenantMainBottomBar(
         currentIndex: viewModel.currentIndex,
-        onTabSelected: viewModel.changeTab,
+        onTabSelected: (index) {
+          viewModel.changeTab(index);
+          if (index == 1) {
+            context.read<NotificationViewModel>().fetchNotifications(isRefresh: true);
+          }
+        },
       ),
     );
   }
