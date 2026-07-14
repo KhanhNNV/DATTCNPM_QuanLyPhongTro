@@ -116,7 +116,7 @@ public class ContractController {
         return ResponseEntity.ok(response);
     }
     // API 5: Thanh lý hợp đồng & Bù trừ cọc
-    @PutMapping("/{contractId}/terminate")
+    @PutMapping("/terminate/{contractId}")
     @PreAuthorize("hasRole('LANDLORD')") // Chỉ Chủ trọ được quyền thanh lý
     public ResponseEntity<ContractTerminationResponse> terminateContract(
             @PathVariable("contractId") UUID contractId,
