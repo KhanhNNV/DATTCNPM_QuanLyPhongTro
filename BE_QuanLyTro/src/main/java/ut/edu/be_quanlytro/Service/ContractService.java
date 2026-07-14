@@ -27,6 +27,7 @@ public class ContractService {
     private final InvoiceRepository invoiceRepository;
     private final InvoiceDetailRepository invoiceDetailRepository;
     private final PaymentRepository  paymentRepository;
+    private final AreaServiceRepository areaServiceRepository;
 
     // Tận dụng lại các Service đã có
     private final UserService userService;
@@ -414,10 +415,10 @@ public class ContractService {
     }
     // ================= 7. THANH LÝ HỢP ĐỒNG=================
     @Transactional
-    public ContractTerminationResponse terminateContract(ContractTerminationRequest request, UUID currentUserId) {
+    public ContractTerminationResponse terminateContract(ContractTerminationRequest request, UUID currentUserId, UUID contractID) {
 
         // 1. Tìm hợp đồng
-        Contract contract = contractRepository.findById(request.getContractId())
+        Contract contract = contractRepository.findById(contractID)
                 .orElseThrow(() -> new ResourceNotFoundException("Không tìm thấy hợp đồng!"));
 
         // 2. Chốt chặn bảo mật
@@ -430,16 +431,36 @@ public class ContractService {
             throw new BadRequestException("Chỉ có thể thanh lý hợp đồng đang ở trạng thái SIGNED");
         }
 
-        // 4. TÍNH TOÁN BÙ TRỪ CỌC
-        // a. Tính tổng tiền điện nước tháng cuối
-        BigDecimal electricityCost = request.getElectricityPrice().multiply(new BigDecimal(request.getElectricityUsage()));
-        BigDecimal waterCost = request.getWaterPrice().multiply(new BigDecimal(request.getWaterUsage()));
+        Room room = contract.getRoom();
+        Area area = room.getArea();
 
-        // b. Tổng tiền bị trừ = Điện + Nước + Hư hỏng/Phạt (Nếu có)
-        BigDecimal damages = request.getOtherDamagesFee() != null ? request.getOtherDamagesFee() : BigDecimal.ZERO;
-        BigDecimal totalDeduction = electricityCost.add(waterCost).add(damages);
+        // ==============================================================
+        // 4. LẤY ĐƠN GIÁ TỪ DATABASE VÀ TÍNH TOÁN BÙ TRỪ CỌC
+        // ==============================================================
+        BigDecimal electricityCost = BigDecimal.ZERO;
+        BigDecimal waterCost = BigDecimal.ZERO;
 
-        // c. Tính toán chênh lệch với tiền cọc
+        // Lấy danh sách dịch vụ của khu trọ đang hoạt động
+        List<AreaService> areaServices = areaServiceRepository.findByAreaIdAndIsActiveTrue(area.getId());
+
+        // Quét để tìm đơn giá Điện / Nước
+        for (AreaService service : areaServices) {
+            if (service.getCalcType() == ServiceCalculationType.BY_INDEX) {
+                String serviceName = service.getName().toLowerCase();
+
+                if (serviceName.contains("điện") && request.getElectricityUsage() != null) {
+                    electricityCost = service.getPrice().multiply(new BigDecimal(request.getElectricityUsage()));
+                }
+                else if (serviceName.contains("nước") && request.getWaterUsage() != null) {
+                    waterCost = service.getPrice().multiply(new BigDecimal(request.getWaterUsage()));
+                }
+            }
+        }
+
+        // Tổng tiền bị trừ = Điện + Nước
+        BigDecimal totalDeduction = electricityCost.add(waterCost);
+
+        // Tính toán chênh lệch với tiền cọc
         BigDecimal depositAmount = contract.getDepositAmount() != null ? contract.getDepositAmount() : BigDecimal.ZERO;
         BigDecimal offsetAmount = depositAmount.subtract(totalDeduction);
 
@@ -457,20 +478,25 @@ public class ContractService {
             finalAmountToShow = BigDecimal.ZERO;
         }
 
+        // ==============================================================
         // 5. CẬP NHẬT TRẠNG THÁI (Đóng băng dữ liệu)
+        // ==============================================================
         contract.setStatus(ContractStatus.TERMINATED);
-        Room room = contract.getRoom();
         room.setStatus(RoomStatus.AVAILABLE);
 
         contractRepository.save(contract);
         roomRepository.save(room);
 
-        // 6. Ghi Log hệ thống
+        // ==============================================================
+        // 6. GHI LOG HỆ THỐNG
+        // ==============================================================
         String logDesc = String.format("Thanh lý hợp đồng phòng %s. %s: %s VNĐ",
                 room.getRoomNumber(), action, finalAmountToShow);
-        activityLog.createLog(contract.getRoom().getArea().getLandlord(), "TERMINATE_CONTRACT", "contracts", contract.getId(), logDesc);
+        activityLog.createLog(area.getLandlord(), "TERMINATE_CONTRACT", "contracts", contract.getId(), logDesc);
 
-        // 7. Trả về kết quả
+        // ==============================================================
+        // 7. TRẢ VỀ KẾT QUẢ
+        // ==============================================================
         return ContractTerminationResponse.builder()
                 .contractId(contract.getId())
                 .roomNumber(room.getRoomNumber())

@@ -116,14 +116,18 @@ public class ContractController {
         return ResponseEntity.ok(response);
     }
     // API 5: Thanh lý hợp đồng & Bù trừ cọc
-    @PutMapping("/terminate")
+    @PutMapping("/{contractId}/terminate")
     @PreAuthorize("hasRole('LANDLORD')") // Chỉ Chủ trọ được quyền thanh lý
     public ResponseEntity<ContractTerminationResponse> terminateContract(
+            @PathVariable("contractId") UUID contractId,
             @RequestBody ContractTerminationRequest request,
             @AuthenticationPrincipal Jwt jwt) {
 
+        // 1. Lấy ID chủ trọ từ token
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
-        ContractTerminationResponse response = contractService.terminateContract(request, currentUserId);
+
+        // 2. Truyền thêm contractId vào hàm service
+        ContractTerminationResponse response = contractService.terminateContract(request, currentUserId, contractId);
 
         return ResponseEntity.ok(response);
     }
