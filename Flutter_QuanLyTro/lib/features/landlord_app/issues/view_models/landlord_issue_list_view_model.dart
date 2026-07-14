@@ -6,8 +6,9 @@ class LandlordIssueListViewModel extends ChangeNotifier {
   final IssueRepository _repository = IssueRepository();
 
   final String? roomIdFilter;
+  final String? areaIdFilter;
 
-  LandlordIssueListViewModel({this.roomIdFilter});
+  LandlordIssueListViewModel({this.roomIdFilter, this.areaIdFilter});
 
   List<IssueResponse> _issues = [];
   List<IssueResponse> get issues => _issues;
@@ -55,6 +56,7 @@ class LandlordIssueListViewModel extends ChangeNotifier {
         size: _pageSize,
         status: _selectedStatus,
         roomId: roomIdFilter,
+        areaId: areaIdFilter,
       );
 
       final List<dynamic> content = responseData['content'] ?? [];

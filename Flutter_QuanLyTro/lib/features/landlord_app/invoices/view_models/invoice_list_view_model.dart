@@ -7,6 +7,10 @@ import '../../../../data/repository/invoice_repository.dart';
 class InvoiceListViewModel extends ChangeNotifier {
   final InvoiceRepository _repository = InvoiceRepository();
 
+  final String? areaId;
+
+  InvoiceListViewModel({this.areaId});
+
   // Trạng thái UI
   bool isLoading = false;
   bool isFetchingMore = false;
@@ -56,6 +60,7 @@ class InvoiceListViewModel extends ChangeNotifier {
         page: currentPage,
         size: pageSize,
         status: selectedStatus == 'ALL' ? null : selectedStatus,
+        areaId: areaId, // 🎯 SỬA Ở ĐÂY: Truyền areaId xuống Repository
       );
 
       _allInvoices.addAll(result['invoices'] as List<InvoiceResponse>);

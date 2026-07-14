@@ -64,6 +64,7 @@ class IssueRepository {
     required int size,
     String? status,
     String? roomId,
+    String? areaId,
   }) async {
     String path = '/api/issues/landlord?page=$page&size=$size';
 
@@ -72,6 +73,9 @@ class IssueRepository {
     }
     if (roomId != null) {
       path += '&roomId=$roomId';
+    }
+    if (areaId != null && areaId.isNotEmpty && areaId != 'ALL') {
+      path += '&areaId=$areaId';
     }
 
     final response = await _apiClient.get(path);

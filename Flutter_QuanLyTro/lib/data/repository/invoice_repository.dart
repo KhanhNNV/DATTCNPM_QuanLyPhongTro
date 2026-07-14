@@ -13,6 +13,7 @@ class InvoiceRepository {
     int page = 0,
     int size = 10,
     String? status,
+    String? areaId,
   }) async {
     // Xây dựng query parameters
     final Map<String, String> queryParams = {
@@ -22,6 +23,11 @@ class InvoiceRepository {
 
     if (status != null && status != 'ALL') {
       queryParams['status'] = status;
+    }
+
+    // 🎯 SỬA Ở ĐÂY: Thêm areaId vào query parameters nếu có giá trị
+    if (areaId != null && areaId.isNotEmpty && areaId != 'ALL') {
+      queryParams['areaId'] = areaId;
     }
 
     // Ghép query string vào path

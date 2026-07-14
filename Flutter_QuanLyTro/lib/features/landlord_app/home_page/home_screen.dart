@@ -40,17 +40,15 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // Gọi API lần đầu khi khởi tạo tab
-      context.read<HomeViewModel>().fetchPendingIssuesCount();
+      context.read<HomeViewModel>().fetchPendingIssuesCount(widget.selectedAreaId);
     });
   }
 
   @override
   void didUpdateWidget(covariant HomeScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Nếu khu trọ bị đổi -> Load lại dữ liệu của HomeViewModel
     if (oldWidget.selectedAreaId != widget.selectedAreaId) {
-      context.read<HomeViewModel>().fetchPendingIssuesCount();
+      context.read<HomeViewModel>().fetchPendingIssuesCount(widget.selectedAreaId);
     }
   }
 
@@ -129,11 +127,17 @@ class _HomeScreenState extends State<HomeScreen> {
         title: 'Xem hóa đơn',
         icon: Icons.calculate_outlined,
         onTap: () {
+          if (currentAreaId == null || currentAreaId.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Vui lòng chọn khu trọ trước!')),
+            );
+            return;
+          }
           Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => ChangeNotifierProvider(
-                create: (_) => InvoiceListViewModel()..fetchInvoices(),
+                create: (_) => InvoiceListViewModel(areaId: currentAreaId)..fetchInvoices(),
                 child: const InvoiceListScreen(),
               ),
             ),
@@ -158,18 +162,26 @@ class _HomeScreenState extends State<HomeScreen> {
             ? '${homeViewModel.pendingIssuesCount}'
             : null,
         onTap: () async {
+          if (currentAreaId == null || currentAreaId.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Vui lòng chọn khu trọ trước!')),
+            );
+            return;
+          }
           await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) => ChangeNotifierProvider(
-                create: (_) => LandlordIssueListViewModel(),
+                create: (_) => LandlordIssueListViewModel(areaIdFilter: currentAreaId)..fetchIssues(isRefresh: true),
                 child: const LandlordIssueListScreen(),
               ),
             ),
           );
 
           if (context.mounted) {
-            context.read<HomeViewModel>().fetchPendingIssuesCount();
+            if (context.mounted) {
+              context.read<HomeViewModel>().fetchPendingIssuesCount(currentAreaId);
+            }
           }
         },
       ),

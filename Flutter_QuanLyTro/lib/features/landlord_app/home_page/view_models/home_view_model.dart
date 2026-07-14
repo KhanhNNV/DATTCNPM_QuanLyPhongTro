@@ -13,7 +13,7 @@ class HomeViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
 
   /// Gọi API để lấy tổng số lượng sự cố có trạng thái 'PENDING'
-  Future<void> fetchPendingIssuesCount() async {
+  Future<void> fetchPendingIssuesCount(String? areaId) async {
     _isLoading = true;
 
     try {
@@ -22,6 +22,7 @@ class HomeViewModel extends ChangeNotifier {
         page: 0,
         size: 1,
         status: 'PENDING',
+        areaId: areaId,
       );
 
       // Trích xuất tổng số lượng phần tử
@@ -36,6 +37,8 @@ class HomeViewModel extends ChangeNotifier {
       debugPrint('Lỗi tải số lượng sự cố PENDING: $e');
     } finally {
       _isLoading = false;
+      // Dù thành công hay lỗi vẫn notify để tắt trạng thái loading nếu có component nào đang dùng
+      notifyListeners();
     }
   }
 }
