@@ -21,8 +21,6 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    /* ===================== 1. LỖI VALIDATION dữ liệu đầu vào (@Valid ở RequestBody) ===================== */
-    // Ví dụ: Khách thuê để trống số điện thoại, mật khẩu quá ngắn... khi đăng ký
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleMethodArgumentNotValid(MethodArgumentNotValidException ex) {
         Map<String, String> errors = new HashMap<>();
@@ -38,8 +36,6 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    /* ===================== 2. LỖI VALIDATION tham số trên URL (@Validated Param) ===================== */
-    // Ví dụ: Lý do từ chối hóa đơn truyền vào param bị trống hoặc sai điều kiện ràng buộc
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex) {
         Map<String, String> errors = ex.getConstraintViolations().stream()
@@ -58,8 +54,6 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    /* ===================== 3. LỖI DỮ LIỆU JSON SAI FORMAT ===================== */
-    // Ví dụ: Bạn làm Android viết thiếu dấu ngoặc nhọn {}, dấu phẩy hoặc truyền sai kiểu dữ liệu
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleInvalidJson(HttpMessageNotReadableException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -71,8 +65,6 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    /* ===================== 4. LỖI THIẾU THAM SỐ BẮT BUỘC ===================== */
-    // Ví dụ: API yêu cầu truyền request param tên là "reason" nhưng Android quên không truyền
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public ResponseEntity<ErrorResponse> handleMissingParam(MissingServletRequestParameterException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -84,8 +76,6 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    /* ===================== 5. LỖI SAI KIỂU DỮ LIỆU PARAM ===================== */
-    // Ví dụ: URL nhận vào UUID hoặc số int, nhưng Android lại truyền lên một chuỗi chữ "abc"
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         String message = String.format(
@@ -104,7 +94,6 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    /* ===================== 6. LỖI CHƯA ĐĂNG NHẬP (401 UNAUTHORIZED) ===================== */
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleAuthentication(AuthenticationException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -116,8 +105,6 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    /* ===================== 7. LỖI SAI QUYỀN TRUY CẬP (403 FORBIDDEN) ===================== */
-    // Ví dụ: Khách thuê cố tình gọi API duyệt hóa đơn vốn chỉ dành cho ROLE_LANDLORD
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDenied(AccessDeniedException ex) {
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -129,7 +116,6 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    /* ===================== 8. LỖI KHÔNG TÌM THẤY DỮ LIỆU (404 NOT FOUND) ===================== */
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(ResourceNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -141,8 +127,6 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    /* ===================== 9. LỖI XUNG ĐỘT DỮ LIỆU / TRÙNG LẶP DB (409 CONFLICT) ===================== */
-    // Ví dụ: Thêm mới một phòng trọ trùng số phòng đã có, hoặc đăng ký trùng Số điện thoại
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDuplicate(DataIntegrityViolationException ex) {
         String message = "Dữ liệu đã tồn tại hoặc vi phạm ràng buộc cơ sở dữ liệu";
@@ -159,8 +143,6 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    /* ===================== 10. LỖI NGHIỆP VỤ DO DỰ ÁN TỰ ĐỊNH NGHĨA (400) ===================== */
-    // Bắt cái BadRequestException tự tạo lúc nãy của anh em mình
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ErrorResponse> handleBadRequest(BadRequestException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -172,7 +154,6 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    /* ===================== 11. CÁC LỖI RUNTIME CHUNG KHÁC (400) ===================== */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<ErrorResponse> handleRuntime(RuntimeException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -184,11 +165,9 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    /* ===================== 12. LỖI TỐI CAO - LỖI SERVER HỆ THỐNG (500) ===================== */
-    // Dành cho các lỗi bất ngờ như NullPointerException, lỗi tràn bộ nhớ... chưa kịp lường trước
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleException(Exception ex) {
-        ex.printStackTrace(); // In log ra console BE để dev dễ check dấu vết bug
+        ex.printStackTrace();
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorResponse(
                         500,

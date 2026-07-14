@@ -53,7 +53,6 @@ public class DepositController {
         return ResponseEntity.ok(depositService.getDepositById(id, currentUserId));
     }
 
-    // ================= READ (LIST BY AREA) =================
     @GetMapping("/area/{areaId}")
     @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<List<DepositResponse>> getDepositsByArea(
@@ -63,12 +62,10 @@ public class DepositController {
 
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
 
-        // Nếu Frontend có truyền trạng thái (status), gọi hàm lọc trạng thái
         if (status != null) {
             return ResponseEntity.ok(depositService.getDepositsByAreaAndStatus(areaId, status, currentUserId));
         }
 
-        // Nếu Frontend không truyền trạng thái, lấy tất cả phiếu cọc của khu trọ đó
         return ResponseEntity.ok(depositService.getDepositsByAreaId(areaId, currentUserId));
     }
 }

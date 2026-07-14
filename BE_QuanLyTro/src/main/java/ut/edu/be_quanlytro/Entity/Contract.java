@@ -35,7 +35,6 @@ public class Contract {
     @JoinColumn(name = "tenant_id", nullable = false)
     private User tenant;
 
-
     @OneToMany(mappedBy = "contract", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<ContractMember> members = new ArrayList<>();
@@ -66,14 +65,11 @@ public class Contract {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private ContractStatus status = ContractStatus.DRAFT;
-    // 1. Dùng để thống kê: Hợp đồng này được tạo ra từ Mẫu nào?
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "template_id")
     private ContractTemplate template;
 
-    // 2. Chụp ảnh văn bản gốc (Lõi Pháp Lý):
-    // Toàn bộ HTML sau khi điền tên, ngày tháng, chữ ký sẽ bị "đóng băng" ở đây.
-    // Chủ trọ có sửa template gốc thì văn bản này vẫn bất di bất dịch.
     @Column(name = "contract_terms", columnDefinition = "LONGTEXT")
     private String contractTerms;
 

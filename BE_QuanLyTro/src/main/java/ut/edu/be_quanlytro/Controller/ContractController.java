@@ -28,28 +28,23 @@ public class ContractController {
             .registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
 
     @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasRole('LANDLORD')") // Chỉ chủ trọ mới có quyền tạo hợp đồng
+    @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<ContractCreateResponse> createContract(
             @RequestParam("data") String dataJson,
             @RequestParam("frontImage") MultipartFile frontImage,
             @RequestParam("backImage") MultipartFile backImage,
-            @AuthenticationPrincipal Jwt jwt) { // Lấy thông tin user từ Token bảo mật
+            @AuthenticationPrincipal Jwt jwt) {
 
         try {
-            // 1. Chuyển chuỗi chữ JSON nhận từ Form-Data thành Object Request
             ContractCreateRequest request = objectMapper.readValue(dataJson, ContractCreateRequest.class);
 
-            // 2. Trích xuất ID của chủ trọ đang đăng nhập từ JWT Token
-            // Lưu ý: Thay "userId" bằng đúng tên Claim chứa ID trong Token của dự án bạn
             UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
 
-            // 3. Gọi Service thực hiện xử lý nghiệp vụ
             ContractCreateResponse response = contractService.createContract(request, frontImage, backImage, currentUserId);
 
             return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            // Nếu có bất kỳ lỗi gì (OCR lỗi, phòng đã thuê, thiếu chữ ký...), thảy về mã lỗi 400 kèm tin nhắn
             throw new RuntimeException("Quá trình lập hợp đồng thất bại: " + e.getMessage());
         }
     }
@@ -57,7 +52,7 @@ public class ContractController {
     @PostMapping("/create/manual")
     @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<ContractCreateResponse> createContractManual(
-            @RequestBody ContractCreateManualRequest request, // Dùng thẳng @RequestBody vì là JSON mượt mà
+            @RequestBody ContractCreateManualRequest request,
             @AuthenticationPrincipal Jwt jwt) {
 
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
@@ -65,7 +60,6 @@ public class ContractController {
         return ResponseEntity.ok(response);
     }
 
-    // API 1: Xem chi tiết theo ID (Chỉ Chủ trọ)
     @GetMapping("/{contractId}")
     @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<ContractDetailResponse> getContractDetail(
@@ -77,7 +71,6 @@ public class ContractController {
         return ResponseEntity.ok(response);
     }
 
-    // API 2: Lấy hợp đồng "Của tôi" (Chỉ Khách thuê)
     @GetMapping("/current")
     @PreAuthorize("hasRole('TENANT')")
     public ResponseEntity<ContractDetailResponse> getMyCurrentContract(
@@ -88,7 +81,6 @@ public class ContractController {
         return ResponseEntity.ok(response);
     }
 
-    // API Xem danh sách toàn bộ Hợp đồng của Chủ trọ
     @GetMapping
     @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<List<ContractDetailResponse>> getMyContracts(
@@ -97,15 +89,13 @@ public class ContractController {
 
         UUID landlordId = UUID.fromString(jwt.getClaimAsString("userId"));
 
-        // Gọi hàm mới ở Service có truyền cả areaId và landlordId
         List<ContractDetailResponse> responses = contractService.getContractsByArea(areaId, landlordId);
 
         return ResponseEntity.ok(responses);
     }
 
-    // API 4: Thêm thành viên ở ghép vào hợp đồng
     @PostMapping("/add/member")
-    @PreAuthorize("hasRole('LANDLORD')") // Nghiệp vụ mặc định: Chỉ chủ trọ mới có quyền khai báo người mới
+    @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<ContractDetailResponse> addContractMember(
             @RequestBody ContractMemberAddRequest request,
             @AuthenticationPrincipal Jwt jwt) {
@@ -115,36 +105,32 @@ public class ContractController {
 
         return ResponseEntity.ok(response);
     }
-    // API 5: Thanh lý hợp đồng & Bù trừ cọc
+
     @PutMapping("/terminate/{contractId}")
-    @PreAuthorize("hasRole('LANDLORD')") // Chỉ Chủ trọ được quyền thanh lý
+    @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<ContractTerminationResponse> terminateContract(
             @PathVariable("contractId") UUID contractId,
             @RequestBody ContractTerminationRequest request,
             @AuthenticationPrincipal Jwt jwt) {
 
-        // 1. Lấy ID chủ trọ từ token
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
 
-        // 2. Truyền thêm contractId vào hàm service
         ContractTerminationResponse response = contractService.terminateContract(request, currentUserId, contractId);
 
         return ResponseEntity.ok(response);
     }
 
-    // API 6: Cập nhật thông tin hợp đồng (Nháp)
     @PutMapping(value = "/update/{contractId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<ContractDetailResponse> updateContract(
             @PathVariable UUID contractId,
-            @RequestParam(value = "data", required = false) String dataJson, // Nhận chuỗi JSON
+            @RequestParam(value = "data", required = false) String dataJson,
             @RequestParam(value = "file", required = false) MultipartFile file,
             @AuthenticationPrincipal Jwt jwt) {
 
         try {
             UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
 
-            // Ép kiểu từ chuỗi JSON ra Object
             ContractUpdateRequest request = new ContractUpdateRequest();
             if (dataJson != null && !dataJson.trim().isEmpty()) {
                 request = objectMapper.readValue(dataJson, ContractUpdateRequest.class);
@@ -158,43 +144,36 @@ public class ContractController {
         }
     }
 
-    // ================= XÓA HỢP ĐỒNG (BẢN NHÁP) =================
     @DeleteMapping("/{contractId}")
-    @PreAuthorize("hasRole('LANDLORD')") // Chỉ chủ trọ mới có quyền xóa
+    @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<String> deleteContract(
             @PathVariable UUID contractId,
             @AuthenticationPrincipal Jwt jwt) {
 
-        // 1. Trích xuất ID của chủ trọ đang đăng nhập từ Token
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
 
-        // 2. Gọi Service để thực hiện xóa hợp đồng và tự động dọn rác tài khoản
         contractService.deleteContract(contractId, currentUserId);
 
-        // 3. Trả về thông báo thành công cho Frontend
         return ResponseEntity.ok("Xóa hợp đồng thành công! Căn phòng đã được giải phóng và dữ liệu đã được dọn dẹp.");
     }
 
-    // ================= KHÁCH THUÊ KÝ HỢP ĐỒNG =================
     @PutMapping(value = "/sign/{contractId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasRole('TENANT')") // Khóa chặt: Chỉ có Khách thuê mới được ký
+    @PreAuthorize("hasRole('TENANT')")
     public ResponseEntity<ContractDetailResponse> signContract(
             @PathVariable UUID contractId,
             @RequestParam("signature") MultipartFile signatureImage,
-            @RequestParam(value = "file", required = false) MultipartFile pdfFile, // BỔ SUNG NHẬN FILE PDF
+            @RequestParam(value = "file", required = false) MultipartFile pdfFile,
             @AuthenticationPrincipal Jwt jwt) {
 
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
 
-        // Truyền thêm biến pdfFile vào Service
         ContractDetailResponse response = contractService.signContract(contractId, signatureImage, pdfFile, currentUserId);
 
         return ResponseEntity.ok(response);
     }
 
-    // ================= GIA HẠN HỢP ĐỒNG (Gia hạn là tạo hợp đồng mới nhưng tài khoản cũ) =================
     @PutMapping("/extend/{contractId}")
-    @PreAuthorize("hasRole('LANDLORD')") // Chỉ chủ trọ mới có quyền gia hạn
+    @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<ContractDetailResponse> extendContract(
             @PathVariable UUID contractId,
             @RequestBody ContractExtendRequest request,
@@ -206,9 +185,6 @@ public class ContractController {
         return ResponseEntity.ok(response);
     }
 
-
-
-    // ================= UPLOAD FILE HỢP ĐỒNG =================
     @PostMapping(value = "/upload/file/{id}", consumes = "multipart/form-data")
     @PreAuthorize("hasAnyRole('LANDLORD','TENANT')")
     public ResponseEntity<ContractDetailResponse> uploadContractFile(
@@ -218,7 +194,6 @@ public class ContractController {
 
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
 
-        // Gọi Service và trả kết quả
         return ResponseEntity.ok(contractService.uploadContractFile(id, file, currentUserId));
     }
 }

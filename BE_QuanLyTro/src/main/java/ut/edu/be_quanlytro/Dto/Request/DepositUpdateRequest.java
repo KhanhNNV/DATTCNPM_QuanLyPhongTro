@@ -15,5 +15,5 @@ public class DepositUpdateRequest {
     private BigDecimal depositAmount;
     private LocalDate expectedMoveInDate;
     private String note;
-    private DepositStatus status; // Cho phép chủ trọ đổi trạng thái (VD: Hủy cọc)
+    private DepositStatus status;
 }

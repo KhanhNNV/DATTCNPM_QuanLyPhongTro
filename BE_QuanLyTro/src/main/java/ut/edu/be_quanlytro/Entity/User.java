@@ -78,32 +78,31 @@ public class User implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Chuyển role_type (landlord/tenant) thành quyền được Spring Security công nhận
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name().toUpperCase()));
     }
 
     @Override
     public String getUsername() {
-        return this.phone; // Đăng nhập bằng Số điện thoại thay vì username thông thường
+        return this.phone;
     }
 
     @Override
     public boolean isAccountNonExpired() {
-        return true; // Tài khoản không bao giờ hết hạn
+        return true;
     }
 
     @Override
     public boolean isAccountNonLocked() {
-        return true; // Tài khoản không bị khóa
+        return true;
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
-        return true; // Mật khẩu không hết hạn
+        return true;
     }
 
     @Override
     public boolean isEnabled() {
-        return true; // Tài khoản luôn kích hoạt
+        return true;
     }
 }

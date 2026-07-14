@@ -15,19 +15,13 @@ import java.util.UUID;
 @Repository
 public interface DepositRepository extends JpaRepository<Deposit, UUID> {
 
-
-    // 5. 🌟 Lọc tất cả phiếu cọc thuộc một Khu trọ (Dùng cho chức năng xem danh sách cọc theo khu)
     @Query("SELECT d FROM Deposit d WHERE d.room.area.id = :areaId")
     List<Deposit> findByAreaId(@Param("areaId") UUID areaId);
 
-
-    // Lọc phiếu cọc theo Khu trọ và Trạng thái
     @Query("SELECT d FROM Deposit d WHERE d.room.area.id = :areaId AND d.status = :status ORDER BY d.depositDate DESC")
     List<Deposit> findByAreaIdAndStatus(@Param("areaId") UUID areaId, @Param("status") DepositStatus status);
 
-    // 🌟 BỔ SUNG HÀM NÀY: Tìm danh sách phiếu cọc quá hạn
     List<Deposit> findAllByStatusAndExpectedMoveInDateBefore(DepositStatus status, LocalDate date);
 
     Optional<Deposit> findByContractId(UUID contractId);
-
 }
