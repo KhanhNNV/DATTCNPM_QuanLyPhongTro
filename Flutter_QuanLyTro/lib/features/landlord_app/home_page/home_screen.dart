@@ -10,8 +10,10 @@ import '../area_management/area_config_screen.dart';
 import '../area_management/view_models/area_config_view_model.dart';
 import '../contract/contract_create_screen.dart';
 import '../contract/contract_list_screen.dart';
+import '../contract/contract_termination_screen.dart';
 import '../contract/view_models/contract_create_view_model.dart';
 import '../contract/view_models/contract_list_view_model.dart';
+import '../contract/view_models/contract_termination_view_model.dart';
 import '../contract_template/contract_template_list_screen.dart';
 import '../contract_template/view_models/contract_template_list_view_model.dart';
 import '../deposit_page/deposit_list_screen.dart';
@@ -102,7 +104,24 @@ class _HomeScreenState extends State<HomeScreen> {
       QuickActionItem(
         title: 'Trả phòng',
         icon: Icons.gite_outlined,
-        onTap: () => _navigateTo('Nút: Thanh lý hợp đồng & quyết toán cọc'),
+        onTap: () {
+          if (currentAreaId == null || currentAreaId.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Vui lòng chọn khu trọ trước!')),
+            );
+            return;
+          }
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => ChangeNotifierProvider(
+                // Khởi tạo ViewModel, truyền areaId và load danh sách hợp đồng ngay lập tức
+                create: (_) => ContractTerminationViewModel(areaId: currentAreaId)..fetchActiveContracts(),
+                child: const ContractTerminationScreen(),
+              ),
+            ),
+          );
+        },
       ),
       QuickActionItem(
         title: 'Chốt điện/nước',

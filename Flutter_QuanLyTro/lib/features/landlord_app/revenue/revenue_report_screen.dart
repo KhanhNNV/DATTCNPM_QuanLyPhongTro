@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'view_models/revenue_view_model.dart';
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/widgets/custom_app_bar.dart';
 
 class RevenueReportScreen extends StatelessWidget {
   const RevenueReportScreen({super.key});
 
-  // Hàm helper định dạng tiền tệ đơn giản tiện dùng nội bộ prose
   String _formatCurrency(double amount) {
     return "${amount.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} đ";
   }
@@ -15,15 +16,10 @@ class RevenueReportScreen extends StatelessWidget {
     final viewModel = context.watch<RevenueViewModel>();
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Thống kê doanh thu', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black,
-        elevation: 0.5,
-      ),
+      backgroundColor: Colors.grey[50],
+      appBar: const CustomAppBar(title: 'Thống kê doanh thu'),
       body: Column(
         children: [
-          // Bộ chọn tháng năm
           Container(
             color: Colors.white,
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -32,9 +28,10 @@ class RevenueReportScreen extends StatelessWidget {
               children: [
                 Text(
                   "Tháng báo cáo: ${viewModel.selectedDate.month}/${viewModel.selectedDate.year}",
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF263238)),
                 ),
                 TextButton.icon(
+                  style: TextButton.styleFrom(foregroundColor: AppColors.primary),
                   icon: const Icon(Icons.calendar_month),
                   label: const Text("Chọn tháng"),
                   onPressed: () async {
@@ -54,8 +51,6 @@ class RevenueReportScreen extends StatelessWidget {
             ),
           ),
           const Divider(height: 1),
-
-          // Vùng hiển thị trạng thái chính
           Expanded(
             child: _buildMainContent(context, viewModel),
           ),
@@ -89,12 +84,12 @@ class RevenueReportScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Tổng quan hóa đơn
           _buildSummaryCard(report.totalInvoices),
-          const SizedBox(height: 16),
-
-          // Khối thống kê Tiền Tệ
-          const Text("Thống kê số tiền", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 20),
+          const Text(
+            "Thống kê số tiền",
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF263238)),
+          ),
           const SizedBox(height: 10),
           _buildAmountTile(
             title: "Tổng tiền đã thu",
@@ -127,13 +122,15 @@ class RevenueReportScreen extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF1A73E8), Color(0xFF1354B4)]),
+        gradient: LinearGradient(
+          colors: [AppColors.primary, AppColors.primary.withOpacity(0.8)],
+        ),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Tổng hóa đơn phát sinh", style: TextStyle(color: Colors.white70, fontSize: 14)),
+          const Text("Tổng hóa đơn phát sinh", style: TextStyle(color: Colors.white, fontSize: 14)),
           const SizedBox(height: 6),
           Text(
             "$totalInvoices hóa đơn",

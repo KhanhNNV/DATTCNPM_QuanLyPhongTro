@@ -8,9 +8,11 @@ import '../models/request/contract_create_manual_request.dart';
 import '../models/request/contract_create_request.dart';
 import '../models/request/contract_extend_request.dart';
 import '../models/request/contract_member_add_request.dart';
+import '../models/request/contract_termination_request.dart';
 import '../models/response/contract_create_response.dart';
 import '../models/response/contract_detail_response.dart';
 import '../../../core/utils/api_error_handler.dart';
+import '../models/response/contract_termination_response.dart';
 
 class ContractRepository {
   final ApiClient _apiClient = ApiClient();
@@ -226,6 +228,21 @@ class ContractRepository {
     }
 
     // Ném lỗi qua Handler
+    final rawError = utf8.decode(response.bodyBytes);
+    throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
+  }
+
+  Future<ContractTerminationResponse> terminateContract(String contractId, ContractTerminationRequest request) async {
+    final response = await _apiClient.put(
+      '/api/contracts/terminate/$contractId',
+      request.toJson(),
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      final json = jsonDecode(utf8.decode(response.bodyBytes));
+      return ContractTerminationResponse.fromJson(json);
+    }
+
     final rawError = utf8.decode(response.bodyBytes);
     throw Exception(ApiErrorHandler.extractErrorMessage(rawError));
   }
