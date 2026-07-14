@@ -16,38 +16,26 @@
         private UUID id;
         private UUID roomId;
         private String roomNumber;
-
-        // Thông tin người đứng tên hợp đồng (Đại diện)
         private UUID tenantId;
         private String tenantName;
         private String tenantPhone;
         private String tenantIdCardNumber;
         private String tenantHometown;
         private String tenantSignatureUrl;
-
-        // --- Bổ sung thông tin Khu trọ ---
         private UUID areaId;
         private String areaName;
         private String areaAddress;
-
-        // Thông tin chủ trọ
         private String landlordName;
         private String landlordIdCardNumber;
         private String landlordHometown;
         private String landlordSignatureUrl;
-
-
-        // Thông tin hợp đồng
         private LocalDate startDate;
         private LocalDate endDate;
         private BigDecimal depositAmount;
         private ContractStatus status;
         private String contractFileUrl;
         private BigDecimal rentPrice;
-
-        // Danh sách toàn bộ những người đang ở trong phòng (bao gồm cả đại diện)
         private List<ContractMemberResponse> members;
-
         private String contractTerms;
         private UUID templateId;
     }

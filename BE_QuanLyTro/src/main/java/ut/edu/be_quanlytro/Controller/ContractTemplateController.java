@@ -20,7 +20,6 @@ public class ContractTemplateController {
 
     private final ContractTemplateService templateService;
 
-    // Lấy ID người dùng từ Token
     private UUID getCurrentUserId(Jwt jwt) {
         return UUID.fromString(jwt.getClaimAsString("userId"));
     }
@@ -58,20 +57,17 @@ public class ContractTemplateController {
         templateService.deleteTemplate(id, getCurrentUserId(jwt));
         return ResponseEntity.ok("Xóa mẫu hợp đồng thành công!");
     }
-    // ================= CHỌN MẪU MẶC ĐỊNH =================
+
     @PutMapping("/active/{id}")
     @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<ContractTemplateResponse> setActiveTemplate(
             @PathVariable UUID id,
             @AuthenticationPrincipal Jwt jwt) {
 
-        // 1. Lấy ID của Chủ trọ từ Token
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
 
-        // 2. Gọi xuống Service để xử lý logic bật/tắt
         ContractTemplateResponse response = templateService.setActiveTemplate(id, currentUserId);
 
-        // 3. Trả kết quả về cho Frontend
         return ResponseEntity.ok(response);
     }
 }

@@ -15,7 +15,6 @@ public class ContractTemplateResponse {
     private String landlordDuty;
     private String tenantDuty;
     private String executionTerms;
-
     private Boolean isActive;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

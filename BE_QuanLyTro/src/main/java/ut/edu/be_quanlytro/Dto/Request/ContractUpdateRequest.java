@@ -14,13 +14,9 @@
             private LocalDate endDate;
             private BigDecimal depositAmount;
             private UUID templateId;
-
-            // --- Bổ sung thông tin Khách thuê chính ---
             private String tenantFullName;
             private String tenantIdCardNumber;
             private LocalDate tenantDob;
             private String tenantHometown;
-
-            // --- Bổ sung danh sách Thành viên ở ghép ---
             private List<ContractMemberAddRequest> members;
     }

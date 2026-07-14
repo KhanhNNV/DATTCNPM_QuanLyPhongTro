@@ -23,7 +23,6 @@ public class ContractMember {
     @JdbcTypeCode(SqlTypes.VARCHAR)
     private UUID id;
 
-    // Giữ lại liên kết này để @OneToMany(mappedBy = "contract") bên bảng Contract không bị lỗi
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contract_id", nullable = false)
     private Contract contract;

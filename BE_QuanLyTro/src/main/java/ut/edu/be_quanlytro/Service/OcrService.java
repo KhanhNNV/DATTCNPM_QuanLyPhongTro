@@ -12,7 +12,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import ut.edu.be_quanlytro.Dto.Response.OcrCccdResponse;
-import ut.edu.be_quanlytro.Exception.BadRequestException; // Import thêm lỗi 400
+import ut.edu.be_quanlytro.Exception.BadRequestException;
 
 @Service
 @RequiredArgsConstructor
@@ -21,7 +21,6 @@ public class OcrService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    // Lấy API Key từ file application-local.properties
     @Value("${fpt.ai.vision.api-key}")
     private String FPT_API_KEY;
 
@@ -29,7 +28,6 @@ public class OcrService {
 
     public OcrCccdResponse extractCccdData(MultipartFile frontImage, MultipartFile backImage) {
 
-        // Vì chỉ đọc thông tin mặt trước (Tên, số CCCD, ngày sinh...) nên chỉ cần bắt buộc có ảnh mặt trước
         if (frontImage == null || frontImage.isEmpty()) {
             throw new BadRequestException("Vui lòng cung cấp ảnh mặt trước CCCD!");
         }
@@ -40,12 +38,10 @@ public class OcrService {
         String hometown = "";
 
         try {
-            // 1. CẤU HÌNH HEADER GỬI LÊN FPT
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.MULTIPART_FORM_DATA);
             headers.set("api-key", FPT_API_KEY);
 
-            // 2. ĐÓNG GÓI ẢNH MẶT TRƯỚC ĐỂ GỬI ĐI
             MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
             ByteArrayResource contentsAsResource = new ByteArrayResource(frontImage.getBytes()) {
                 @Override
@@ -57,11 +53,9 @@ public class OcrService {
 
             HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
 
-            // 3. THỰC HIỆN GỌI API (BẮN ẢNH SANG SERVER FPT)
             System.out.println("Đang gửi ảnh lên FPT AI để nhận diện...");
             ResponseEntity<String> response = restTemplate.exchange(FPT_OCR_URL, HttpMethod.POST, requestEntity, String.class);
 
-            // 4. ĐỌC KẾT QUẢ TRẢ VỀ TỪ FPT
             JsonNode root = objectMapper.readTree(response.getBody());
 
             if (root.path("errorCode").asInt() != 0) {
@@ -73,7 +67,6 @@ public class OcrService {
                 throw new BadRequestException("FPT AI không tìm thấy thông tin CCCD trong ảnh này!");
             }
 
-            // 5. BÓC TÁCH DỮ LIỆU THẬT
             idNumber = dataNode.path("id").asText();
             fullName = dataNode.path("name").asText();
             dob = dataNode.path("dob").asText();
@@ -82,13 +75,11 @@ public class OcrService {
             System.out.println("Nhận diện thành công khách hàng: " + fullName);
 
         } catch (BadRequestException e) {
-            // Bắt và ném lại đúng BadRequestException để không bị gói 2 lần
             throw e;
         } catch (Exception e) {
             throw new BadRequestException("Lỗi trong quá trình quét CCCD: " + e.getMessage());
         }
 
-        // 7. TRẢ KẾT QUẢ VỀ CHO FRONTEND (Các trường URL ảnh sẽ mang giá trị null)
         return OcrCccdResponse.builder()
                 .idNumber(idNumber)
                 .fullName(fullName)

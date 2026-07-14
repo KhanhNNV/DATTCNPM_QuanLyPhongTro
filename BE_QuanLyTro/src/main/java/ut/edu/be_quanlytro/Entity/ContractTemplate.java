@@ -29,19 +29,17 @@ public class ContractTemplate {
     @Column(nullable = false)
     private String name;
 
-    // ================== CÁC TRƯỜNG NỘI DUNG ĐƯỢC PHÉP TÙY CHỈNH ==================
     @Column(name = "rental_content", columnDefinition = "LONGTEXT")
-    private String rentalContent;   // Nội dung thuê phòng (Giá cả, diện tích, mục đích...)
+    private String rentalContent;
 
     @Column(name = "landlord_duty", columnDefinition = "LONGTEXT")
-    private String landlordDuty;    // Trách nhiệm bên A (Chủ trọ)
+    private String landlordDuty;
 
     @Column(name = "tenant_duty", columnDefinition = "LONGTEXT")
-    private String tenantDuty;      // Trách nhiệm bên B (Khách thuê)
+    private String tenantDuty;
 
     @Column(name = "execution_terms", columnDefinition = "LONGTEXT")
-    private String executionTerms;  // Điều khoản thực hiện (Chấm dứt hợp đồng, giải quyết tranh chấp...)
-    // =============================================================================
+    private String executionTerms;
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default

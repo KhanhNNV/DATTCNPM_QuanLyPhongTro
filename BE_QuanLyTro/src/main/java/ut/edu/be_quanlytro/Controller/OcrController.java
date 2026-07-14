@@ -16,7 +16,7 @@ public class OcrController {
     private final OcrService ocrService;
 
     @PostMapping(value = "/cccd", consumes = {"multipart/form-data"})
-    @PreAuthorize("hasRole('LANDLORD')") // Chỉ tài khoản chủ trọ mới có quyền quét dữ liệu khách
+    @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<OcrCccdResponse> uploadAndScanCccd(
             @RequestPart("frontImage") MultipartFile frontImage,
             @RequestPart("backImage") MultipartFile backImage) {

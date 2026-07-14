@@ -15,7 +15,6 @@ public class ActivityLogService {
 
     private final ActivityLogRepository activityLogRepository;
 
-    //Hàm tạo log
     @Transactional
     public void createLog(User user, String action, String entityName, UUID entityId, String description) {
         ActivityLog log = ActivityLog.builder()

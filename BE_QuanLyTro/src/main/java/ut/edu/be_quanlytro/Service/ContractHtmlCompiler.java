@@ -11,7 +11,6 @@ public class ContractHtmlCompiler {
 
     public String compileContractTerms(ContractTemplate template, Contract contract, User landlord, User tenant, Room room) {
 
-        // 1. ĐỊNH NGHĨA KHUNG PHÁP LÝ CỨNG (Bất khả xâm phạm)
         String baseHtmlFrame = """
             <div style="font-family: Arial, sans-serif; padding: 20px;">
                 <h2 style="text-align: center;">CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</h2>
@@ -56,16 +55,13 @@ public class ContractHtmlCompiler {
             </div>
         """;
 
-        // 2. NHỒI DỮ LIỆU TỪ MẪU CỦA CHỦ TRỌ VÀO KHUNG
         String html = baseHtmlFrame
                 .replace("{{RENTAL_CONTENT}}", template.getRentalContent() != null ? template.getRentalContent() : "")
                 .replace("{{LANDLORD_DUTY}}", template.getLandlordDuty() != null ? template.getLandlordDuty() : "")
                 .replace("{{TENANT_DUTY}}", template.getTenantDuty() != null ? template.getTenantDuty() : "")
                 .replace("{{EXECUTION_TERMS}}", template.getExecutionTerms() != null ? template.getExecutionTerms() : "");
 
-        // 3. NHỒI THÔNG TIN CÁ NHÂN VÀ PHÒNG
         html = html.replace("{{START_DATE}}", contract.getStartDate() != null ? contract.getStartDate().toString() : "")
-                // Khúc này lấy Tên và SĐT từ User hiện tại
                 .replace("{{LANDLORD_NAME}}", landlord.getFullName() != null ? landlord.getFullName() : "")
                 .replace("{{LANDLORD_PHONE}}", landlord.getPhone() != null ? landlord.getPhone() : "")
                 .replace("{{LANDLORD_ID_CARD}}", contract.getCreator().getIdCardNumber() != null ?  contract.getCreator().getIdCardNumber() : "")
@@ -76,8 +72,6 @@ public class ContractHtmlCompiler {
                 .replace("{{TENANT_ID_CARD}}", tenant.getIdCardNumber() != null ? tenant.getIdCardNumber() : "")
                 .replace("{{TENANT_HOMETOWN}}", tenant.getHometown() != null ? tenant.getHometown() : "");
 
-        // 4. CHỮ KÝ SỐ
-        // Chữ ký của chủ trọ cũng được lấy từ "Bản chụp" (Snapshot) trong Contract cho chuẩn pháp lý
         String landlordSig = contract.getLandlordSignature();
         if (landlordSig != null && !landlordSig.trim().isEmpty()) {
             html = html.replace("{{LANDLORD_SIGNATURE_PLACEHOLDER}}", String.format("<img src='%s' width='150'/>", landlordSig));

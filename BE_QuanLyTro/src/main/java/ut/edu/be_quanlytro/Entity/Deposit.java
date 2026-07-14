@@ -24,7 +24,6 @@ public class Deposit {
     @JdbcTypeCode(SqlTypes.VARCHAR)
     private UUID id;
 
-    // Liên kết N-1 với Phòng (Phòng nào đang được cọc)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "room_id", nullable = false)
     private Room room;
@@ -35,8 +34,6 @@ public class Deposit {
     @Column(name = "tenant_full_name")
     private String tenantFullName;
 
-    // Liên kết 1-1 với Hợp đồng (Khi cọc chuyển thành hợp đồng)
-    // Cột này ban đầu có thể null
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "contract_id")
     private Contract contract;
@@ -47,7 +44,6 @@ public class Deposit {
     @Column(nullable = false)
     private LocalDate depositDate;
 
-    // Ngày dự kiến chuyển vào
     @Column(nullable = false)
     private LocalDate expectedMoveInDate;
 

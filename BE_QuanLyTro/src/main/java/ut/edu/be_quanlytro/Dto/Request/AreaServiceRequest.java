@@ -9,7 +9,7 @@ import java.math.BigDecimal;
 @Getter
 @Setter
 public class AreaServiceRequest {
-    private String name; // Ví dụ: "Điện", "Nước", "Wifi"
+    private String name;
     private ServiceCalculationType calcType;
     private BigDecimal price;
 }

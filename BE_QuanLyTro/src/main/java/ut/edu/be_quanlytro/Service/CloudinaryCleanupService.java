@@ -11,8 +11,6 @@ public class CloudinaryCleanupService {
     public CloudinaryCleanupService(CloudinaryService cloudinaryService) {
         this.cloudinaryService = cloudinaryService;
     }
-
-    // Annotation này biến hàm thành một Background Thread (Thợ phụ)
     @Async
     public void deleteContractFilesAsync(String contractFileUrl, String signatureUrl) {
         System.out.println("Đang tiến hành dọn dẹp Cloudinary...");
@@ -25,7 +23,6 @@ public class CloudinaryCleanupService {
             }
             System.out.println("Đã dọn dẹp file Cloudinary thành công!");
         } catch (Exception e) {
-            // Chỉ in log, không làm ảnh hưởng đến luồng chính
             System.err.println("Lỗi xóa file Cloud: " + e.getMessage());
         }
     }

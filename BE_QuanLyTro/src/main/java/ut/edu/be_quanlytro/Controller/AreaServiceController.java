@@ -28,7 +28,6 @@ public class AreaServiceController {
             @RequestBody AreaServiceRequest request,
             @AuthenticationPrincipal Jwt jwt) {
 
-        // Lấy đúng ID từ claim "userId"
         UUID landlordId = UUID.fromString(jwt.getClaimAsString("userId"));
 
         AreaServiceResponse response = areaServiceManagement.createService(areaId, request, landlordId);
@@ -41,10 +40,8 @@ public class AreaServiceController {
             @PathVariable UUID areaId,
             @AuthenticationPrincipal Jwt jwt) {
 
-        // Trích xuất ID từ Token
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
 
-        // Truyền cả 2 tham số xuống Service
         return ResponseEntity.ok(areaServiceManagement.getServicesByAreaId(areaId, currentUserId));
     }
 
@@ -55,7 +52,6 @@ public class AreaServiceController {
             @RequestBody AreaServiceRequest request,
             @AuthenticationPrincipal Jwt jwt) {
 
-        // Lấy đúng ID từ claim "userId"
         UUID landlordId = UUID.fromString(jwt.getClaimAsString("userId"));
 
         return ResponseEntity.ok(areaServiceManagement.updateService(serviceId, request, landlordId));

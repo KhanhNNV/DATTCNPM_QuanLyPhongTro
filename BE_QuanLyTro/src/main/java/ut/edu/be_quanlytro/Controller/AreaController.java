@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.*;
 import ut.edu.be_quanlytro.Dto.Request.AreaRequest;
 import ut.edu.be_quanlytro.Dto.Request.OnboardingRequest;
 import ut.edu.be_quanlytro.Dto.Response.AreaResponse;
-import ut.edu.be_quanlytro.Entity.Area;
 import ut.edu.be_quanlytro.Service.AreaManagementService;
 
 import java.util.List;
@@ -23,28 +22,23 @@ public class AreaController {
 
     private final AreaManagementService areaManagementService;
 
-    // ================= ONBOARDING =================
     @PostMapping("/onboarding")
     @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<AreaResponse> onboardNewLandlord(
             @RequestBody OnboardingRequest request,
             @AuthenticationPrincipal Jwt jwt) {
 
-        // Trích xuất ID chuẩn xác từ claim
         UUID landlordId = UUID.fromString(jwt.getClaimAsString("userId"));
 
-        // Hứng dữ liệu trả về với kiểu AreaResponse
         AreaResponse response = areaManagementService.onboardNewLandlord(request, landlordId);
 
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
-    // ================= CRUD =================
     @GetMapping
     @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<List<AreaResponse>> getAreasByLandlord(@AuthenticationPrincipal Jwt jwt) {
 
-        // Trích xuất ID chuẩn xác từ claim
         UUID landlordId = UUID.fromString(jwt.getClaimAsString("userId"));
         return ResponseEntity.ok(areaManagementService.getAreasByLandlord(landlordId));
     }
@@ -53,34 +47,30 @@ public class AreaController {
     @PreAuthorize("hasAnyRole('LANDLORD','TENANT')")
     public ResponseEntity<AreaResponse> getAreaById(
             @PathVariable UUID id,
-            @AuthenticationPrincipal Jwt jwt) { // Bổ sung tham số đọc Token
+            @AuthenticationPrincipal Jwt jwt) {
 
-        // Trích xuất ID chuẩn xác từ claim
         UUID currentUserId = UUID.fromString(jwt.getClaimAsString("userId"));
 
-        // Truyền cả id khu trọ và id người dùng xuống Service
         return ResponseEntity.ok(areaManagementService.getAreaById(id, currentUserId));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasRole('LANDLORD')") // Đã chuyển sang hasRole
+    @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<AreaResponse> updateArea(
             @PathVariable UUID id,
             @RequestBody AreaRequest request,
             @AuthenticationPrincipal Jwt jwt) {
 
-        // Trích xuất ID chuẩn xác từ claim
         UUID landlordId = UUID.fromString(jwt.getClaimAsString("userId"));
         return ResponseEntity.ok(areaManagementService.updateArea(id, request, landlordId));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('LANDLORD')") // Đã chuyển sang hasRole
+    @PreAuthorize("hasRole('LANDLORD')")
     public ResponseEntity<String> deleteArea(
             @PathVariable UUID id,
             @AuthenticationPrincipal Jwt jwt) {
 
-        // Trích xuất ID chuẩn xác từ claim
         UUID landlordId = UUID.fromString(jwt.getClaimAsString("userId"));
         areaManagementService.deleteArea(id, landlordId);
 
