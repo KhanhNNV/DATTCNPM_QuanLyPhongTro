@@ -230,7 +230,7 @@ public class DepositService {
         Area area = areaRepository.findById(areaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Khu trọ không tồn tại"));
 
-        // 2. 🔒 KIỂM TRA BẢO MẬT: Đảm bảo Chủ trọ đang đăng nhập là người sở hữu khu trọ này
+        // 2. KIỂM TRA BẢO MẬT: Đảm bảo Chủ trọ đang đăng nhập là người sở hữu khu trọ này
         if (!area.getLandlord().getId().equals(currentUserId)) {
             throw new AccessDeniedException("Truy cập bị từ chối! Bạn không có quyền xem danh sách phiếu cọc của khu trọ khác.");
         }
