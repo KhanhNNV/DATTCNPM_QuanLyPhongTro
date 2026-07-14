@@ -19,10 +19,10 @@ class ForceChangePasswordScreen extends StatelessWidget {
         const SnackBar(content: Text('Đổi mật khẩu thành công!'), backgroundColor: Colors.green),
       );
 
-      // Gọi API khởi tạo dữ liệu trước khi vào màn hình chính
+
       Provider.of<TenantMainLayoutViewModel>(context, listen: false).fetchInitialData();
 
-      // Điều hướng vào màn hình chính và giải phóng màn hình cũ
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -41,13 +41,13 @@ class ForceChangePasswordScreen extends StatelessWidget {
     final viewModel = context.watch<ForceChangePasswordViewModel>();
 
     return PopScope(
-      canPop: false, // Chặn vuốt back hoặc bấm nút back hệ thống
+      canPop: false,
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
           title: const Text('Cập nhật mật khẩu', style: TextStyle(color: Colors.white)),
           backgroundColor: AppColors.primary,
-          automaticallyImplyLeading: false, // Ẩn nút mũi tên Back trên AppBar
+          automaticallyImplyLeading: false,
           centerTitle: true,
         ),
         body: Center(
@@ -72,7 +72,7 @@ class ForceChangePasswordScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 32),
 
-                // 1. Mật khẩu hiện tại (Mặc định)
+
                 TextField(
                   controller: viewModel.oldPasswordController,
                   obscureText: viewModel.obscureOldPassword,
@@ -90,7 +90,7 @@ class ForceChangePasswordScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
-                // 2. Mật khẩu mới
+
                 TextField(
                   controller: viewModel.newPasswordController,
                   obscureText: viewModel.obscureNewPassword,
@@ -108,7 +108,7 @@ class ForceChangePasswordScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
 
-                // 3. Xác nhận mật khẩu mới
+
                 TextField(
                   controller: viewModel.confirmPasswordController,
                   obscureText: viewModel.obscureConfirmPassword,

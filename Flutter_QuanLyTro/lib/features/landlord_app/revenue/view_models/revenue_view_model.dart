@@ -22,7 +22,7 @@ class RevenueViewModel extends ChangeNotifier {
   late DateTime _selectedDate;
   DateTime get selectedDate => _selectedDate;
 
-  /// Gọi API lấy dữ liệu báo cáo
+
   Future<void> fetchRevenueReport() async {
     _isLoading = true;
     _errorMessage = null;
@@ -30,7 +30,7 @@ class RevenueViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Định dạng ngày về dạng YYYY-MM-01 để khớp ISO.DATE của Spring Boot
+
       final String formattedMonth =
           "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-01";
 
@@ -46,7 +46,7 @@ class RevenueViewModel extends ChangeNotifier {
     }
   }
 
-  /// Thay đổi tháng lọc và tự động tải lại dữ liệu
+
   void changeMonth(DateTime newDate) {
     _selectedDate = newDate;
     fetchRevenueReport();

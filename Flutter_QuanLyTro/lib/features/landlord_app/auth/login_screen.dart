@@ -25,12 +25,12 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    // Lắng nghe ViewModel để hiển thị thông báo lỗi (nếu có)
+
     _viewModel.addListener(_onViewModelChanged);
   }
 
   void _onViewModelChanged() {
-    // Nếu ViewModel có lỗi, hiển thị SnackBar và xóa lỗi đi để không hiện lại
+
     if (_viewModel.errorMessage != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -43,23 +43,23 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleLogin() {
-    // Gọi hàm login từ ViewModel, truyền UI callback vào
+
     _viewModel.login(
       _phoneController.text,
       _passwordController.text,
       onSuccess: () {
-        // Gọi nạp dữ liệu ngay khi vừa đăng nhập thành công
+
         Provider.of<MainLayoutViewModel>(
           context,
           listen: false,
         ).fetchInitialData();
 
-        // Chuyển hướng sang trang chủ
+
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const MainLayoutScreen()),
           (Route<dynamic> route) =>
-              false, // Trả về false để xóa tất cả các route cũ
+              false,
         );
       },
     );
@@ -84,7 +84,7 @@ class _LoginScreenState extends State<LoginScreen> {
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      // Sử dụng ListenableBuilder để chỉ vẽ lại UI khi ViewModel thay đổi (ví dụ: đang loading)
+
       body: ListenableBuilder(
         listenable: _viewModel,
         builder: (context, child) {
@@ -110,11 +110,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 40),
 
-                  // Nhập SDT
+
                   TextField(
                     controller: _phoneController,
                     keyboardType: TextInputType.phone,
-                    enabled: !_viewModel.isLoading, // Khóa ô nhập khi đang tải
+                    enabled: !_viewModel.isLoading,
                     decoration: InputDecoration(
                       labelText: 'Số điện thoại',
                       hintText: 'Nhập số điện thoại của bạn',
@@ -126,11 +126,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Nhập Pass
+
                   TextField(
                     controller: _passwordController,
                     obscureText: _isObscure,
-                    enabled: !_viewModel.isLoading, // Khóa ô nhập khi đang tải
+                    enabled: !_viewModel.isLoading,
                     decoration: InputDecoration(
                       labelText: 'Mật khẩu',
                       hintText: 'Nhập mật khẩu',
@@ -164,7 +164,6 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 24),
 
-                  // Nút Đăng nhập
                   SizedBox(
                     width: double.infinity,
                     height: 56,

@@ -19,7 +19,6 @@ class LandlordIssueDetailScreen extends StatelessWidget {
 
     return WillPopScope(
       onWillPop: () async {
-        // Trả về hasChanged để màn list biết có cần gọi lại API list hay không
         Navigator.pop(context, vm.hasChanged);
         return false;
       },
@@ -32,7 +31,6 @@ class LandlordIssueDetailScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 1. Hình ảnh sự cố
               if (issue.imageUrl != null && issue.imageUrl!.isNotEmpty)
                 Image.network(
                   issue.imageUrl!,
@@ -55,7 +53,6 @@ class LandlordIssueDetailScreen extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // 2. Trạng thái
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
@@ -74,11 +71,9 @@ class LandlordIssueDetailScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
 
-                    // 3. Thông tin cơ bản
                     _buildInfoCard(issue),
                     const SizedBox(height: 16),
 
-                    // 4. Nội dung mô tả
                     const Text(
                       'Mô tả chi tiết',
                       style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -98,7 +93,6 @@ class LandlordIssueDetailScreen extends StatelessWidget {
                       ),
                     ),
 
-                    // 5. Ghi chú giải quyết (Tự động hiện sau khi update API thành công)
                     if (issue.solutionNote != null && issue.solutionNote!.isNotEmpty) ...[
                       const SizedBox(height: 16),
                       const Text(
@@ -126,7 +120,6 @@ class LandlordIssueDetailScreen extends StatelessWidget {
             ],
           ),
         ),
-        // --- NÚT ĐIỀU HƯỚNG BÊN DƯỚI DÀNH CHO CHỦ TRỌ ---
         bottomNavigationBar: _buildBottomActions(context, vm),
       ),
     );
@@ -183,10 +176,9 @@ class LandlordIssueDetailScreen extends StatelessWidget {
     );
   }
 
-  /// Nút hành động cập nhật trạng thái nằm ở đáy màn hình
   Widget? _buildBottomActions(BuildContext context, LandlordIssueDetailViewModel vm) {
     if (vm.currentIssue.status == 'COMPLETED') {
-      return null; // Đã xong thì không hiện nút nữa
+      return null;
     }
 
     String buttonText = vm.currentIssue.status == 'PENDING' ? 'Tiếp nhận xử lý' : 'Đánh dấu hoàn thành';
@@ -213,7 +205,6 @@ class LandlordIssueDetailScreen extends StatelessWidget {
     );
   }
 
-  /// Dialog nhập ghi chú giải quyết
   void _showUpdateDialog(BuildContext context, LandlordIssueDetailViewModel vm, String targetStatus, String actionName) {
     final TextEditingController noteController = TextEditingController();
 
@@ -245,8 +236,8 @@ class LandlordIssueDetailScreen extends StatelessWidget {
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             onPressed: () async {
-              Navigator.pop(ctx); // Đóng dialog
-              FocusScope.of(context).unfocus(); // Hạ bàn phím
+              Navigator.pop(ctx);
+              FocusScope.of(context).unfocus();
 
               final note = noteController.text.trim();
               final success = await vm.updateStatus(targetStatus, note);

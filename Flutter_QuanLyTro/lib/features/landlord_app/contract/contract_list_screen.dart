@@ -109,7 +109,6 @@ class ContractListScreen extends StatelessWidget {
     }
   }
 
-  // HÀM XỬ LÝ GIA HẠN HỢP ĐỒNG
   void _handleExtendContract(BuildContext context, ContractListViewModel listVm, ContractDetailResponse contract) {
     final currentAreaId = context.read<MainLayoutViewModel>().selectedAreaId;
     if (currentAreaId == null || currentAreaId.isEmpty) {
@@ -222,7 +221,7 @@ class ContractListScreen extends StatelessWidget {
       },
     ).then((isSuccess) {
       if (isSuccess == true) {
-        listVm.fetchContracts(); // Gọi lại API reload danh sách
+        listVm.fetchContracts();
       }
     });
   }

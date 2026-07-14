@@ -15,7 +15,6 @@ class TenantMainBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Lắng nghe số lượng chưa đọc theo thời gian thực
     final unreadCount = context.select((NotificationViewModel vm) => vm.unreadCount);
 
     return BottomNavigationBar(

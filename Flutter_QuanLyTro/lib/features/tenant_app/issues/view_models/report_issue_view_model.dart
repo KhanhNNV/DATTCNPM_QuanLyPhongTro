@@ -43,7 +43,7 @@ class ReportIssueViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  // Submit báo cáo
+
   Future<bool> submitIssue() async {
     final description = descriptionController.text.trim();
     if (description.isEmpty) {
@@ -65,12 +65,12 @@ class ReportIssueViewModel extends ChangeNotifier {
 
       _isLoading = false;
       notifyListeners();
-      return true; // Thành công
+      return true;
     } catch (e) {
       _isLoading = false;
       _errorMessage = e.toString().replaceAll('Exception: ', '');
       notifyListeners();
-      return false; // Thất bại
+      return false;
     }
   }
 

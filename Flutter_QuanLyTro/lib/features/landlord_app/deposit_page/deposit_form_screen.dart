@@ -136,7 +136,6 @@ class DepositFormScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Lắng nghe State được cung cấp từ màn hình cha qua Navigator.push
     final vm = context.watch<DepositFormViewModel>();
 
     return Scaffold(

@@ -24,7 +24,7 @@ class WelcomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 40),
 
-              // Tiêu đề
+
               const Text(
                 'Chào mừng đến với\nQuản Lý Phòng Trọ\nThông Minh',
                 textAlign: TextAlign.center,
@@ -37,7 +37,7 @@ class WelcomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // Giới thiệu
+
               const Text(
                 'Giải pháp toàn diện để quản lý phòng trọ',
                 textAlign: TextAlign.center,
@@ -49,7 +49,7 @@ class WelcomeScreen extends StatelessWidget {
               ),
               const SizedBox(height: 16),
 
-              // Giới thiệu
+
               const Text(
                 'Chuyên nghiệp - Tự động hóa\nTiết kiệm - Linh hoạt',
                 textAlign: TextAlign.center,
@@ -62,13 +62,13 @@ class WelcomeScreen extends StatelessWidget {
               ),
               const Spacer(),
 
-              // Nút Bắt đầu
+
               SizedBox(
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
                   onPressed: () {
-                    // Chuyển hướng sang trang Đăng nhập
+
                     Navigator.push(
                       context,
                       MaterialPageRoute(

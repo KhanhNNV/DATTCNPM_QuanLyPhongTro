@@ -69,7 +69,7 @@ class TenantContractPdfViewerScreen extends StatelessWidget {
   }
 
   Widget? _buildBottomNav(BuildContext context, TenantContractViewModel vm, ContractDetailResponse? contract) {
-    // Ẩn nút nếu đang tải, có lỗi, không có hợp đồng, hoặc ĐÃ KÝ
+
     if (vm.isLoading || vm.errorMessage != null || contract == null || contract.status == 'SIGNED') {
       return null;
     }

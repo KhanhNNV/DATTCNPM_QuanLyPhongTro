@@ -9,7 +9,6 @@ class ContractListViewModel extends ChangeNotifier {
 
   ContractListViewModel({required this.areaId});
 
-  // --- QUẢN LÝ STATE TÌM KIẾM ---
   final TextEditingController searchController = TextEditingController();
 
   bool isLoading = false;
@@ -21,7 +20,6 @@ class ContractListViewModel extends ChangeNotifier {
   String selectedStatus = 'ALL';
   String searchQuery = '';
 
-  // Ánh xạ trạng thái hiển thị
   final Map<String, String> statusMap = {
     'ALL': 'Tất cả',
     'DRAFT': 'Bản nháp',
@@ -61,12 +59,10 @@ class ContractListViewModel extends ChangeNotifier {
   void _applyFilters() {
     List<ContractDetailResponse> results = List.from(_allContracts);
 
-    // 1. Lọc theo trạng thái hợp đồng (Local filter)
     if (selectedStatus != 'ALL') {
       results = results.where((c) => c.status == selectedStatus).toList();
     }
 
-    // 2. Lọc theo từ khóa tìm kiếm (Số phòng hoặc Tên khách thuê)
     if (searchQuery.trim().isNotEmpty) {
       final query = searchQuery.trim().toLowerCase();
       results = results.where((c) {

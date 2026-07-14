@@ -16,11 +16,11 @@ class TenantQrPaymentScreen extends StatelessWidget {
     return NumberFormat('#,###', 'vi_VN').format(amount).replaceAll(',', '.');
   }
 
-  // --- HÀM XỬ LÝ CHỌN ẢNH VÀ UPLOAD ---
+
   Future<void> _pickAndUploadImage(BuildContext context, TenantQrPaymentViewModel vm) async {
     final ImagePicker picker = ImagePicker();
     try {
-      // Mở thư viện ảnh để chọn
+
       final XFile? image = await picker.pickImage(
         source: ImageSource.gallery,
         imageQuality: 50,
@@ -33,7 +33,7 @@ class TenantQrPaymentScreen extends StatelessWidget {
 
         bool isSuccess = await vm.uploadProofImage(file);
 
-        // Xử lý kết quả trả về
+
         if (context.mounted) {
           if (isSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -120,7 +120,7 @@ class TenantQrPaymentScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // Hình ảnh QR Code
+
           Container(
             width: 280,
             height: 350,
@@ -155,7 +155,7 @@ class TenantQrPaymentScreen extends StatelessWidget {
           ),
           const SizedBox(height: 32),
 
-          // Thông tin chuyển khoản
+
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
@@ -190,7 +190,7 @@ class TenantQrPaymentScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // --- Dòng chú thích ---
+
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
             decoration: BoxDecoration(
@@ -218,13 +218,13 @@ class TenantQrPaymentScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // --- Nút Gửi ảnh xác nhận ---
+
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              // Nếu đang upload thì khóa nút bấm
+
               onPressed: vm.isUploading ? null : () => _pickAndUploadImage(context, vm),
-              // Thay đổi Icon thành vòng xoay loading khi đang upload
+
               icon: vm.isUploading
                   ? const SizedBox(
                   width: 20,
@@ -234,13 +234,13 @@ class TenantQrPaymentScreen extends StatelessWidget {
                   : const Icon(Icons.upload_file, color: Colors.white),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                disabledBackgroundColor: AppColors.primary.withOpacity(0.6), // Màu mờ đi khi bị khóa
+                disabledBackgroundColor: AppColors.primary.withOpacity(0.6),
                 padding: const EdgeInsets.symmetric(vertical: 16),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              // Đổi text linh hoạt
+
               label: Text(
                   vm.isUploading ? 'Đang tải lên...' : 'Gửi ảnh xác nhận',
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)

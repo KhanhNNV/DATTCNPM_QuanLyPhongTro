@@ -10,7 +10,7 @@ import 'invoice_detail_screen.dart';
 import 'view_models/invoice_detail_view_model.dart';
 import 'view_models/invoice_list_view_model.dart';
 
-/// Màn hình Quản lý Hóa đơn dành cho Chủ trọ.
+
 class InvoiceListScreen extends StatelessWidget {
   const InvoiceListScreen({super.key});
 
@@ -30,7 +30,7 @@ class InvoiceListScreen extends StatelessWidget {
     );
   }
 
-  /// Khu vực thanh tìm kiếm và các chip lọc trạng thái
+
   Widget _buildSearchAndFilter(BuildContext context, InvoiceListViewModel vm) {
     return Container(
       color: Colors.white,
@@ -38,7 +38,6 @@ class InvoiceListScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // TextField Tìm kiếm
           TextField(
             onChanged: vm.onSearchChanged,
             decoration: InputDecoration(
@@ -54,7 +53,7 @@ class InvoiceListScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          // Chips Lọc Trạng thái
+
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
@@ -85,7 +84,7 @@ class InvoiceListScreen extends StatelessWidget {
     );
   }
 
-  /// Danh sách hóa đơn sử dụng CustomPaginatedList
+
   Widget _buildBody(InvoiceListViewModel vm, BuildContext context) {
     return CustomPaginatedList<InvoiceResponse>(
       items: vm.displayedInvoices,
@@ -98,7 +97,6 @@ class InvoiceListScreen extends StatelessWidget {
     );
   }
 
-  /// Item hiển thị thông tin tóm tắt của một Hóa đơn
   Widget _buildInvoiceCard(BuildContext context, InvoiceResponse invoice, InvoiceListViewModel vm) {
     final statusColor = _getStatusColor(invoice.status);
 
@@ -123,7 +121,6 @@ class InvoiceListScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header: Số phòng & Trạng thái
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -153,7 +150,7 @@ class InvoiceListScreen extends StatelessWidget {
                 ],
               ),
               const Divider(height: 24),
-              // Body: Chi tiết thời gian & Tiền
+
               _buildInfoRow(Icons.calendar_today, 'Kỳ hóa đơn:', _formatDate(invoice.invoicePeriod)),
               const SizedBox(height: 8),
               _buildInfoRow(Icons.event_busy, 'Hạn đóng:', _formatDate(invoice.dueDate)),
@@ -171,7 +168,7 @@ class InvoiceListScreen extends StatelessWidget {
     );
   }
 
-  /// Widget hỗ trợ hiển thị 1 dòng thông tin (Icon + Label + Value)
+
   Widget _buildInfoRow(IconData icon, String label, String value, {bool isHighlight = false}) {
     return Row(
       children: [
@@ -194,7 +191,7 @@ class InvoiceListScreen extends StatelessWidget {
     );
   }
 
-  // --- Utility Methods ---
+
 
   String _formatCurrency(double amount) {
     return NumberFormat('#,###', 'vi_VN').format(amount).replaceAll(',', '.');

@@ -23,7 +23,7 @@ class TenantHomeScreen extends StatefulWidget {
 
 class _TenantHomeScreenState extends State<TenantHomeScreen> {
 
-  // --- DANH SÁCH CHỨC NĂNG: QUẢN LÝ PHÒNG TRỌ ---
+
   List<QuickActionItem> _getRoomActions(BuildContext context, TenantMainLayoutViewModel viewModel) {
     return [
       QuickActionItem(
@@ -80,7 +80,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
     ];
   }
 
-  // --- DANH SÁCH CHỨC NĂNG: TIỆN ÍCH & HỖ TRỢ ---
+
   List<QuickActionItem> _getUtilityActions(BuildContext context, TenantMainLayoutViewModel viewModel) {
     return [
       QuickActionItem(
@@ -149,7 +149,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- SECTION 1: QUẢN LÝ PHÒNG TRỌ ---
+
             _buildSectionHeader(
               title: 'Thông tin phòng trọ',
               subtitle: 'Xem thông tin hợp đồng, hóa đơn phòng...',
@@ -159,7 +159,6 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
 
             const SizedBox(height: 24),
 
-            // --- SECTION 2: TIỆN ÍCH & HỖ TRỢ ---
             _buildSectionHeader(
               title: 'Tiện ích & Hỗ trợ',
               subtitle: 'Phản ánh sự cố và quản lý tài khoản...',
@@ -174,7 +173,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
     );
   }
 
-  // Widget hiển thị Tiêu đề phân đoạn nghiệp vụ công việc
+
   Widget _buildSectionHeader({required String title, required String subtitle}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -221,7 +220,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
     );
   }
 
-  // Lưới hiển thị các thẻ Card (Tự động chia 3 cột)
+
   Widget _buildGridMenu(List<QuickActionItem> items) {
     return GridView.builder(
       shrinkWrap: true,
@@ -239,7 +238,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
     );
   }
 
-  // Cấu trúc chi tiết của từng thẻ Chức năng (Card)
+
   Widget _buildCardItem(QuickActionItem item) {
     return InkWell(
       onTap: item.onTap,
@@ -297,7 +296,7 @@ class _TenantHomeScreenState extends State<TenantHomeScreen> {
             ),
           ),
 
-          // --- XỬ LÝ BADGE THÔNG BÁO GÓC PHẢI ---
+
           if (item.badgeCount != null || item.badgeText != null)
             Positioned(
               top: 6,

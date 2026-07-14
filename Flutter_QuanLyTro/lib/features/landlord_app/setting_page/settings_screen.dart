@@ -83,12 +83,12 @@ class SettingsScreen extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // THẺ 1: THÔNG TIN CÁ NHÂN
+
             Card(
               elevation: 2,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               child: ExpansionTile(
-                initiallyExpanded: true, // Mở sẵn thẻ này khi vào màn hình
+                initiallyExpanded: true,
                 leading: const Icon(Icons.person_outline, color: AppColors.primary),
                 title: const Text(
                   'Thông tin cá nhân',
@@ -175,7 +175,7 @@ class SettingsScreen extends StatelessWidget {
 
             const SizedBox(height: 16),
 
-            // THẺ 2: THÔNG TIN NGÂN HÀNG
+
             Card(
               elevation: 2,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),

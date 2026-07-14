@@ -32,7 +32,6 @@ class MeterReadingViewModel extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1. Lấy danh sách các phòng và dịch vụ trong khu trọ
       final results = await Future.wait([
         _roomProvider.getRoomsByArea(areaId, status: 'RENTED'),
         _areaConfigProvider.getServicesByArea(areaId),
@@ -55,7 +54,6 @@ class MeterReadingViewModel extends ChangeNotifier {
 
       List<RoomReadingUiModel> newRoomList = [];
 
-      // 2. Lấy chỉ số điện nước cho từng phòng
       for (var room in rooms) {
         final readings = await _provider.getMeterReadings(room.id, selectedMonth);
 
@@ -67,17 +65,16 @@ class MeterReadingViewModel extends ChangeNotifier {
         int? waterNewIndex;
 
         for (var reading in readings) {
-          final isVirtualForm = reading.id == null; // <--- CHECK XEM CÓ PHẢI FORM ẢO KHÔNG
+          final isVirtualForm = reading.id == null;
 
           if (reading.serviceName.toLowerCase().contains('điện')) {
             elecReadingId = reading.id;
             elecOldIndex = reading.oldIndex;
-            // NẾU LÀ FORM ẢO THÌ ĐỂ NULL ĐỂ Ô NHẬP LIỆU TRỐNG, KHÔNG HIỂN THỊ SỐ 0
+
             elecNewIndex = isVirtualForm ? null : reading.newIndex;
           } else if (reading.serviceName.toLowerCase().contains('nước')) {
             waterReadingId = reading.id;
             waterOldIndex = reading.oldIndex;
-            // TƯƠNG TỰ VỚI NƯỚC
             waterNewIndex = isVirtualForm ? null : reading.newIndex;
           }
         }
@@ -109,7 +106,6 @@ class MeterReadingViewModel extends ChangeNotifier {
     }
   }
 
-  // --- TRẢ VỀ STRING? ĐỂ CHỨA THÔNG BÁO LỖI (NẾU CÓ) ---
   Future<String?> saveSingleRoom(RoomReadingUiModel room) async {
     if (room.isElecByIndex && room.elecController.text.isEmpty) {
       return 'Vui lòng nhập chỉ số điện!';
@@ -127,7 +123,6 @@ class MeterReadingViewModel extends ChangeNotifier {
 
       final formattedDate = "${selectedMonth.year}-${selectedMonth.month.toString().padLeft(2, '0')}-01";
 
-      // Chỉ số Điện
       if (room.isElecByIndex) {
         int elecNew = int.parse(room.elecController.text.trim());
         if (elecNew < room.elecOldIndex) throw Exception('Chỉ số điện mới không được nhỏ hơn số cũ!');
@@ -139,7 +134,6 @@ class MeterReadingViewModel extends ChangeNotifier {
         }
       }
 
-      // Chỉ số Nước
       if (room.isWaterByIndex) {
         int waterNew = int.parse(room.waterController.text.trim());
         if (waterNew < room.waterOldIndex) throw Exception('Chỉ số nước mới không được nhỏ hơn số cũ!');
@@ -151,18 +145,16 @@ class MeterReadingViewModel extends ChangeNotifier {
         }
       }
 
-      // Gửi API
       if (createRequests.isNotEmpty) await _provider.createBulkMeterReadings(createRequests);
       if (updateRequests.isNotEmpty) await _provider.updateBulkMeterReadings(updateRequests);
 
-      // Reload lại dữ liệu mới
       await loadMeterReadings();
 
-      return null; // THÀNH CÔNG -> Trả về null
+      return null;
     } catch (e) {
       isLoading = false;
       notifyListeners();
-      return e.toString().replaceAll('Exception: ', ''); // LỖI -> Trả về thông báo lỗi
+      return e.toString().replaceAll('Exception: ', '');
     }
   }
 

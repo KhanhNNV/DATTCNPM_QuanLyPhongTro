@@ -39,7 +39,7 @@ class TenantListScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- HEADER ---
+
             Padding(
               padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 16.0, bottom: 8.0),
               child: Row(
@@ -85,7 +85,6 @@ class TenantListScreen extends StatelessWidget {
 
             const SizedBox(height: 8),
 
-            // --- DANH SÁCH KHÁCH THUÊ ---
             Expanded(
               child: viewModel.tenants.isEmpty
                   ? const Center(child: Text('Chưa có khách thuê nào trong khu trọ này.'))
@@ -110,7 +109,7 @@ class TenantListScreen extends StatelessWidget {
                         children: [
                           const SizedBox(height: 4),
                           Text('SĐT: ${tenant.phone}'),
-                          // Hiển thị CCCD nếu có
+
                           if (tenant.idCardNumber != null && tenant.idCardNumber!.isNotEmpty)
                             Text('CCCD: ${tenant.idCardNumber}'),
                           if (tenant.hometown != null && tenant.hometown!.isNotEmpty)

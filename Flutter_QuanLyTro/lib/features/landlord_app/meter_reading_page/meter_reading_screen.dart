@@ -33,7 +33,7 @@ class MeterReadingScreen extends StatelessWidget {
         builder: (context, viewModel, _) {
           return Column(
             children: [
-              // --- Header chọn Tháng/Năm ---
+
               Container(
                 color: Colors.white,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -63,7 +63,7 @@ class MeterReadingScreen extends StatelessWidget {
               ),
               const Divider(height: 1, thickness: 1, color: Colors.black12),
 
-              // --- Danh sách phòng ---
+
               Expanded(
                 child: viewModel.isLoading && viewModel.roomList.isEmpty
                     ? const Center(child: CircularProgressIndicator(color: Colors.blue))
