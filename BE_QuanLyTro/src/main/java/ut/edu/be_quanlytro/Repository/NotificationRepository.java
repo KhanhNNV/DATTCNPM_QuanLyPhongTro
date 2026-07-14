@@ -10,10 +10,10 @@ import java.util.UUID;
 
 public interface NotificationRepository extends JpaRepository<Notification, UUID> {
 
-    // 1. Lấy danh sách thông báo của 1 user, mới nhất xếp lên đầu
+    //  Lấy danh sách thông báo của 1 user
     Page<Notification> findByUserIdOrderByCreatedAtDesc(UUID userId, Pageable pageable);
 
-    // 2. Đếm số lượng thông báo chưa đọc (isRead = false) của 1 user
+    //  Đếm số lượng thông báo chưa đọc của 1 user
     long countByUserIdAndIsReadFalse(UUID userId);
     // Lấy ra một danh sách (List) các thông báo CHƯA ĐỌC của user
     List<Notification> findByUserIdAndIsReadFalse(UUID userId);

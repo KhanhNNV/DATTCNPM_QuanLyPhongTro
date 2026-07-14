@@ -76,7 +76,6 @@ public class IssueController {
 
         UUID landlordId = UUID.fromString(jwt.getClaimAsString("userId"));
 
-        // 🎯 SỬA Ở ĐÂY: Nhớ truyền thêm areaId vào hàm Service
         PageResponse<IssueResponse> response = issueService.getIssuesForLandlord(landlordId, areaId, roomId, status, page, size);
 
         return ResponseEntity.ok(response);

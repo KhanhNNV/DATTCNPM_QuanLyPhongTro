@@ -20,9 +20,9 @@ public class NotificationController {
 
     private final NotificationService notificationService;
 
-    // 1. Lấy danh sách thông báo (Phân trang)
+    //  Lấy danh sách thông báo (Phân trang)
     @GetMapping
-    @PreAuthorize("hasAnyRole('TENANT', 'LANDLORD')") // Chủ trọ hay Khách thuê đều có quyền xem
+    @PreAuthorize("hasAnyRole('TENANT', 'LANDLORD')")
     public ResponseEntity<PageResponse<NotificationResponse>> getMyNotifications(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -33,7 +33,7 @@ public class NotificationController {
         return ResponseEntity.ok(response);
     }
 
-    // 2. Lấy số lượng thông báo chưa đọc (Để FE hiện con số màu đỏ trên icon chuông)
+    // Lấy số lượng thông báo chưa đọc
     @GetMapping("/unread-count")
     @PreAuthorize("hasAnyRole('TENANT', 'LANDLORD')")
     public ResponseEntity<?> getUnreadCount(@AuthenticationPrincipal Jwt jwt) {
@@ -42,7 +42,7 @@ public class NotificationController {
         return ResponseEntity.ok(Map.of("unreadCount", count));
     }
 
-    // 3. Đánh dấu 1 thông báo là đã đọc (Khi user click vào thông báo)
+    //  Đánh dấu 1 thông báo là đã đọc
     @PutMapping("/{id}/read")
     @PreAuthorize("hasAnyRole('TENANT', 'LANDLORD')")
     public ResponseEntity<String> markAsRead(
@@ -54,7 +54,7 @@ public class NotificationController {
         return ResponseEntity.ok("Đã đánh dấu đọc!");
     }
 
-    // 4. Đánh dấu TẤT CẢ thông báo là đã đọc (Nút "Mark all as read")
+    // Đánh dấu TẤT CẢ thông báo là đã đọc
     @PutMapping("/read-all")
     @PreAuthorize("hasAnyRole('TENANT', 'LANDLORD')")
     public ResponseEntity<String> markAllAsRead(@AuthenticationPrincipal Jwt jwt) {
