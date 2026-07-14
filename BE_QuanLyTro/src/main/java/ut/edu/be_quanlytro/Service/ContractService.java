@@ -28,6 +28,7 @@ public class ContractService {
     private final InvoiceDetailRepository invoiceDetailRepository;
     private final PaymentRepository  paymentRepository;
     private final AreaServiceRepository areaServiceRepository;
+    private final MeterReadingRepository meterReadingRepository;
 
     // Tận dụng lại các Service đã có
     private final UserService userService;
@@ -413,7 +414,7 @@ public class ContractService {
         // 9. Trả về chi tiết hợp đồng mới nhất (để Frontend tự động cập nhật danh sách)
         return mapToDetailResponse(savedContract);
     }
-    // ================= 7. THANH LÝ HỢP ĐỒNG=================
+    // ================= 7. THANH LÝ HỢP ĐỒNG =================
     @Transactional
     public ContractTerminationResponse terminateContract(ContractTerminationRequest request, UUID currentUserId, UUID contractID) {
 
@@ -435,7 +436,7 @@ public class ContractService {
         Area area = room.getArea();
 
         // ==============================================================
-        // 4. LẤY ĐƠN GIÁ TỪ DATABASE VÀ TÍNH TOÁN BÙ TRỪ CỌC
+        // 4. LẤY ĐƠN GIÁ, TRUY XUẤT CHỈ SỐ CŨ TỪ BẢNG METER_READING VÀ TÍNH TOÁN
         // ==============================================================
         BigDecimal electricityCost = BigDecimal.ZERO;
         BigDecimal waterCost = BigDecimal.ZERO;
@@ -443,16 +444,55 @@ public class ContractService {
         // Lấy danh sách dịch vụ của khu trọ đang hoạt động
         List<AreaService> areaServices = areaServiceRepository.findByAreaIdAndIsActiveTrue(area.getId());
 
-        // Quét để tìm đơn giá Điện / Nước
+        // Quét để tìm đơn giá Điện / Nước và tính toán
         for (AreaService service : areaServices) {
             if (service.getCalcType() == ServiceCalculationType.BY_INDEX) {
                 String serviceName = service.getName().toLowerCase();
+                Integer newIndexFromFE = null;
 
-                if (serviceName.contains("điện") && request.getElectricityUsage() != null) {
-                    electricityCost = service.getPrice().multiply(new BigDecimal(request.getElectricityUsage()));
+                // Lấy chỉ số hiện tại (số mới) do FE gửi lên
+                if (serviceName.contains("điện")) {
+                    newIndexFromFE = request.getElectricityUsage();
+                } else if (serviceName.contains("nước")) {
+                    newIndexFromFE = request.getWaterUsage();
                 }
-                else if (serviceName.contains("nước") && request.getWaterUsage() != null) {
-                    waterCost = service.getPrice().multiply(new BigDecimal(request.getWaterUsage()));
+
+                if (newIndexFromFE != null) {
+                    // Tìm chỉ số cũ từ lịch sử chốt sổ của bảng MeterReading
+                    int oldIndex = 0;
+                    Optional<MeterReading> lastReading = meterReadingRepository
+                            .findFirstByRoomIdAndServiceIdOrderByCreatedAtDesc(room.getId(), service.getId());
+
+                    if (lastReading.isPresent()) {
+                        oldIndex = lastReading.get().getNewIndex(); // Lấy chỉ số của tháng trước làm mốc
+                    }
+
+                    // Validate bảo vệ hệ thống: Chỉ số mới không được lùi ngược so với số cũ
+                    if (newIndexFromFE < oldIndex) {
+                        throw new BadRequestException(String.format(
+                                "Lỗi: Chỉ số %s mới (%d) không được nhỏ hơn chỉ số cũ (%d)!",
+                                service.getName(), newIndexFromFE, oldIndex));
+                    }
+
+                    // Tính ra số tiền thực tế trong tháng cuối
+                    int actualUsage = newIndexFromFE - oldIndex;
+                    BigDecimal cost = service.getPrice().multiply(new BigDecimal(actualUsage));
+
+                    if (serviceName.contains("điện")) {
+                        electricityCost = cost;
+                    } else {
+                        waterCost = cost;
+                    }
+
+                    // CHỐT SỔ NGẦM VÀO BẢNG METER_READING ĐỂ NGƯỜI THUÊ SAU CÓ SỐ LÀM MỐC
+                    MeterReading finalReading = MeterReading.builder()
+                            .room(room)
+                            .service(service)
+                            .oldIndex(oldIndex)
+                            .newIndex(newIndexFromFE)
+                            .isInvoiced(true) // Đánh dấu True để không bị xuất hóa đơn thừa
+                            .build();
+                    meterReadingRepository.save(finalReading);
                 }
             }
         }
@@ -488,14 +528,34 @@ public class ContractService {
         roomRepository.save(room);
 
         // ==============================================================
-        // 6. GHI LOG HỆ THỐNG
+        // 6. XỬ LÝ TÀI KHOẢN KHÁCH THUÊ (VÔ HIỆU HÓA AN TOÀN)
+        // ==============================================================
+        User tenant = contract.getTenant();
+
+        // Kiểm tra xem khách này còn hợp đồng nào ĐANG THUÊ hoặc CHỜ KÝ ở phòng khác không
+        List<ContractStatus> activeStatuses = List.of(ContractStatus.SIGNED, ContractStatus.DRAFT);
+        long activeContractsCount = contractRepository.countByTenantIdAndStatusIn(tenant.getId(), activeStatuses);
+
+        if (activeContractsCount == 0) {
+            // Đổi mật khẩu thành một chuỗi ngẫu nhiên khổng lồ để khách không thể đăng nhập
+            tenant.setPassword(generateRandomPassword() + UUID.randomUUID().toString());
+
+            // Đổi số điện thoại (Thêm tiền tố [DELETED]) để giải phóng số điện thoại này
+            tenant.setPhone("[DELETED]_" + System.currentTimeMillis() + "_" + tenant.getPhone());
+
+            userRepository.save(tenant);
+            System.out.println("Tài khoản khách thuê đã được vô hiệu hóa và ẩn danh do không còn hợp đồng hiệu lực.");
+        }
+
+        // ==============================================================
+        // 7. GHI LOG HỆ THỐNG
         // ==============================================================
         String logDesc = String.format("Thanh lý hợp đồng phòng %s. %s: %s VNĐ",
                 room.getRoomNumber(), action, finalAmountToShow);
         activityLog.createLog(area.getLandlord(), "TERMINATE_CONTRACT", "contracts", contract.getId(), logDesc);
 
         // ==============================================================
-        // 7. TRẢ VỀ KẾT QUẢ
+        // 8. TRẢ VỀ KẾT QUẢ
         // ==============================================================
         return ContractTerminationResponse.builder()
                 .contractId(contract.getId())

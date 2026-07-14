@@ -21,9 +21,7 @@ public interface ContractRepository extends JpaRepository<Contract, UUID> {
     // Tìm toàn bộ hợp đồng của một phòng
     List<Contract> findByRoomId(UUID roomId);
 
-    // Tìm tất cả hợp đồng thuộc các phòng (Room) nằm trong khu trọ (Area) của Chủ trọ (Landlord) này
-    // Sắp xếp theo ngày tạo mới nhất (giảm dần)
-    List<Contract> findByRoomAreaLandlordIdOrderByCreatedAtDesc(UUID landlordId);
+    long countByTenantIdAndStatusIn(UUID tenantId, List<ContractStatus> statuses);
 
     // Tìm hợp đồng mới nhất của khách thuê thuộc 1 trong các trạng thái truyền vào (DRAFT, ACTIVE)
     Optional<Contract> findFirstByTenantIdAndStatusInOrderByCreatedAtDesc(UUID tenantId, List<ContractStatus> statuses);
