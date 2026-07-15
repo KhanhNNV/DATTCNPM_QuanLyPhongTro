@@ -210,7 +210,7 @@ class MainLayoutScreen extends StatelessWidget {
         currentIndex: viewModel.currentIndex,
         onTabSelected: (index) {
           viewModel.changeTab(index);
-          if (index == 3) {
+          if (index == 2) {
             context.read<NotificationViewModel>().fetchNotifications(isRefresh: true);
           }
         },

@@ -136,11 +136,24 @@ class MainLayoutViewModel extends ChangeNotifier {
   String? get selectedAreaId => _selectedArea?.id;
 
   Future<void> addAndSelectArea(AreaModel area) async {
+    _isLoading = true;
+    notifyListeners();
+
     _areas.add(area);
     _selectedArea = area;
-    notifyListeners();
 
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_selectedAreaKey, area.id);
+
+    try {
+      if (_currentUser == null) {
+        _currentUser = await _userProvider.getCurrentUser();
+      }
+    } catch (e) {
+      debugPrint("Lỗi tải thông tin user sau onboarding: $e");
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 }

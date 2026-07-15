@@ -42,4 +42,7 @@ public class NightlyJobScheduler {
 
         System.out.println("ĐÃ HOÀN TẤT TOÀN BỘ TÁC VỤ ĐÊM!");
     }
+
+//    @Scheduled(fixedRate = 10000)
+//    public void testRun() { executeAllNightlyJobs(); }
 }

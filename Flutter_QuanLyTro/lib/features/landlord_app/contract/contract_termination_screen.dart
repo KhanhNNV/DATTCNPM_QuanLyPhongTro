@@ -39,6 +39,7 @@ class ContractTerminationScreen extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             DropdownButtonFormField<String>(
+              isExpanded: true,
               decoration: InputDecoration(
                 filled: true,
                 fillColor: Colors.white,
@@ -50,7 +51,11 @@ class ContractTerminationScreen extends StatelessWidget {
               items: viewModel.activeContracts.map((contract) {
                 return DropdownMenuItem(
                   value: contract.id,
-                  child: Text('Phòng ${contract.roomNumber} - Khách: ${contract.tenantName ?? 'N/A'}'),
+                  child: Text(
+                    'Phòng ${contract.roomNumber} - Khách: ${contract.tenantName ?? 'N/A'}',
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
                 );
               }).toList(),
               onChanged: viewModel.selectContract,
@@ -182,7 +187,7 @@ class ContractTerminationScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Expanded(
-                    child: Text('Tổng trừ (Điện + Nước):', style: TextStyle(color: Colors.red, fontSize: 15)),
+                    child: Text('Tổng trừ (Phòng + Điện + Nước + (Phí DV khác)):', style: TextStyle(color: Colors.red, fontSize: 15)),
                   ),
                   Text(
                     '- ${formatMoney(response.totalDeduction)}',
