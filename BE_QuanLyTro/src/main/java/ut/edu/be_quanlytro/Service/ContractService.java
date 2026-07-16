@@ -379,61 +379,71 @@ public class ContractService {
         Room room = contract.getRoom();
         Area area = room.getArea();
 
-        BigDecimal electricityCost = BigDecimal.ZERO;
-        BigDecimal waterCost = BigDecimal.ZERO;
+        BigDecimal totalDeduction = BigDecimal.ZERO;
+
+        BigDecimal roomRent = room.getRentPrice() != null ? room.getRentPrice() : BigDecimal.ZERO;
+        totalDeduction = totalDeduction.add(roomRent);
 
         List<AreaService> areaServices = areaServiceRepository.findByAreaIdAndIsActiveTrue(area.getId());
+        int occupantCount = contract.getMembers().size();
 
         for (AreaService service : areaServices) {
-            if (service.getCalcType() == ServiceCalculationType.BY_INDEX) {
-                String serviceName = service.getName().toLowerCase();
-                Integer newIndexFromFE = null;
+            BigDecimal serviceCost = BigDecimal.ZERO;
 
-                if (serviceName.contains("điện")) {
-                    newIndexFromFE = request.getElectricityUsage();
-                } else if (serviceName.contains("nước")) {
-                    newIndexFromFE = request.getWaterUsage();
-                }
-
-                if (newIndexFromFE != null) {
-                    int oldIndex = 0;
-                    Optional<MeterReading> lastReading = meterReadingRepository
-                            .findFirstByRoomIdAndServiceIdOrderByCreatedAtDesc(room.getId(), service.getId());
-
-                    if (lastReading.isPresent()) {
-                        oldIndex = lastReading.get().getNewIndex();
-                    }
-
-                    if (newIndexFromFE < oldIndex) {
-                        throw new BadRequestException(String.format(
-                                "Lỗi: Chỉ số %s mới (%d) không được nhỏ hơn chỉ số cũ (%d)!",
-                                service.getName(), newIndexFromFE, oldIndex));
-                    }
-
-                    int actualUsage = newIndexFromFE - oldIndex;
-                    BigDecimal cost = service.getPrice().multiply(new BigDecimal(actualUsage));
+            switch (service.getCalcType()) {
+                case BY_INDEX:
+                    String serviceName = service.getName().toLowerCase();
+                    Integer newIndexFromFE = null;
 
                     if (serviceName.contains("điện")) {
-                        electricityCost = cost;
-                    } else {
-                        waterCost = cost;
+                        newIndexFromFE = request.getElectricityUsage();
+                    } else if (serviceName.contains("nước")) {
+                        newIndexFromFE = request.getWaterUsage();
                     }
 
-                    MeterReading finalReading = MeterReading.builder()
-                            .room(room)
-                            .service(service)
-                            .oldIndex(oldIndex)
-                            .newIndex(newIndexFromFE)
-                            .isInvoiced(true)
-                            .build();
-                    meterReadingRepository.save(finalReading);
-                }
+                    if (newIndexFromFE != null) {
+                        int oldIndex = 0;
+                        Optional<MeterReading> lastReading = meterReadingRepository
+                                .findFirstByRoomIdAndServiceIdOrderByCreatedAtDesc(room.getId(), service.getId());
+
+                        if (lastReading.isPresent()) {
+                            oldIndex = lastReading.get().getNewIndex();
+                        }
+
+                        if (newIndexFromFE < oldIndex) {
+                            throw new BadRequestException(String.format(
+                                    "Lỗi: Chỉ số %s mới (%d) không được nhỏ hơn chỉ số cũ (%d)!",
+                                    service.getName(), newIndexFromFE, oldIndex));
+                        }
+
+                        int actualUsage = newIndexFromFE - oldIndex;
+                        serviceCost = service.getPrice().multiply(new BigDecimal(actualUsage));
+
+                        MeterReading finalReading = MeterReading.builder()
+                                .room(room)
+                                .service(service)
+                                .oldIndex(oldIndex)
+                                .newIndex(newIndexFromFE)
+                                .isInvoiced(true)
+                                .build();
+                        meterReadingRepository.save(finalReading);
+                    }
+                    break;
+
+                case PER_PERSON:
+                    serviceCost = service.getPrice().multiply(new BigDecimal(occupantCount));
+                    break;
+
+                case PER_ROOM:
+                    serviceCost = service.getPrice();
+                    break;
             }
+
+            totalDeduction = totalDeduction.add(serviceCost);
         }
 
-        BigDecimal totalDeduction = electricityCost.add(waterCost);
-
         BigDecimal depositAmount = contract.getDepositAmount() != null ? contract.getDepositAmount() : BigDecimal.ZERO;
+
         BigDecimal offsetAmount = depositAmount.subtract(totalDeduction);
 
         String action;
@@ -463,7 +473,6 @@ public class ContractService {
 
         if (activeContractsCount == 0) {
             tenant.setPassword(generateRandomPassword() + UUID.randomUUID().toString());
-
             tenant.setPhone("[DELETED]_" + System.currentTimeMillis() + "_" + tenant.getPhone());
 
             userRepository.save(tenant);
