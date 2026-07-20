@@ -123,21 +123,4 @@ class AuthRepository {
       throw Exception(errorMessage);
     }
   }
-
-  Future<void> triggerTestPushNotification() async {
-    try {
-      // Gọi API test-push vừa tạo (truyền body rỗng {})
-      final response = await _apiClient.post('/auth/test-push', {});
-
-      if (response.statusCode == 200) {
-        print("✅ Đã gọi lệnh API test push thành công!");
-      } else {
-        throw Exception(response.body);
-      }
-    } catch (e) {
-      print("❌ Lỗi khi gọi API test-push: $e");
-      // Sử dụng công cụ dịch lỗi đã viết của bạn
-      throw Exception(ApiErrorHandler.extractErrorMessage(e));
-    }
-  }
 }
