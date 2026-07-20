@@ -30,13 +30,12 @@ public class JwtService {
         Date issueTime = new Date();
         Date expiredTime = Date.from(issueTime.toInstant().plus(30, ChronoUnit.MINUTES));
 
-        // Thiết lập các thông tin nhét vào ví JWT
         JWTClaimsSet.Builder claimsBuilder = new JWTClaimsSet.Builder()
                 .subject(user.getPhone())
                 .issueTime(issueTime)
                 .expirationTime(expiredTime)
-                .claim("userId", user.getId().toString()) // Lưu ID người dùng
-                .claim("role", user.getRole().name());   // Lưu Quyền (LANDLORD/TENANT)
+                .claim("userId", user.getId().toString())
+                .claim("role", user.getRole().name());
 
 
         if (areaId != null) claimsBuilder.claim("areaId", areaId);
